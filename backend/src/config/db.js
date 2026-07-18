@@ -8,6 +8,9 @@ console.log("DB CONFIG:", {
   passwordLength: process.env.DB_PASSWORD ? process.env.DB_PASSWORD.length : 0
 });
 
+console.log("PASSWORD LENGTH:", process.env.DB_PASSWORD.length);
+console.log("PASSWORD START:", process.env.DB_PASSWORD.substring(0,2));
+
 const mysql = require('mysql2/promise');
 
 const pool = mysql.createPool({
