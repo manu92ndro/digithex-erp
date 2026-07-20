@@ -17,9 +17,7 @@ console.log("DB CONFIG:", {
 console.log("PASSWORD LENGTH:", process.env.DB_PASSWORD.length);
 console.log("PASSWORD START:", process.env.DB_PASSWORD.substring(0,2));
 
-const mysql = require('mysql2/promise');
-
-const mysql = require('mysql2/promise');
+const mysql = require("mysql2/promise");
 
 (async () => {
   try {
@@ -28,14 +26,13 @@ const mysql = require('mysql2/promise');
       user: process.env.DB_USER,
       password: process.env.DB_PASSWORD,
       database: process.env.DB_NAME,
-      port: Number(process.env.DB_PORT)
+      port: Number(process.env.DB_PORT),
     });
 
-    console.log("✅ CONEXIÓN DIRECTA EXITOSA");
-
+    console.log("✅ CONEXIÓN EXITOSA");
     await conn.end();
   } catch (err) {
-    console.error("❌ ERROR COMPLETO");
+    console.error("ERROR COMPLETO:");
     console.error(err);
   }
 })();
