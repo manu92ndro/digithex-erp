@@ -1,43 +1,27 @@
-require('dotenv').config();
-const mysql = require('mysql2/promise');
+require("dotenv").config();
 
-(async () => {
-  try {
-    const conn = await mysql.createConnection({
-      host: process.env.DB_HOST,
-      user: process.env.DB_USER,
-      password: process.env.DB_PASSWORD,
-      database: process.env.DB_NAME,
-      port: Number(process.env.DB_PORT)
-    });
-
-    console.log("✅ CONEXIÓN EXITOSA A MYSQL");
-    await conn.end();
-
-  } catch (err) {
-    console.error("❌ ERROR MYSQL");
-    console.error(err);
-  }
-})();
+const mysql = require("mysql2/promise");
 
 const pool = mysql.createPool({
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
+  password: process.env.DB_PASSWORD || "",
   database: process.env.DB_NAME,
-  port: Number(process.env.DB_PORT),
+  port: process.env.DB_PORT || 3306,
   waitForConnections: true,
-  connectionLimit: 10
+  connectionLimit: 10,
+  queueLimit: 0,
 });
 
-const dns = require('dns');
-
-dns.lookup(process.env.DB_HOST, (err, address, family) => {
-    console.log({
-        host: process.env.DB_HOST,
-        address,
-        family
-    });
-});
+(async () => {
+  try {
+    const conn = await pool.getConnection();
+    console.log("✅ MySQL conectado correctamente");
+    conn.release();
+  } catch (err) {
+    console.error("❌ Error de conexión MySQL");
+    console.error(err);
+  }
+})();
 
 module.exports = pool;
