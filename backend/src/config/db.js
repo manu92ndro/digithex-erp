@@ -30,4 +30,14 @@ const pool = mysql.createPool({
   connectionLimit: 10
 });
 
+const dns = require('dns');
+
+dns.lookup(process.env.DB_HOST, (err, address, family) => {
+    console.log({
+        host: process.env.DB_HOST,
+        address,
+        family
+    });
+});
+
 module.exports = pool;
