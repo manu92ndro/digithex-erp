@@ -19,6 +19,7 @@ app.use(
   express.static(path.join(__dirname, 'src/uploads'))
 );
 
+
 app.get('/', (req, res) => {
   res.json({
     ok: true,
@@ -39,5 +40,18 @@ app.use('/api/dumpsters', require('./src/routes/dumpsters.routes'));
 app.use('/api/camiones', require('./src/routes/camiones.routes'));
 app.use('/api/rentas', require('./src/routes/rentas.routes'));
 
+const fs = require("fs");
+
+const uploadsPath = path.join(__dirname, "src/uploads");
+
+console.log("Ruta uploads:", uploadsPath);
+console.log("Existe:", fs.existsSync(uploadsPath));
+
+app.use("/uploads", express.static(uploadsPath));
+
+
+app.get("/prueba", (req, res) => {
+  res.send("Backend correcto");
+});
 
 module.exports = app;
