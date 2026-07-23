@@ -33,8 +33,8 @@ import {
   disableImpuesto,
 } from "../api/impuestos";
 
+// ✅ ELIMINADO "company" de los tabs
 const tabs = [
-  { key: "company", label: "Company", icon: Building2 },
   { key: "branding", label: "Branding", icon: Palette },
   { key: "taxes", label: "Taxes", icon: Percent },
   { key: "agreement", label: "Rental Agreement", icon: FileText },
@@ -45,12 +45,7 @@ const tabs = [
 ];
 
 const initialForm = {
-  nombre_comercial: "",
-  telefono: "",
-  telefono_secundario: "",
-  correo: "",
-  website: "",
-  direccion: "",
+  // ✅ ELIMINADOS: nombre_comercial, telefono, telefono_secundario, correo, direccion
   color_primario: "#2563eb",
   color_secundario: "#0f172a",
   terminos_renta: "",
@@ -75,7 +70,6 @@ const initialForm = {
   smtp_password: "",
   smtp_from_name: "",
   smtp_reply_to: "",
-
 };
 
 const initialTaxForm = {
@@ -89,7 +83,7 @@ export default function CompanySettings() {
   const { hasPermission } = usePermission();
   const canEdit = hasPermission("company_settings.editar");
 
-  const [activeTab, setActiveTab] = useState("company");
+  const [activeTab, setActiveTab] = useState("branding"); // ✅ Cambiado a "branding"
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -173,6 +167,7 @@ export default function CompanySettings() {
       setSaving(false);
     }
   };
+
   const testEmailConnection = async () => {
     try {
       if (!canEdit) return;
@@ -352,64 +347,7 @@ export default function CompanySettings() {
           </div>
 
           <div className="p-5">
-            {activeTab === "company" && (
-              <section className="space-y-4 max-w-3xl">
-                <h2 className="font-semibold text-lg text-slate-800">
-                  Company Information
-                </h2>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Input
-                    label="Commercial Name"
-                    name="nombre_comercial"
-                    value={form.nombre_comercial}
-                    onChange={handleChange}
-                    disabled={!canEdit}
-                  />
-
-                  <Input
-                    label="Phone"
-                    name="telefono"
-                    value={form.telefono}
-                    onChange={handleChange}
-                    disabled={!canEdit}
-                  />
-
-                  <Input
-                    label="Secondary Phone"
-                    name="telefono_secundario"
-                    value={form.telefono_secundario}
-                    onChange={handleChange}
-                    disabled={!canEdit}
-                  />
-
-                  <Input
-                    label="Email"
-                    name="correo"
-                    value={form.correo}
-                    onChange={handleChange}
-                    disabled={!canEdit}
-                  />
-
-                  <Input
-                    label="Website"
-                    name="website"
-                    value={form.website}
-                    onChange={handleChange}
-                    disabled={!canEdit}
-                    placeholder="https://www.company.com"
-                  />
-
-                  <Textarea
-                    label="Address"
-                    name="direccion"
-                    value={form.direccion}
-                    onChange={handleChange}
-                    disabled={!canEdit}
-                  />
-                </div>
-              </section>
-            )}
+            {/* ✅ ELIMINADA COMPLETAMENTE LA SECCIÓN "company" */}
 
             {activeTab === "branding" && (
               <section className="space-y-4 max-w-3xl">

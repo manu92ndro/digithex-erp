@@ -111,6 +111,8 @@ const getEmpresaById = async (req, res) => {
         nombre_empresa,
         email,
         telefono,
+        telefono_secundario,
+        website,
         direccion,
         logo,
         CAST(estado AS UNSIGNED) AS estado,
@@ -148,6 +150,8 @@ const createEmpresa = async (req, res) => {
       nombre_empresa,
       email,
       telefono,
+      telefono_secundario, // ✅ NUEVO: ya estaba en el body
+      website, // ✅ NUEVO: ya estaba en el body
       direccion,
       estado = 1
     } = req.body;
@@ -184,15 +188,19 @@ const createEmpresa = async (req, res) => {
         nombre_empresa,
         email,
         telefono,
+        telefono_secundario,
+        website,
         direccion,
         estado,
         fyh_creacion
       )
-      VALUES (?, ?, ?, ?, ?, NOW())
+      VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
     `, [
       nombre_empresa.trim(),
       email ? email.trim() : null,
       telefono || null,
+      telefono_secundario || null, // ✅ NUEVO: agregado
+      website || null, // ✅ NUEVO: agregado
       direccion || null,
       Number(estado)
     ]);
@@ -211,6 +219,8 @@ const createEmpresa = async (req, res) => {
     });
 
   } catch (error) {
+    console.error("Error creando empresa:", error);
+
     res.status(500).json({
       ok: false,
       message: 'Error al crear empresa',
@@ -227,6 +237,8 @@ const updateEmpresa = async (req, res) => {
       nombre_empresa,
       email,
       telefono,
+      telefono_secundario, // ✅ NUEVO: agregado
+      website, // ✅ NUEVO: agregado
       direccion,
       estado = 1
     } = req.body;
@@ -264,6 +276,8 @@ const updateEmpresa = async (req, res) => {
         nombre_empresa = ?,
         email = ?,
         telefono = ?,
+        telefono_secundario = ?, -- ✅ NUEVO: agregado
+        website = ?, -- ✅ NUEVO: agregado
         direccion = ?,
         estado = ?,
         fyh_actualizacion = NOW()
@@ -272,6 +286,8 @@ const updateEmpresa = async (req, res) => {
       nombre_empresa.trim(),
       email ? email.trim() : null,
       telefono || null,
+      telefono_secundario || null, // ✅ NUEVO: agregado
+      website || null, // ✅ NUEVO: agregado
       direccion || null,
       Number(estado),
       id
@@ -381,7 +397,16 @@ const getMiEmpresa = async (req, res) => {
     const id_empresa = req.usuario.id_empresa;
 
     const [rows] = await pool.query(
-      `SELECT id_empresa, nombre_empresa, email, telefono, direccion, logo, estado
+      `SELECT 
+        id_empresa, 
+        nombre_empresa, 
+        email, 
+        telefono,
+        telefono_secundario, -- ✅ NUEVO: agregado
+        website, -- ✅ NUEVO: agregado
+        direccion, 
+        logo, 
+        estado
        FROM tb_empresas
        WHERE id_empresa = ?
        LIMIT 1`,
@@ -417,6 +442,8 @@ const updateMiEmpresa = async (req, res) => {
       nombre_empresa,
       email,
       telefono,
+      telefono_secundario, // ✅ NUEVO: agregado
+      website, // ✅ NUEVO: agregado
       direccion
     } = req.body;
 
@@ -442,16 +469,21 @@ const updateMiEmpresa = async (req, res) => {
 
     await pool.query(
       `UPDATE tb_empresas
-       SET nombre_empresa = ?,
-           email = ?,
-           telefono = ?,
-           direccion = ?,
-           fyh_actualizacion = NOW()
+       SET 
+        nombre_empresa = ?,
+        email = ?,
+        telefono = ?,
+        telefono_secundario = ?, -- ✅ NUEVO: agregado
+        website = ?, -- ✅ NUEVO: agregado
+        direccion = ?,
+        fyh_actualizacion = NOW()
        WHERE id_empresa = ?`,
       [
         nombre_empresa.trim(),
         email ? email.trim() : null,
         telefono || null,
+        telefono_secundario || null, // ✅ NUEVO: agregado
+        website || null, // ✅ NUEVO: agregado
         direccion || null,
         id_empresa
       ]

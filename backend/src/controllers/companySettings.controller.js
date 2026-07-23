@@ -7,17 +7,32 @@ const obtenerConfiguracionEmpresa = async (req, res) => {
   try {
     const id_empresa = getIdEmpresa(req);
 
-    const [rows] = await db.query(
-      `
-      SELECT *
-      FROM tb_empresa_configuracion
-      WHERE id_empresa = ?
-      LIMIT 1
-      `,
-      [id_empresa]
-    );
+    const consulta = `
+      SELECT
+        ec.*,
 
-    if (rows.length === 0) {
+        e.nombre_empresa,
+        e.email,
+        e.telefono,
+        e.telefono_secundario,
+        e.website,
+        e.direccion,
+        e.logo
+
+      FROM tb_empresas e
+
+      LEFT JOIN tb_empresa_configuracion ec
+        ON ec.id_empresa = e.id_empresa
+
+      WHERE e.id_empresa = ?
+
+      LIMIT 1
+    `;
+
+    let [rows] = await db.query(consulta, [id_empresa]);
+
+    // Si aún no existe la configuración, la crea
+    if (!rows[0] || !rows[0].id_configuracion) {
       await db.query(
         `
         INSERT INTO tb_empresa_configuracion (id_empresa)
@@ -26,29 +41,18 @@ const obtenerConfiguracionEmpresa = async (req, res) => {
         [id_empresa]
       );
 
-      const [nuevaConfig] = await db.query(
-        `
-        SELECT *
-        FROM tb_empresa_configuracion
-        WHERE id_empresa = ?
-        LIMIT 1
-        `,
-        [id_empresa]
-      );
-
-      return res.json({
-        ok: true,
-        configuracion: nuevaConfig[0],
-      });
+      [rows] = await db.query(consulta, [id_empresa]);
     }
 
-    res.json({
+    return res.json({
       ok: true,
       configuracion: rows[0],
     });
+
   } catch (error) {
     console.error("Error obteniendo configuración:", error);
-    res.status(500).json({
+
+    return res.status(500).json({
       ok: false,
       msg: "Error obteniendo configuración de empresa",
     });
@@ -60,12 +64,6 @@ const actualizarConfiguracionEmpresa = async (req, res) => {
     const id_empresa = getIdEmpresa(req);
 
     const {
-      nombre_comercial,
-      telefono,
-      telefono_secundario,
-      correo,
-      website,
-      direccion,
       color_primario,
       color_secundario,
 
@@ -103,28 +101,28 @@ const actualizarConfiguracionEmpresa = async (req, res) => {
       `
       INSERT INTO tb_empresa_configuracion (
         id_empresa,
-        nombre_comercial,
-        telefono,
-        telefono_secundario,
-        correo,
-        website,
-        direccion,
+
         color_primario,
         color_secundario,
+
         tax_rate,
         tax_nombre,
+
         terminos_renta,
         politica_cancelacion,
         politica_danos,
         materiales_prohibidos,
         instrucciones_recibo,
         pie_recibo,
+
         mostrar_qr,
         qr_imagen,
         mostrar_firma_cliente,
         mostrar_firma_empresa,
+
         email_notificaciones,
         mensaje_email_recibo,
+
         smtp_host,
         smtp_port,
         smtp_secure,
@@ -132,34 +130,38 @@ const actualizarConfiguracionEmpresa = async (req, res) => {
         smtp_password,
         smtp_from_name,
         smtp_reply_to,
+
         sesion_minutos_inactividad,
         idioma_default,
+
         fyh_actualizacion
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+      VALUES (
+        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW()
+      )
       ON DUPLICATE KEY UPDATE
-        nombre_comercial = VALUES(nombre_comercial),
-        telefono = VALUES(telefono),
-        telefono_secundario = VALUES(telefono_secundario),
-        correo = VALUES(correo),
-        website = VALUES(website),
-        direccion = VALUES(direccion),
+
         color_primario = VALUES(color_primario),
         color_secundario = VALUES(color_secundario),
+
         tax_rate = VALUES(tax_rate),
         tax_nombre = VALUES(tax_nombre),
+
         terminos_renta = VALUES(terminos_renta),
         politica_cancelacion = VALUES(politica_cancelacion),
         politica_danos = VALUES(politica_danos),
         materiales_prohibidos = VALUES(materiales_prohibidos),
         instrucciones_recibo = VALUES(instrucciones_recibo),
         pie_recibo = VALUES(pie_recibo),
+
         mostrar_qr = VALUES(mostrar_qr),
         qr_imagen = VALUES(qr_imagen),
         mostrar_firma_cliente = VALUES(mostrar_firma_cliente),
         mostrar_firma_empresa = VALUES(mostrar_firma_empresa),
+
         email_notificaciones = VALUES(email_notificaciones),
         mensaje_email_recibo = VALUES(mensaje_email_recibo),
+
         smtp_host = VALUES(smtp_host),
         smtp_port = VALUES(smtp_port),
         smtp_secure = VALUES(smtp_secure),
@@ -167,18 +169,15 @@ const actualizarConfiguracionEmpresa = async (req, res) => {
         smtp_password = VALUES(smtp_password),
         smtp_from_name = VALUES(smtp_from_name),
         smtp_reply_to = VALUES(smtp_reply_to),
+
         sesion_minutos_inactividad = VALUES(sesion_minutos_inactividad),
         idioma_default = VALUES(idioma_default),
+
         fyh_actualizacion = NOW()
       `,
       [
         id_empresa,
-        nombre_comercial || null,
-        telefono || null,
-        telefono_secundario || null,
-        correo || null,
-        website || null,
-        direccion || null,
+
         color_primario || "#2563eb",
         color_secundario || "#0f172a",
 
@@ -219,6 +218,7 @@ const actualizarConfiguracionEmpresa = async (req, res) => {
     });
   } catch (error) {
     console.error("Error actualizando configuración:", error);
+
     res.status(500).json({
       ok: false,
       msg: "Error actualizando configuración de empresa",
