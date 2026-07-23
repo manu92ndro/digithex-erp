@@ -648,6 +648,7 @@ const updateFotoMiPerfil = async (req, res) => {
 
     // Optimizar imagen
     await sharp(req.file.path)
+      .rotate()
       .resize({
         width: 1000,
         fit: "inside",
