@@ -2,6 +2,10 @@ const pool = require('../config/db');
 const bcrypt = require('bcryptjs');
 const { registrarLog } = require('../helpers/logs');
 
+const sharp = require("sharp");
+const fs = require("fs");
+const path = require("path");
+
 const esRolAdmin = (rol = '') => {
   const r = rol.toUpperCase();
   return r === 'ADMINISTRADOR' || r === 'ADMIN';
@@ -629,12 +633,58 @@ const updateFotoMiPerfil = async (req, res) => {
     if (!req.file) {
       return res.status(400).json({
         ok: false,
-        message: 'Debe seleccionar una foto'
+        message: "Debe seleccionar una foto"
       });
     }
 
-    const foto = req.file.filename;
+    // Nombre del nuevo archivo
+    const nombreFoto = `usuario-${Date.now()}.webp`;
 
+    const rutaDestino = path.join(
+      __dirname,
+      "../uploads/usuarios",
+      nombreFoto
+    );
+
+    // Optimizar imagen
+    await sharp(req.file.path)
+      .resize({
+        width: 1000,
+        fit: "inside",
+        withoutEnlargement: true
+      })
+      .webp({
+        quality: 85
+      })
+      .toFile(rutaDestino);
+
+    // Eliminar imagen temporal
+    fs.unlinkSync(req.file.path);
+
+    // Obtener foto anterior
+    const [[usuario]] = await pool.query(
+      `
+      SELECT foto
+      FROM tb_usuarios
+      WHERE id_usuario = ?
+      `,
+      [id_usuario]
+    );
+
+    // Eliminar foto anterior (excepto si no existe)
+    if (usuario?.foto) {
+      const rutaAnterior = path.join(
+        __dirname,
+        "../uploads/usuarios",
+        usuario.foto
+      );
+
+      if (fs.existsSync(rutaAnterior)) {
+        fs.unlinkSync(rutaAnterior);
+      }
+    }
+
+    // Actualizar base de datos
     await pool.query(
       `
       UPDATE tb_usuarios
@@ -644,28 +694,30 @@ const updateFotoMiPerfil = async (req, res) => {
       WHERE id_usuario = ?
       `,
       [
-        foto,
+        nombreFoto,
         id_usuario
       ]
     );
 
     await registrarLog({
       req,
-      modulo: 'Perfil Usuario',
-      accion: 'ACTUALIZAR_FOTO',
-      descripcion: 'Actualizó su foto de perfil'
+      modulo: "Perfil Usuario",
+      accion: "ACTUALIZAR_FOTO",
+      descripcion: "Actualizó su foto de perfil"
     });
 
     res.json({
       ok: true,
-      message: 'Foto actualizada correctamente',
-      foto
+      message: "Foto actualizada correctamente",
+      foto: nombreFoto
     });
 
   } catch (error) {
+    console.error(error);
+
     res.status(500).json({
       ok: false,
-      message: 'Error al actualizar foto',
+      message: "Error al actualizar foto",
       error: error.message
     });
   }

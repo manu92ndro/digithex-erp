@@ -1,6 +1,10 @@
 const pool = require('../config/db');
 const { registrarLog } = require('../helpers/logs');
 
+const sharp = require("sharp");
+const fs = require("fs");
+const path = require("path");
+
 const esSuperAdmin = (req) => {
   return req.usuario?.rol?.toUpperCase() === 'SUPER ADMIN';
 };
@@ -511,6 +515,7 @@ const updateMiEmpresa = async (req, res) => {
 };
 
 // SUBIR LOGO DE MI EMPRESA
+// SUBIR LOGO DE MI EMPRESA
 const updateLogoMiEmpresa = async (req, res) => {
   try {
     const id_empresa = req.usuario.id_empresa;
@@ -518,12 +523,58 @@ const updateLogoMiEmpresa = async (req, res) => {
     if (!req.file) {
       return res.status(400).json({
         ok: false,
-        message: 'Debe seleccionar un logo'
+        message: "Debe seleccionar un logo"
       });
     }
 
-    const logo = req.file.filename;
+    // Nombre del nuevo archivo
+    const nombreLogo = `empresa-${Date.now()}.webp`;
 
+    const rutaDestino = path.join(
+      __dirname,
+      "../uploads/logos",
+      nombreLogo
+    );
+
+    // Optimizar imagen
+    await sharp(req.file.path)
+      .resize({
+        width: 1000,
+        withoutEnlargement: true,
+        fit: "inside"
+      })
+      .webp({
+        quality: 85
+      })
+      .toFile(rutaDestino);
+
+    // Eliminar archivo original
+    fs.unlinkSync(req.file.path);
+
+    // Obtener logo anterior
+    const [[empresa]] = await pool.query(
+      `
+      SELECT logo
+      FROM tb_empresas
+      WHERE id_empresa = ?
+      `,
+      [id_empresa]
+    );
+
+    // Eliminar logo anterior
+    if (empresa?.logo) {
+      const rutaAnterior = path.join(
+        __dirname,
+        "../uploads/logos",
+        empresa.logo
+      );
+
+      if (fs.existsSync(rutaAnterior)) {
+        fs.unlinkSync(rutaAnterior);
+      }
+    }
+
+    // Actualizar base de datos
     await pool.query(
       `
       UPDATE tb_empresas
@@ -532,29 +583,28 @@ const updateLogoMiEmpresa = async (req, res) => {
         fyh_actualizacion = NOW()
       WHERE id_empresa = ?
       `,
-      [
-        logo,
-        id_empresa
-      ]
+      [nombreLogo, id_empresa]
     );
 
     await registrarLog({
       req,
-      modulo: 'Perfil Empresa',
-      accion: 'ACTUALIZAR_LOGO',
-      descripcion: 'Actualizó el logo de la empresa'
+      modulo: "Perfil Empresa",
+      accion: "ACTUALIZAR_LOGO",
+      descripcion: "Actualizó el logo de la empresa"
     });
 
     res.json({
       ok: true,
-      message: 'Logo actualizado correctamente',
-      logo
+      message: "Logo actualizado correctamente",
+      logo: nombreLogo
     });
 
   } catch (error) {
+    console.error(error);
+
     res.status(500).json({
       ok: false,
-      message: 'Error al actualizar logo',
+      message: "Error al actualizar logo",
       error: error.message
     });
   }
