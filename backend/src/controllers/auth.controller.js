@@ -257,20 +257,13 @@ const logout = async (req, res) => {
 
 const me = async (req, res) => {
   try {
-    console.log("========== ME ==========");
-    console.log("req.usuario:", req.usuario);
-
     const id_usuario = req.usuario.id_usuario;
-    console.log("ID:", id_usuario);
 
     const usuario = await obtenerUsuarioSesion(id_usuario);
-    console.log("Usuario:", usuario);
 
     if (!validarEstados(usuario, res)) return;
-    console.log("Estados OK");
 
     const usuarioResponse = await construirUsuarioResponse(usuario);
-    console.log("Response OK");
 
     res.json({
       ok: true,
@@ -282,8 +275,7 @@ const me = async (req, res) => {
 
     res.status(500).json({
       ok: false,
-      message: "Error obteniendo sesión",
-      error: error.message
+      message: "Error obteniendo sesión"
     });
   }
 };
