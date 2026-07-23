@@ -1,6 +1,7 @@
 const PDFDocument = require("pdfkit");
 const path = require("path");
 const fs = require("fs");
+const sharp = require("sharp");
 const db = require("../config/db");
 
 const money = (value) => `$${Number(value || 0).toFixed(2)}`;
@@ -605,9 +606,25 @@ const generarReciboPDF = async (req, res) => {
     doc.rect(0, 0, doc.page.width, 150).fill("#ffffff");
 
     if (logoPath && fs.existsSync(logoPath)) {
-      doc.image(logoPath, 28, 18, {
-        fit: [150, 82],
-      });
+      try {
+        const logoBuffer = await sharp(logoPath)
+          .png()
+          .toBuffer();
+
+        doc.image(logoBuffer, 28, 18, {
+          fit: [150, 82],
+        });
+
+      } catch (error) {
+        console.error("Error procesando logo PDF:", error);
+
+        doc
+          .fillColor(dark)
+          .font("Helvetica-Bold")
+          .fontSize(18)
+          .text(companyName, 28, 35, { width: 150 });
+      }
+
     } else {
       doc
         .fillColor(dark)
