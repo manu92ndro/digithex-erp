@@ -92,6 +92,7 @@
   "company_profile_updated": "Perfil de empresa actualizado",
   "company_profile_update_error": "No se pudo actualizar el perfil de empresa",
   "company_logo": "Logo de la empresa",
+  "company_web_site":"Sitio Web",
   "logo_help": "Sube un logo en formato JPG, PNG o WEBP. Tamaño máximo recomendado 2MB.",
   "select_logo": "Seleccionar logo",
   "upload_logo": "Subir logo",

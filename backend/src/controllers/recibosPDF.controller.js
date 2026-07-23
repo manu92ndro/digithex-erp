@@ -475,13 +475,20 @@ const generarReciboPDF = async (req, res) => {
       `
       SELECT
         ec.*,
+
         e.nombre_empresa,
+        e.email,
+        e.telefono,
+        e.telefono_secundario,
+        e.website,
+        e.direccion,
         e.logo AS logo_empresa
-      FROM tb_empresas e
-      LEFT JOIN tb_empresa_configuracion ec
+
+    FROM tb_empresas e
+    LEFT JOIN tb_empresa_configuracion ec
         ON ec.id_empresa = e.id_empresa
-      WHERE e.id_empresa = ?
-      LIMIT 1
+    WHERE e.id_empresa = ?
+    LIMIT 1;
       `,
       [id_empresa]
     );
@@ -489,12 +496,12 @@ const generarReciboPDF = async (req, res) => {
     const config = configRows[0] || {};
     const lang = config.idioma_default || "en";
     const L = getReceiptLabels(lang);
-
-    const logoFile = config.logo || config.logo_empresa;
+    
+    const logoFile = config.logo_empresa;
     const logoPath = logoFile
       ? path.join(__dirname, "../uploads/logos", logoFile)
       : null;
-
+  
     const qrPath = config.qr_imagen
       ? path.join(__dirname, "../uploads/qr", config.qr_imagen)
       : null;
@@ -584,7 +591,7 @@ const generarReciboPDF = async (req, res) => {
     const dark = "#111827";
 
     const companyName =
-      config.nombre_comercial || config.nombre_empresa || "Company";
+      config.nombre_empresa || "Company";
 
     const totalPagado = pagos.reduce(
       (sum, p) => sum + Number(p.monto_abonado || 0),
@@ -646,8 +653,8 @@ const generarReciboPDF = async (req, res) => {
       );
     }
 
-    if (config.correo) {
-      drawRow(doc, L.mail, config.correo, 220, infoY, 65, 120);
+    if (config.email) {
+      drawRow(doc, L.mail, config.email, 220, infoY, 65, 120);
     }
 
     doc

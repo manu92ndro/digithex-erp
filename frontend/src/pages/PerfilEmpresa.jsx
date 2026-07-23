@@ -15,7 +15,8 @@ import {
   MapPin,
   Save,
   ImagePlus,
-  Upload
+  Upload,
+  Globe
 } from "lucide-react";
 
 import {
@@ -41,6 +42,8 @@ export default function PerfilEmpresa() {
     nombre_empresa: "",
     email: "",
     telefono: "",
+    telefono_secundario: "",
+    website: "",
     direccion: "",
     logo: ""
   });
@@ -139,63 +142,93 @@ export default function PerfilEmpresa() {
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
 
           <div className="bg-slate-900 p-6 text-white">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-5">
+  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-5">
 
-              <div className="flex items-center gap-4">
-                <div className="w-24 h-24 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center overflow-hidden">
-                  {previewLogo ? (
-                    <img
-                      src={previewLogo}
-                      alt={empresa.nombre_empresa || t("company")}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <Building2 size={42} className="text-white/80" />
-                  )}
-                </div>
+    <div className="flex items-center gap-4">
+      {/* LOGO */}
+      <div className="w-24 h-24 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center overflow-hidden">
+        {previewLogo ? (
+          <img
+            src={previewLogo}
+            alt={empresa.nombre_empresa || t("company")}
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <Building2 size={42} className="text-white/80" />
+        )}
+      </div>
 
-                <div>
-                  <h2 className="text-2xl font-bold">
-                    {empresa.nombre_empresa || t("company")}
-                  </h2>
+      {/* INFORMACIÓN DE LA EMPRESA */}
+      <div>
+        <h2 className="text-2xl font-bold">
+          {empresa.nombre_empresa || t("company")}
+        </h2>
 
-                  <p className="text-slate-300">
-                    {empresa.email || t("no_email")}
-                  </p>
+        {/* ✅ EMAIL CON ICONO */}
+        <p className="text-slate-300 flex items-center gap-2 mt-1">
+          <Mail size={16} className="text-slate-400" />
+          {empresa.email || t("no_email")}
+        </p>
 
-                  <p className="text-sm text-slate-400 mt-1">
-                    {empresa.telefono || t("no_phone")}
-                  </p>
-                </div>
-              </div>
+        {/* ✅ TELÉFONO PRINCIPAL CON ICONO */}
+        <p className="text-sm text-slate-400 flex items-center gap-2 mt-1">
+          <Phone size={14} className="text-slate-500" />
+          {empresa.telefono || t("no_phone")}
+        </p>
 
-              {hasPermission("perfil_empresa.editar") && (
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <label className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-white text-slate-800 hover:bg-slate-100 cursor-pointer transition">
-                    <ImagePlus size={18} />
-                    {t("select_logo")}
-                    <input
-                      type="file"
-                      accept="image/png,image/jpeg,image/jpg,image/webp"
-                      onChange={handleLogoChange}
-                      className="hidden"
-                    />
-                  </label>
+        {/* ✅ TELÉFONO SECUNDARIO CON ICONO (NUEVO) */}
+        {empresa.telefono_secundario && (
+          <p className="text-sm text-slate-400 flex items-center gap-2 mt-1">
+            <Phone size={14} className="text-slate-500" />
+            {empresa.telefono_secundario}
+          </p>
+        )}
 
-                  <button
-                    type="button"
-                    onClick={guardarLogo}
-                    disabled={logoLoading || !logoFile}
-                    className="inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white px-5 py-2.5 rounded-xl transition"
-                  >
-                    <Upload size={18} />
-                    {logoLoading ? t("saving") : t("upload_logo")}
-                  </button>
-                </div>
-              )}
+        {/* ✅ WEBSITE CON ICONO (NUEVO) */}
+        {empresa.website && (
+          <p className="text-sm text-slate-400 flex items-center gap-2 mt-1">
+            <Globe size={14} className="text-slate-500" />
+            <a 
+              href={empresa.website} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="hover:text-blue-400 transition-colors"
+            >
+              {empresa.website}
+            </a>
+          </p>
+        )}
+      </div>
+    </div>
 
-            </div>
-          </div>
+    {/* BOTONES DE LOGO */}
+    {hasPermission("perfil_empresa.editar") && (
+      <div className="flex flex-col sm:flex-row gap-3">
+        <label className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-white text-slate-800 hover:bg-slate-100 cursor-pointer transition">
+          <ImagePlus size={18} />
+          {t("select_logo")}
+          <input
+            type="file"
+            accept="image/png,image/jpeg,image/jpg,image/webp"
+            onChange={handleLogoChange}
+            className="hidden"
+          />
+        </label>
+
+        <button
+          type="button"
+          onClick={guardarLogo}
+          disabled={logoLoading || !logoFile}
+          className="inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white px-5 py-2.5 rounded-xl transition"
+        >
+          <Upload size={18} />
+          {logoLoading ? t("saving") : t("upload_logo")}
+        </button>
+      </div>
+    )}
+
+  </div>
+</div>
 
           <form
             onSubmit={guardar}
@@ -274,6 +307,26 @@ export default function PerfilEmpresa() {
 
             <div>
               <label className="text-sm font-medium text-slate-600">
+                {t("secondary_phone")}
+              </label>
+
+              <div className="relative mt-1">
+                <Phone
+                  size={17}
+                  className="absolute left-3 top-3 text-slate-400"
+                />
+
+                <input
+                  name="telefono_secundario"
+                  value={empresa.telefono_secundario || ""}
+                  onChange={handleChange}
+                  className="w-full pl-10 border border-slate-200 p-2.5 rounded-xl outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-slate-600">
                 {t("address")}
               </label>
 
@@ -287,6 +340,28 @@ export default function PerfilEmpresa() {
                   name="direccion"
                   value={empresa.direccion || ""}
                   onChange={handleChange}
+                  className="w-full pl-10 border border-slate-200 p-2.5 rounded-xl outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-slate-600">
+                {t("company_web_site")}
+              </label>
+
+              <div className="relative mt-1">
+                <Globe
+                  size={17}
+                  className="absolute left-3 top-3 text-slate-400"
+                />
+
+                <input
+                  type="url"
+                  name="website"
+                  value={empresa.website || ""}
+                  onChange={handleChange}
+                  placeholder="https://www.company.com"
                   className="w-full pl-10 border border-slate-200 p-2.5 rounded-xl outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500"
                 />
               </div>

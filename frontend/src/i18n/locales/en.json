@@ -95,6 +95,8 @@
   "company_profile_updated": "Company profile updated",
   "company_profile_update_error": "Could not update company profile",
   "company_logo": "Company logo",
+  "company_web_site":"Website",
+
   "logo_help": "Upload a logo in JPG, PNG or WEBP format. Recommended maximum size 2MB.",
   "select_logo": "Select logo",
   "upload_logo": "Upload logo",
