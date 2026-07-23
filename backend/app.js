@@ -44,8 +44,6 @@ const fs = require("fs");
 
 const uploadsPath = path.join(__dirname, "src/uploads");
 
-console.log("Ruta uploads:", uploadsPath);
-console.log("Existe:", fs.existsSync(uploadsPath));
 
 app.use("/uploads", express.static(uploadsPath));
 
