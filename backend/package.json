@@ -23,6 +23,7 @@
     "pdfkit": "^0.19.1",
     "pg": "^8.11.3",
     "react-i18next": "^17.0.8"
+    "sharp": "^0.35.3"
   },
   "devDependencies": {
     "nodemon": "^3.1.14"
