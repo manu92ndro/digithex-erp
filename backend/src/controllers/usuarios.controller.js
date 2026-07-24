@@ -641,8 +641,8 @@ const updateFotoMiPerfil = async (req, res) => {
     const nombreFoto = `usuario-${Date.now()}.webp`;
 
     const rutaDestino = path.join(
-      __dirname,
-      "../uploads/usuarios",
+      process.cwd(),
+      "uploads/usuarios",
       nombreFoto
     );
 
@@ -675,8 +675,8 @@ const updateFotoMiPerfil = async (req, res) => {
     // Eliminar foto anterior (excepto si no existe)
     if (usuario?.foto) {
       const rutaAnterior = path.join(
-        __dirname,
-        "../uploads/usuarios",
+        process.cwd(),
+        "uploads/usuarios",
         usuario.foto
       );
 

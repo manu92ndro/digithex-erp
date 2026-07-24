@@ -531,8 +531,8 @@ const updateLogoMiEmpresa = async (req, res) => {
     const nombreLogo = `empresa-${Date.now()}.webp`;
 
     const rutaDestino = path.join(
-      __dirname,
-      "../uploads/logos",
+      process.cwd(),
+      "uploads/logos",
       nombreLogo
     );
 
@@ -566,8 +566,8 @@ const updateLogoMiEmpresa = async (req, res) => {
     // Eliminar logo anterior
     if (empresa?.logo) {
       const rutaAnterior = path.join(
-        __dirname,
-        "../uploads/logos",
+        process.cwd(),
+        "uploads/logos",
         empresa.logo
       );
 

@@ -20,11 +20,11 @@ build/
 Thumbs.db
 
 # Archivos subidos por los usuarios
-backend/src/uploads/logos/*
-backend/src/uploads/usuarios/*
-backend/src/uploads/qr/*
+uploads/logos/*
+uploads/usuarios/*
+uploads/qr/*
 
 # Mantener las carpetas vacías
-!backend/src/uploads/logos/.gitkeep
-!backend/src/uploads/usuarios/.gitkeep
-!backend/src/uploads/qr/.gitkeep
+!uploads/logos/.gitkeep
+!uploads/usuarios/.gitkeep
+!uploads/qr/.gitkeep
