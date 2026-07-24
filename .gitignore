@@ -19,12 +19,12 @@ build/
 .DS_Store
 Thumbs.db
 
-# Archivos subidos por usuarios
-uploads/logos/*
-uploads/usuarios/*
-uploads/qr/*
+# Ignorar archivos dentro de uploads
+backend/uploads/logos/*
+backend/uploads/usuarios/*
+backend/uploads/qr/*
 
-# Mantener las carpetas
-!uploads/logos/.gitkeep
-!uploads/usuarios/.gitkeep
-!uploads/qr/.gitkeep
+# No ignorar los .gitkeep
+!backend/uploads/logos/.gitkeep
+!backend/uploads/usuarios/.gitkeep
+!backend/uploads/qr/.gitkeep
