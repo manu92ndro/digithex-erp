@@ -500,11 +500,15 @@ const generarReciboPDF = async (req, res) => {
     
     const logoFile = config.logo_empresa;
     const logoPath = logoFile
-      ? path.join(__dirname, "../uploads/logos", logoFile)
+      ? path.join(process.cwd(),
+          "uploads","logos",logoFile)
       : null;
-  
+
+
     const qrPath = config.qr_imagen
-      ? path.join(__dirname, "../uploads/qr", config.qr_imagen)
+      ? path.join(
+          process.cwd(),
+          "uploads", "qr", config.qr_imagen)
       : null;
 
     const [rentaRows] = await db.query(
