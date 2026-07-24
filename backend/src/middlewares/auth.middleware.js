@@ -50,7 +50,7 @@ const validarJWT = async (req, res, next) => {
         message: "Token no contiene id de usuario",
       });
     }
-
+    console.log("Antes del query");
     const [rows] = await pool.query(
       `
       SELECT
@@ -75,6 +75,7 @@ const validarJWT = async (req, res, next) => {
       `,
       [id_usuario]
     );
+    console.log("Después del query");
 
     if (rows.length === 0) {
       return res.status(403).json({
@@ -112,8 +113,11 @@ const validarJWT = async (req, res, next) => {
 
     req.usuario = usuario;
     next();
-  } catch (error) {
-    console.error("ERROR EN validarJWT:", error);
+    } catch (error) {
+    console.error("===== ERROR validarJWT =====");
+    console.error("Mensaje:", error.message);
+    console.error("Código:", error.code);
+    console.error("Stack:", error.stack);
 
     return res.status(500).json({
       ok: false,
