@@ -19,7 +19,7 @@ app.use(
 app.use(express.json());
 
 // Archivos estáticos
-const uploadsPath = path.join(__dirname, "src/uploads");
+const uploadsPath = path.join(__dirname, "uploads");
 app.use("/uploads", express.static(uploadsPath));
 
 // Ruta principal
