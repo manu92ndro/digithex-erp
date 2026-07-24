@@ -510,6 +510,11 @@ const generarReciboPDF = async (req, res) => {
           process.cwd(),
           "uploads", "qr", config.qr_imagen)
       : null;
+    const fs = require("fs");
+
+    console.log("QR BD:", config.qr_imagen);
+    console.log("QR RUTA:", qrPath);
+    console.log("QR EXISTE:", fs.existsSync(qrPath));  
 
     const [rentaRows] = await db.query(
       `

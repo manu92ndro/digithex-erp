@@ -15,7 +15,7 @@ const { validarJWT } = require("../middlewares/auth.middleware");
 const { validarEstadoCuenta } = require("../middlewares/estado.middleware");
 const { validarPermiso } = require("../middlewares/permiso.middleware");
 
-const qrDir = path.join(__dirname, "../uploads/qr");
+const qrDir = path.join(process.cwd(), "uploads/qr");
 
 if (!fs.existsSync(qrDir)) {
   fs.mkdirSync(qrDir, { recursive: true });
