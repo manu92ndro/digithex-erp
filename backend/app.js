@@ -147,10 +147,7 @@ app.use("/api/recibos-pdf", require("./src/routes/recibosPDF.routes"));
 // Impuestos
 app.use("/api/impuestos", require("./src/routes/impuestos.routes"));
 
-
-// ===============================
 // Ruta no encontrada
-// ===============================
 
 app.use((req, res) => {
 
