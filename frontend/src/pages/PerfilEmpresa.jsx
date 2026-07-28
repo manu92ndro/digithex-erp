@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useAuth } from "../context/AuthContext";
 import DashboardLayout from "../layouts/DashboardLayout";
 
 import {
@@ -31,6 +32,7 @@ import { getImageUrl } from "../utils/imageUrl";
 export default function PerfilEmpresa() {
   const { t } = useTranslation();
   const { hasPermission } = usePermission();
+  const { refreshUser } = useAuth();
 
   const [loading, setLoading] = useState(false);
   const [logoLoading, setLogoLoading] = useState(false);
@@ -107,6 +109,8 @@ export default function PerfilEmpresa() {
       setLogoLoading(true);
 
       await updateLogoMiEmpresa(logoFile);
+
+      await refreshUser();
 
       showSuccess(t("logo_updated"));
 

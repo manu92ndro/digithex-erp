@@ -3,8 +3,8 @@ import { Menu, LogOut, UserRound, ChevronDown, Languages } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { getImageUrl } from "../utils/imageUrl";
 
-const FILES_URL = import.meta.env.VITE_FILES_URL || "http://localhost:3000";
 
 export default function Navbar({ onOpenMenu }) {
   const { user, logout } = useAuth();
@@ -13,9 +13,7 @@ export default function Navbar({ onOpenMenu }) {
 
   const [openMenu, setOpenMenu] = useState(false);
 
-  const fotoUrl = user?.foto
-    ? `${FILES_URL}/uploads/usuarios/${user.foto}`
-    : "";
+  const fotoUrl = getImageUrl(user?.foto, "usuarios");
 
   const changeLanguage = (lng) => {
     i18n.changeLanguage(lng);

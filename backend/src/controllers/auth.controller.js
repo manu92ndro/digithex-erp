@@ -16,6 +16,7 @@ const obtenerUsuarioSesion = async (id_usuario) => {
       u.id_rol,
       r.rol,
       u.foto,
+      u.foto_public_id,
       e.logo,
       CAST(u.estado AS UNSIGNED) AS estado,
       CAST(e.estado AS UNSIGNED) AS estado_empresa,
@@ -118,21 +119,26 @@ const construirUsuarioResponse = async (usuario) => {
   } = await obtenerPermisosYModulos(usuario.id_rol);
 
   return {
-    id_usuario: usuario.id_usuario,
-    id_empresa: usuario.id_empresa,
-    nombre_empresa: usuario.nombre_empresa,
-    nombres: usuario.nombres,
-    email: usuario.email,
-    celular: usuario.celular,
-    foto: usuario.foto,
-    logo_empresa: usuario.logo,
-    id_rol: usuario.id_rol,
-    rol: usuario.rol,
-    estado: usuario.estado,
-    estado_empresa: usuario.estado_empresa,
-    estado_rol: usuario.estado_rol,
-    permisos,
-    modulos
+      id_usuario: usuario.id_usuario,
+      id_empresa: usuario.id_empresa,
+      nombre_empresa: usuario.nombre_empresa,
+      nombres: usuario.nombres,
+      email: usuario.email,
+      celular: usuario.celular,
+
+      foto: usuario.foto,
+      foto_public_id: usuario.foto_public_id,
+
+      logo_empresa: usuario.logo,
+      logo_public_id: usuario.logo_public_id,
+
+      id_rol: usuario.id_rol,
+      rol: usuario.rol,
+      estado: usuario.estado,
+      estado_empresa: usuario.estado_empresa,
+      estado_rol: usuario.estado_rol,
+      permisos,
+      modulos
   };
 };
 

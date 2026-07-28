@@ -5,7 +5,7 @@ const sharp = require("sharp");
 const db = require("../config/db");
 
 const money = (value) => `$${Number(value || 0).toFixed(2)}`;
-
+const axios = require("axios");
 const formatDate = (date) => {
   if (!date) return "-";
   const d = new Date(date);
@@ -498,24 +498,10 @@ const generarReciboPDF = async (req, res) => {
     const lang = config.idioma_default || "en";
     const L = getReceiptLabels(lang);
     
-    const logoFile = config.logo_empresa;
-    const logoPath = logoFile
-      ? path.join(process.cwd(),
-          "uploads","logos",logoFile)
-      : null;
+    const logoPath = config.logo_empresa || null;
+    const qrPath = config.qr_imagen || null;
 
-
-    const qrPath = config.qr_imagen
-      ? path.join(
-          process.cwd(),
-          "uploads", "qr", config.qr_imagen)
-      : null;
-    const fs = require("fs");
-
-    console.log("QR BD:", config.qr_imagen);
-    console.log("QR RUTA:", qrPath);
-    console.log("QR EXISTE:", fs.existsSync(qrPath));  
-
+   
     const [rentaRows] = await db.query(
       `
       SELECT
@@ -614,9 +600,14 @@ const generarReciboPDF = async (req, res) => {
 
     doc.rect(0, 0, doc.page.width, 150).fill("#ffffff");
 
-    if (logoPath && fs.existsSync(logoPath)) {
+    if (logoPath) {
       try {
-        const logoBuffer = await sharp(logoPath)
+
+        const response = await axios.get(logoPath, {
+          responseType: "arraybuffer",
+        });
+
+        const logoBuffer = await sharp(response.data)
           .png()
           .toBuffer();
 
@@ -625,21 +616,16 @@ const generarReciboPDF = async (req, res) => {
         });
 
       } catch (error) {
-        console.error("Error procesando logo PDF:", error);
+        console.error(error);
 
         doc
           .fillColor(dark)
           .font("Helvetica-Bold")
           .fontSize(18)
-          .text(companyName, 28, 35, { width: 150 });
+          .text(companyName, 28, 35, {
+            width: 150,
+          });
       }
-
-    } else {
-      doc
-        .fillColor(dark)
-        .font("Helvetica-Bold")
-        .fontSize(18)
-        .text(companyName, 28, 35, { width: 150 });
     }
 
     doc
@@ -690,20 +676,39 @@ const generarReciboPDF = async (req, res) => {
       .lineWidth(1)
       .stroke();
 
-    if (Number(config.mostrar_qr) === 1 && qrPath && fs.existsSync(qrPath)) {
-      doc
-        .fillColor(dark)
-        .font("Helvetica-Bold")
-        .fontSize(8)
-        .text(L.scan, 465, 22, {
-          width: 90,
-          align: "center",
-        });
+    console.log("Mostrar QR:", config.mostrar_qr);
+    console.log("QR:", qrPath);  
 
-      doc.image(qrPath, 482, 36, {
-        fit: [55, 55],
-      });
-    }
+        if (Number(config.mostrar_qr) === 1 && qrPath) {
+          try {
+            console.log("Mostrar QR:", config.mostrar_qr);
+            console.log("QR:", qrPath);
+
+            const response = await axios.get(qrPath, {
+              responseType: "arraybuffer",
+            });
+
+            const qrBuffer = await sharp(Buffer.from(response.data))
+              .png()
+              .toBuffer();
+
+            doc
+              .fillColor(dark)
+              .font("Helvetica-Bold")
+              .fontSize(8)
+              .text(L.scan, 465, 22, {
+                width: 90,
+                align: "center",
+              });
+
+            doc.image(qrBuffer, 482, 36, {
+              fit: [55, 55],
+            });
+
+          } catch (error) {
+            console.error("Error cargando QR:", error);
+          }
+        }
 
     doc
       .moveTo(24, 116)

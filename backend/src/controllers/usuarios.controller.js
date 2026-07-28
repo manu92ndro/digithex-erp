@@ -1,6 +1,7 @@
 const pool = require('../config/db');
 const bcrypt = require('bcryptjs');
 const { registrarLog } = require('../helpers/logs');
+const {subirImagen, eliminarImagen} = require("../services/cloudinary.service");
 
 const sharp = require("sharp");
 const fs = require("fs");
@@ -637,53 +638,45 @@ const updateFotoMiPerfil = async (req, res) => {
       });
     }
 
-    // Nombre del nuevo archivo
-    const nombreFoto = `usuario-${Date.now()}.webp`;
-
-    const rutaDestino = path.join(
-      process.cwd(),
-      "uploads/usuarios",
-      nombreFoto
-    );
-
-    // Optimizar imagen
-    await sharp(req.file.path)
-      .rotate()
-      .resize({
-        width: 1000,
-        fit: "inside",
-        withoutEnlargement: true
-      })
-      .webp({
-        quality: 85
-      })
-      .toFile(rutaDestino);
-
-    // Eliminar imagen temporal
-    fs.unlinkSync(req.file.path);
 
     // Obtener foto anterior
     const [[usuario]] = await pool.query(
       `
-      SELECT foto
+      SELECT 
+        foto,
+        foto_public_id
       FROM tb_usuarios
       WHERE id_usuario = ?
       `,
       [id_usuario]
     );
 
-    // Eliminar foto anterior (excepto si no existe)
-    if (usuario?.foto) {
-      const rutaAnterior = path.join(
-        process.cwd(),
-        "uploads/usuarios",
-        usuario.foto
-      );
 
-      if (fs.existsSync(rutaAnterior)) {
-        fs.unlinkSync(rutaAnterior);
-      }
-    }
+    // Eliminar foto anterior de Cloudinary
+    await eliminarImagen(usuario?.foto_public_id);
+
+
+    // Nombre para Cloudinary
+    const nombreFoto = `usuario-${Date.now()}`;
+
+
+    // Subir nueva foto a Cloudinary
+    const resultado = await subirImagen({
+
+      rutaTemporal: req.file.path,
+
+      carpeta: "usuarios",
+
+      nombreArchivo: nombreFoto,
+
+      width: 1000,
+
+      height: 1000,
+
+      quality: 85
+
+    });
+
 
     // Actualizar base de datos
     await pool.query(
@@ -691,14 +684,17 @@ const updateFotoMiPerfil = async (req, res) => {
       UPDATE tb_usuarios
       SET
         foto = ?,
+        foto_public_id = ?,
         fyh_actualizacion = NOW()
       WHERE id_usuario = ?
       `,
       [
-        nombreFoto,
+        resultado.secure_url,
+        resultado.public_id,
         id_usuario
       ]
     );
+
 
     await registrarLog({
       req,
@@ -707,20 +703,24 @@ const updateFotoMiPerfil = async (req, res) => {
       descripcion: "Actualizó su foto de perfil"
     });
 
+
     res.json({
       ok: true,
       message: "Foto actualizada correctamente",
-      foto: nombreFoto
+      foto: resultado.secure_url
     });
 
+
   } catch (error) {
-    console.error(error);
+
+    console.error("ERROR ACTUALIZANDO FOTO:", error);
 
     res.status(500).json({
       ok: false,
       message: "Error al actualizar foto",
       error: error.message
     });
+
   }
 };
 

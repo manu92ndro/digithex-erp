@@ -18,7 +18,7 @@ const subirImagen = async ({
   );
 
   // Optimizar imagen
-  let imagen = sharp(rutaTemporal)
+  await sharp(rutaTemporal)
     .rotate()
     .resize({
       width,
@@ -28,12 +28,8 @@ const subirImagen = async ({
     })
     .webp({
       quality,
-    });
-
-  await imagen.toFile(rutaWebp);
-
-    console.log("ANTES DE SUBIR A CLOUDINARY");
-console.log(cloudinary.config());
+    })
+    .toFile(rutaWebp);
 
   // Subir a Cloudinary
   const resultado = await cloudinary.uploader.upload(rutaWebp, {
@@ -55,6 +51,16 @@ console.log(cloudinary.config());
   return resultado;
 };
 
+// Eliminar imagen de Cloudinary
+const eliminarImagen = async (publicId) => {
+  if (!publicId) return;
+
+  await cloudinary.uploader.destroy(publicId, {
+    resource_type: "image",
+  });
+};
+
 module.exports = {
   subirImagen,
+  eliminarImagen,
 };
