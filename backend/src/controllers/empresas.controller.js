@@ -1,10 +1,11 @@
 const pool = require('../config/db');
 const { registrarLog } = require('../helpers/logs');
+const { subirImagen } = require("../services/cloudinary.service");
 
 const sharp = require("sharp");
 const fs = require("fs");
 const path = require("path");
-
+const cloudinary = require("../config/cloudinary");
 const esSuperAdmin = (req) => {
   return req.usuario?.rol?.toUpperCase() === 'SUPER ADMIN';
 };
@@ -528,52 +529,40 @@ const updateLogoMiEmpresa = async (req, res) => {
     }
 
     // Nombre del nuevo archivo
-    const nombreLogo = `empresa-${Date.now()}.webp`;
+    const nombreLogo = `empresa-${Date.now()}`;
 
-    const rutaDestino = path.join(
-      process.cwd(),
-      "uploads/logos",
-      nombreLogo
-    );
+    const resultado = await subirImagen({
+      rutaTemporal: req.file.path,
+      carpeta: "empresas",
+      nombreArchivo: nombreLogo,
+      width: 600,
+      height: 600,
+    });
 
-    // Optimizar imagen
-    await sharp(req.file.path)
-      .rotate()
-      .resize({
-        width: 600,
-        height: 600,
-        fit: "inside",
-        withoutEnlargement: true
-      })
-      .webp({
-        quality: 85
-      })
-      .toFile(rutaDestino);
-
-    // Eliminar archivo original
-    fs.unlinkSync(req.file.path);
+    const logoUrl = resultado.secure_url;
+    const publicId = resultado.public_id;
 
     // Obtener logo anterior
+   // Obtener logo anterior de Cloudinary
     const [[empresa]] = await pool.query(
       `
-      SELECT logo
+      SELECT 
+        logo,
+        logo_public_id
       FROM tb_empresas
       WHERE id_empresa = ?
       `,
       [id_empresa]
     );
 
-    // Eliminar logo anterior
-    if (empresa?.logo) {
-      const rutaAnterior = path.join(
-        process.cwd(),
-        "uploads/logos",
-        empresa.logo
+    // Eliminar logo anterior de Cloudinary
+    if (empresa?.logo_public_id) {
+      await cloudinary.uploader.destroy(
+        empresa.logo_public_id,
+        {
+          resource_type: "image"
+        }
       );
-
-      if (fs.existsSync(rutaAnterior)) {
-        fs.unlinkSync(rutaAnterior);
-      }
     }
 
     // Actualizar base de datos
@@ -585,7 +574,7 @@ const updateLogoMiEmpresa = async (req, res) => {
         fyh_actualizacion = NOW()
       WHERE id_empresa = ?
       `,
-      [nombreLogo, id_empresa]
+      [logoUrl, id_empresa]
     );
 
     await registrarLog({
@@ -598,7 +587,7 @@ const updateLogoMiEmpresa = async (req, res) => {
     res.json({
       ok: true,
       message: "Logo actualizado correctamente",
-      logo: nombreLogo
+      logo: logoUrl
     });
 
   } catch (error) {

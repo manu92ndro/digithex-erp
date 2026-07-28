@@ -5,7 +5,6 @@ import DashboardLayout from "../layouts/DashboardLayout";
 import {
   showSuccess,
   showError,
-  showConfirm
 } from "../utils/alerts";
 
 import {
@@ -26,8 +25,8 @@ import {
 } from "../api/perfilEmpresa";
 
 import usePermission from "../hooks/usePermission";
+import { getImageUrl } from "../utils/imageUrl";
 
-const FILES_URL = import.meta.env.VITE_FILES_URL || "http://localhost:3000";
 
 export default function PerfilEmpresa() {
   const { t } = useTranslation();
@@ -48,24 +47,32 @@ export default function PerfilEmpresa() {
     logo: ""
   });
 
+
   const getLogoUrl = (logo) => {
-    if (!logo) return "";
-    return `${FILES_URL}/uploads/logos/${logo}`;
+    return getImageUrl(logo, "logos");
   };
+
 
   const cargarEmpresa = async () => {
     try {
       const res = await getMiEmpresa();
+
       setEmpresa(res.empresa);
-      setPreviewLogo(getLogoUrl(res.empresa?.logo));
+
+      setPreviewLogo(
+        getLogoUrl(res.empresa?.logo)
+      );
+
     } catch (error) {
       console.error("ERROR PERFIL EMPRESA:", error);
     }
   };
 
+
   useEffect(() => {
     cargarEmpresa();
   }, []);
+
 
   const handleChange = (e) => {
     setEmpresa({
@@ -74,18 +81,25 @@ export default function PerfilEmpresa() {
     });
   };
 
+
   const handleLogoChange = (e) => {
     const file = e.target.files[0];
 
     if (!file) return;
 
     setLogoFile(file);
-    setPreviewLogo(URL.createObjectURL(file));
+
+    // Preview temporal antes de subir
+    setPreviewLogo(
+      URL.createObjectURL(file)
+    );
   };
 
+
   const guardarLogo = async () => {
+
     if (!logoFile) {
-      showSuccess(t("select_logo"));
+      showError(t("select_logo"));
       return;
     }
 
@@ -97,31 +111,55 @@ export default function PerfilEmpresa() {
       showSuccess(t("logo_updated"));
 
       setLogoFile(null);
+
       await cargarEmpresa();
+
     } catch (error) {
-      console.error("ERROR ACTUALIZANDO LOGO:", error);
+
+      console.error(
+        "ERROR ACTUALIZANDO LOGO:",
+        error
+      );
+
       showError(t("logo_update_error"));
+
     } finally {
       setLogoLoading(false);
     }
   };
 
+
   const guardar = async (e) => {
+
     e.preventDefault();
 
     try {
+
       setLoading(true);
 
       await updateMiEmpresa(empresa);
 
-      showSuccess(t("company_profile_updated"));
+      showSuccess(
+        t("company_profile_updated")
+      );
 
       await cargarEmpresa();
+
     } catch (error) {
-      console.error("ERROR ACTUALIZANDO EMPRESA:", error);
-      showSuccess(t("company_profile_update_error"));
+
+      console.error(
+        "ERROR ACTUALIZANDO EMPRESA:",
+        error
+      );
+
+      showError(
+        t("company_profile_update_error")
+      );
+
     } finally {
+
       setLoading(false);
+
     }
   };
 
