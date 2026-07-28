@@ -1,5 +1,6 @@
 import { NavLink } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { getImageUrl } from "../utils/imageUrl";
 
 import {
   ClipboardList,
@@ -48,7 +49,7 @@ export default function Sidebar({ onNavigate }) {
   const { t } = useTranslation();
 
   const logoUrl = user?.logo_empresa
-    ? `${FILES_URL}/uploads/logos/${user.logo_empresa}`
+    ? getImageUrl(user.logo_empresa, "logos")
     : "";
 
   const modulos = user?.modulos || [];

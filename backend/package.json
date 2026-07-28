@@ -10,6 +10,7 @@
   "dependencies": {
     "bcrypt": "^5.1.1",
     "bcryptjs": "^3.0.3",
+    "cloudinary": "^2.10.0",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "exceljs": "^4.4.0",
@@ -22,7 +23,7 @@
     "nodemailer": "^9.0.3",
     "pdfkit": "^0.19.1",
     "pg": "^8.11.3",
-    "react-i18next": "^17.0.8",    
+    "react-i18next": "^17.0.8",
     "sharp": "^0.35.3"
   },
   "devDependencies": {
