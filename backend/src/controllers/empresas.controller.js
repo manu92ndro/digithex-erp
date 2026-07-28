@@ -1,11 +1,10 @@
 const pool = require('../config/db');
 const { registrarLog } = require('../helpers/logs');
-const { subirImagen } = require("../services/cloudinary.service");
 
 const sharp = require("sharp");
 const fs = require("fs");
 const path = require("path");
-const cloudinary = require("../config/cloudinary");
+const {subirImagen, eliminarImagen} = require("../services/cloudinary.service");
 const esSuperAdmin = (req) => {
   return req.usuario?.rol?.toUpperCase() === 'SUPER ADMIN';
 };
@@ -516,7 +515,6 @@ const updateMiEmpresa = async (req, res) => {
 };
 
 // SUBIR LOGO DE MI EMPRESA
-// SUBIR LOGO DE MI EMPRESA
 const updateLogoMiEmpresa = async (req, res) => {
   try {
     const id_empresa = req.usuario.id_empresa;
@@ -556,14 +554,7 @@ const updateLogoMiEmpresa = async (req, res) => {
     );
 
     // Eliminar logo anterior de Cloudinary
-    if (empresa?.logo_public_id) {
-      await cloudinary.uploader.destroy(
-        empresa.logo_public_id,
-        {
-          resource_type: "image"
-        }
-      );
-    }
+    await eliminarImagen(empresa?.logo_public_id);
 
     // Actualizar base de datos
     await pool.query(
@@ -571,10 +562,15 @@ const updateLogoMiEmpresa = async (req, res) => {
       UPDATE tb_empresas
       SET
         logo = ?,
+        logo_public_id = ?,
         fyh_actualizacion = NOW()
       WHERE id_empresa = ?
       `,
-      [logoUrl, id_empresa]
+      [
+        logoUrl,
+        publicId,
+        id_empresa
+      ]
     );
 
     await registrarLog({

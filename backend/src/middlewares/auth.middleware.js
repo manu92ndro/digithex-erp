@@ -2,9 +2,7 @@ const jwt = require("jsonwebtoken");
 const pool = require("../config/db");
 
 const validarJWT = async (req, res, next) => {
-  console.log("=================================");
-  console.log("Ruta:", req.method, req.originalUrl);
-  
+ 
   try {
     const authHeader = req.headers.authorization;
 
@@ -50,7 +48,6 @@ const validarJWT = async (req, res, next) => {
         message: "Token no contiene id de usuario",
       });
     }
-    console.log("Antes del query");
     const [rows] = await pool.query(
       `
       SELECT
@@ -75,8 +72,6 @@ const validarJWT = async (req, res, next) => {
       `,
       [id_usuario]
     );
-    console.log("Después del query");
-
     if (rows.length === 0) {
       return res.status(403).json({
         ok: false,

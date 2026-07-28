@@ -1,7 +1,83 @@
 const db = require("../config/db");
 const { probarConexionCorreoEmpresa } = require("../services/email.service");
+const {subirImagen, eliminarImagen,} = require("../services/cloudinary.service");
 
 const getIdEmpresa = (req) => req.usuario.id_empresa;
+const updateQrEmpresa = async (req, res) => {
+  try {
+    const id_empresa = getIdEmpresa(req);
+
+    if (!req.file) {
+      return res.status(400).json({
+        ok: false,
+        message: "Debe seleccionar un código QR",
+      });
+    }
+
+    // Obtener QR anterior
+    const [[config]] = await db.query(
+      `
+      SELECT
+        qr_imagen,
+        qr_public_id
+      FROM tb_empresa_configuracion
+      WHERE id_empresa = ?
+      `,
+      [id_empresa]
+    );
+
+    // Eliminar QR anterior de Cloudinary
+    if (config?.qr_public_id) {
+      await eliminarImagen(config.qr_public_id);
+    }
+
+    // Nombre para Cloudinary
+    const nombreQr = `qr-${id_empresa}-${Date.now()}`;
+
+    // Subir nuevo QR
+    const resultado = await subirImagen({
+      rutaTemporal: req.file.path,
+      carpeta: "qr",
+      nombreArchivo: nombreQr,
+      width: 800,
+      height: 800,
+      quality: 100,
+    });
+
+    // Guardar en BD
+    await db.query(
+      `
+      UPDATE tb_empresa_configuracion
+      SET
+        qr_imagen = ?,
+        qr_public_id = ?,
+        mostrar_qr = 1,
+        fyh_actualizacion = NOW()
+      WHERE id_empresa = ?
+      `,
+      [
+        resultado.secure_url,
+        resultado.public_id,
+        id_empresa,
+      ]
+    );
+
+    res.json({
+      ok: true,
+      message: "QR actualizado correctamente",
+      qr_imagen: resultado.secure_url,
+    });
+
+  } catch (error) {
+    console.error("ERROR ACTUALIZANDO QR:", error);
+
+    res.status(500).json({
+      ok: false,
+      message: "Error al actualizar QR",
+      error: error.message,
+    });
+  }
+};
 
 const obtenerConfiguracionEmpresa = async (req, res) => {
   try {
@@ -252,4 +328,5 @@ module.exports = {
   obtenerConfiguracionEmpresa,
   actualizarConfiguracionEmpresa,
   probarCorreoEmpresa,
+  updateQrEmpresa,
 };

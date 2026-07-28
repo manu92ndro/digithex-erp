@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import DashboardLayout from "../layouts/DashboardLayout";
+import { getImageUrl } from "../utils/imageUrl";
 
 import {
   showSuccess,
@@ -31,7 +32,6 @@ import {
   updateFotoMiPerfil
 } from "../api/perfilUsuario";
 
-const FILES_URL = import.meta.env.VITE_FILES_URL || "http://localhost:3000";
 
 export default function PerfilUsuario() {
   const { t } = useTranslation();
@@ -46,8 +46,7 @@ export default function PerfilUsuario() {
   const [successMsg, setSuccessMsg] = useState("");
 
   const getFotoUrl = (foto) => {
-    if (!foto) return "";
-    return `${FILES_URL}/uploads/usuarios/${foto}`;
+    return getImageUrl(foto, "usuarios");
   };
 
   const [perfil, setPerfil] = useState({

@@ -14,7 +14,7 @@ export const uploadCompanyQR = async (file) => {
   const formData = new FormData();
   formData.append("qr", file);
 
-  const { data } = await api.post("/company-settings/qr", formData, {
+  const { data } = await api.put("/company-settings/qr", formData, {
     headers: {
       "Content-Type": "multipart/form-data",
     },
