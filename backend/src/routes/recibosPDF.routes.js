@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 
 const {
-  generarReciboPDF,
+  verReciboPDF,
 } = require("../controllers/recibosPDF.controller");
 
 const {
@@ -18,7 +18,7 @@ router.get(
   validarJWT,
   validarEstadoCuenta,
   validarPermiso("rentas.ver"),
-  generarReciboPDF
+  verReciboPDF
 );
 
 router.post(

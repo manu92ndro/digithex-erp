@@ -5,16 +5,18 @@ const getEmailConfig = async (id_empresa) => {
   const [rows] = await db.query(
     `
     SELECT
-      smtp_host,
-      smtp_port,
-      smtp_secure,
-      smtp_user,
-      smtp_password,
-      smtp_from_name,
-      smtp_reply_to,
-      nombre_comercial
-    FROM tb_empresa_configuracion
-    WHERE id_empresa = ?
+      ec.smtp_host,
+      ec.smtp_port,
+      ec.smtp_secure,
+      ec.smtp_user,
+      ec.smtp_password,
+      ec.smtp_from_name,
+      ec.smtp_reply_to,
+      e.nombre_empresa
+    FROM tb_empresa_configuracion ec
+    INNER JOIN tb_empresas e
+      ON e.id_empresa = ec.id_empresa
+    WHERE ec.id_empresa = ?
     LIMIT 1
     `,
     [id_empresa]
@@ -25,6 +27,7 @@ const getEmailConfig = async (id_empresa) => {
 
 const crearTransporterEmpresa = async (id_empresa) => {
   const config = await getEmailConfig(id_empresa);
+  
 
   if (
     !config ||
@@ -60,7 +63,7 @@ const enviarCorreoEmpresa = async ({
   const { transporter, config } = await crearTransporterEmpresa(id_empresa);
 
   return transporter.sendMail({
-    from: `"${config.smtp_from_name || config.nombre_comercial || "DigiThex"}" <${config.smtp_user}>`,
+    from: `"${config.smtp_from_name || config.nombre_empresa || "DigiThex"}" <${config.smtp_user}>`,
     replyTo: config.smtp_reply_to || config.smtp_user,
     to,
     subject,
