@@ -12,11 +12,19 @@ const {
   registrarPagoRenta,
   actualizarFechaRetiro,
   inactivarExtraRenta,
-} = require("../controllers/rentas.controller");
+} = require("./rentas.controller");
 
-const { validarJWT } = require("../middlewares/auth.middleware");
-const { validarPermiso } = require("../middlewares/permiso.middleware");
-const { validarEstadoCuenta } = require("../middlewares/estado.middleware");
+const {
+  validarJWT,
+} = require("../../../middlewares/auth.middleware");
+
+const {
+  validarPermiso,
+} = require("../../../middlewares/permiso.middleware");
+
+const {
+  validarEstadoCuenta,
+} = require("../../../middlewares/estado.middleware");
 
 router.get(
   "/form-data",

@@ -194,7 +194,7 @@ app.use(
 // Rentas
 app.use(
   "/api/rentas",
-  require("./src/routes/rentas.routes")
+  require("./src/modules/dumpsters/rentals/rentas.routes")
 );
 
 // Impuestos
