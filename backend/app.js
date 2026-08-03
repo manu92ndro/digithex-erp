@@ -188,7 +188,7 @@ app.use(
 // Camiones
 app.use(
   "/api/camiones",
-  require("./src/routes/camiones.routes")
+  require("./src/modules/dumpsters/trucks/camiones.routes")
 );
 
 // Rentas

@@ -1,22 +1,22 @@
-const pool = require('../config/db');
+const pool = require("../config/db");
 
 const registrarLog = async ({
   req,
   usuarioManual = null,
   modulo,
   accion,
-  descripcion
+  descripcion,
 }) => {
   try {
     const usuario = req.usuario || usuarioManual || {};
 
     const ip =
-      req.headers['x-forwarded-for'] ||
+      req.headers["x-forwarded-for"] ||
       req.socket.remoteAddress ||
       null;
 
     const userAgent =
-      req.headers['user-agent'] ||
+      req.headers["user-agent"] ||
       null;
 
     await pool.query(
@@ -41,15 +41,14 @@ const registrarLog = async ({
         accion,
         descripcion || null,
         ip,
-        userAgent
+        userAgent,
       ]
     );
-
   } catch (error) {
-    console.error('ERROR REGISTRANDO LOG:', error.message);
+    console.error("ERROR REGISTRANDO LOG:", error.message);
   }
 };
 
 module.exports = {
-  registrarLog
+  registrarLog,
 };
