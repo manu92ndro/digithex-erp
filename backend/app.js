@@ -200,7 +200,7 @@ app.use(
 // Impuestos
 app.use(
   "/api/impuestos",
-  require("./src/routes/impuestos.routes")
+  require("./src/modules/dumpsters/taxes/impuestos.routes")
 );
 
 // ===============================
