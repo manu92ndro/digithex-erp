@@ -1,5 +1,8 @@
 import { API_URL } from "../config/config";
 
+// =============================================
+// ABRIR / REIMPRIMIR RECIBO PDF
+// =============================================
 export const abrirReciboRenta = async (idRenta) => {
   const token = localStorage.getItem("token");
 
@@ -7,19 +10,25 @@ export const abrirReciboRenta = async (idRenta) => {
     throw new Error("Token not found");
   }
 
-  const response = await fetch(`${API_URL}/recibos-pdf/rentas/${idRenta}`, {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+  const response = await fetch(
+    `${API_URL}/recibos-pdf/rentas/${idRenta}`,
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
 
   if (!response.ok) {
     let message = "Error opening receipt";
 
     try {
       const errorData = await response.json();
-      message = errorData.msg || errorData.message || message;
+      message =
+        errorData.msg ||
+        errorData.message ||
+        message;
     } catch {}
 
     throw new Error(message);
@@ -38,7 +47,10 @@ export const abrirReciboRenta = async (idRenta) => {
 // =============================================
 // ENVIAR RECIBO POR EMAIL
 // =============================================
-export const enviarReciboCorreo = async (idRenta, correo = null) => {
+export const enviarReciboCorreo = async (
+  idRenta,
+  correo = null
+) => {
   const token = localStorage.getItem("token");
 
   if (!token) {
@@ -46,23 +58,35 @@ export const enviarReciboCorreo = async (idRenta, correo = null) => {
   }
 
   const response = await fetch(
-    `${API_URL}/recibos-pdf/rentas/${idRenta}/email`,
+    `${API_URL}/recibos/rentas/${idRenta}/email`,
     {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        correo,
-      }),
+      body: JSON.stringify(
+        correo
+          ? { correo }
+          : {}
+      ),
     }
   );
 
-  const data = await response.json();
+  let data = {};
+
+  try {
+    data = await response.json();
+  } catch {
+    data = {};
+  }
 
   if (!response.ok) {
-    throw new Error(data.msg || "Error sending receipt");
+    throw new Error(
+      data.msg ||
+      data.message ||
+      "Error sending receipt"
+    );
   }
 
   return data;

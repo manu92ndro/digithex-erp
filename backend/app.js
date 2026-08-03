@@ -218,14 +218,13 @@ app.use(
 
 app.use(
   "/api/recibos",
-  require("./src/routes/recibos.routes")
+  require("./src/modules/dumpsters/receipts/recibos.routes")
 );
 
 app.use(
   "/api/recibos-pdf",
-  require("./src/routes/recibosPDF.routes")
+  require("./src/modules/dumpsters/receipts/recibosPDF.routes")
 );
-
 // ===============================
 // Ruta no encontrada
 // ===============================

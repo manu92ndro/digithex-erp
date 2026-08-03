@@ -1,7 +1,7 @@
 const PDFDocument = require("pdfkit");
 const axios = require("axios");
 const sharp = require("sharp");
-const db = require("../config/db");
+const db = require("../../../config/db");
 
 // ============================================================
 // TRADUCCIONES
