@@ -176,13 +176,13 @@ app.use(
 // Clientes
 app.use(
   "/api/clientes",
-  require("./src/routes/clientes.routes")
+  require("./src/modules/dumpsters/customers/clientes.routes")
 );
 
 // Dumpsters
 app.use(
   "/api/dumpsters",
-  require("./src/routes/dumpsters.routes")
+  require("./src/modules/dumpsters/dumpsters/dumpsters.routes")
 );
 
 // Camiones

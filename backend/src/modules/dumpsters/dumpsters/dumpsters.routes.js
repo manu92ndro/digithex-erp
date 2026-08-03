@@ -7,11 +7,23 @@ const {
   crearDumpster,
   actualizarDumpster,
   cambiarEstadoDumpster,
-} = require("../controllers/dumpsters.controller");
+} = require("./dumpsters.controller");
 
-const { validarJWT } = require("../middlewares/auth.middleware");
-const { validarPermiso } = require("../middlewares/permiso.middleware");
-const { validarEstadoCuenta } = require("../middlewares/estado.middleware");
+const {
+  validarJWT,
+} = require("../../../middlewares/auth.middleware");
+
+const {
+  validarPermiso,
+} = require("../../../middlewares/permiso.middleware");
+
+const {
+  validarEstadoCuenta,
+} = require("../../../middlewares/estado.middleware");
+
+// ===============================
+// LISTAR DUMPSTERS
+// ===============================
 
 router.get(
   "/",
@@ -21,6 +33,10 @@ router.get(
   listarDumpsters
 );
 
+// ===============================
+// OBTENER UN DUMPSTER
+// ===============================
+
 router.get(
   "/:id",
   validarJWT,
@@ -28,6 +44,10 @@ router.get(
   validarPermiso("dumpsters.ver"),
   obtenerDumpster
 );
+
+// ===============================
+// CREAR DUMPSTER
+// ===============================
 
 router.post(
   "/",
@@ -37,6 +57,10 @@ router.post(
   crearDumpster
 );
 
+// ===============================
+// ACTUALIZAR DUMPSTER
+// ===============================
+
 router.put(
   "/:id",
   validarJWT,
@@ -44,6 +68,10 @@ router.put(
   validarPermiso("dumpsters.editar"),
   actualizarDumpster
 );
+
+// ===============================
+// CAMBIAR ESTADO
+// ===============================
 
 router.patch(
   "/:id/estado",

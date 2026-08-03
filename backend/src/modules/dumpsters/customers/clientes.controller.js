@@ -1,5 +1,7 @@
-const db = require("../config/db");
-const { registrarLog } = require("../helpers/logs");
+const db = require("../../../config/db");
+const {
+  registrarLog,
+} = require("../../../helpers/logs");
 
 const esSuperAdmin = (usuario) =>
   usuario?.rol === "SUPER ADMIN" || usuario?.rol_nombre === "SUPER ADMIN";
