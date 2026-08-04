@@ -6,7 +6,7 @@ const {
 
 const {
   enviarCorreoEmpresa,
-} = require("../../../services/email.service");
+} = require("../../../shared/mail/email.service");
 
 const {
   registrarLog,

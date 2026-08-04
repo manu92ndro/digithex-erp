@@ -1,5 +1,5 @@
 const db = require("../shared/database/db");
-const { probarConexionCorreoEmpresa } = require("../services/email.service");
+const { probarConexionCorreoEmpresa } = require("../shared/mail/email.service");
 const {subirImagen, eliminarImagen,} = require("../services/cloudinary.service");
 
 const getIdEmpresa = (req) => req.usuario.id_empresa;
