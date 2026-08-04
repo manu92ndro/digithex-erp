@@ -14,17 +14,9 @@ const {
   inactivarExtraRenta,
 } = require("./rentas.controller");
 
-const {
-  validarJWT,
-} = require("../../../middlewares/auth.middleware");
-
-const {
-  validarPermiso,
-} = require("../../../middlewares/permiso.middleware");
-
-const {
-  validarEstadoCuenta,
-} = require("../../../middlewares/estado.middleware");
+const { validarJWT } = require("../../../middlewares/auth.middleware");
+const { validarPermiso } = require("../../../middlewares/permiso.middleware");
+const { validarEstadoCuenta } = require("../../../middlewares/estado.middleware");
 
 router.get(
   "/form-data",
@@ -66,8 +58,6 @@ router.patch(
   finalizarRenta
 );
 
-
-
 router.post(
   "/",
   validarJWT,
@@ -92,7 +82,6 @@ router.patch(
   actualizarFechaRetiro
 );
 
-
 router.patch(
   "/:id/cancelar",
   validarJWT,
@@ -108,8 +97,5 @@ router.patch(
   validarPermiso("rentas.editar"),
   inactivarExtraRenta
 );
-
-
-
 
 module.exports = router;

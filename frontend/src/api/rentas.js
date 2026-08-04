@@ -26,13 +26,26 @@ export const addExtraRenta = async (id, payload) => {
 };
 
 export const finalizarRenta = async (id) => {
-  const { data } = await api.patch(`/rentas/${id}/finalizar`);
+  const { data } = await api.patch(
+    `/rentas/${id}/finalizar`,
+    {}
+  );
+
   return data;
 };
 
-export const cancelarRenta = async (id, data = {}) => {
-  const res = await api.patch(`/rentas/${id}/cancelar`, data);
-  return res.data;
+export const cancelarRenta = async (
+  id,
+  motivoCancelacion
+) => {
+  const { data } = await api.patch(
+    `/rentas/${id}/cancelar`,
+    {
+      motivo_cancelacion: motivoCancelacion,
+    }
+  );
+
+  return data;
 };
 
 export const registrarPagoRenta = async (id, payload) => {

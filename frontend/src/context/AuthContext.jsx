@@ -6,10 +6,15 @@ import {
   useState,
 } from "react";
 
-import { loginUser, getMe, logoutUser } from "../api/auth";
+import {
+  loginUser,
+  getMe,
+  logoutUser,
+} from "../api/auth";
+
 import useAutoLogout from "../hooks/useAutoLogout";
 
-const AuthContext = createContext();
+const AuthContext = createContext(null);
 
 const AUTO_REFRESH =
   import.meta.env.VITE_AUTO_REFRESH_SESSION === "true";
@@ -17,10 +22,76 @@ const AUTO_REFRESH =
 const REFRESH_TIME =
   Number(import.meta.env.VITE_REFRESH_SESSION_TIME) || 30000;
 
-export const useAuth = () => useContext(AuthContext);
+const leerUsuarioGuardado = () => {
+  try {
+    const valor = localStorage.getItem("usuario");
+
+    if (
+      !valor ||
+      valor === "undefined" ||
+      valor === "null" ||
+      valor === "[object Object]"
+    ) {
+      localStorage.removeItem("usuario");
+      return null;
+    }
+
+    const usuario = JSON.parse(valor);
+
+    if (
+      !usuario ||
+      typeof usuario !== "object" ||
+      Array.isArray(usuario)
+    ) {
+      localStorage.removeItem("usuario");
+      return null;
+    }
+
+    return usuario;
+  } catch (error) {
+    console.error(
+      "ERROR LEYENDO USUARIO GUARDADO:",
+      error
+    );
+
+    localStorage.removeItem("usuario");
+    return null;
+  }
+};
+
+const guardarUsuario = (usuario) => {
+  if (
+    !usuario ||
+    typeof usuario !== "object" ||
+    Array.isArray(usuario)
+  ) {
+    localStorage.removeItem("usuario");
+    return;
+  }
+
+  localStorage.setItem(
+    "usuario",
+    JSON.stringify(usuario)
+  );
+};
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+
+  if (!context) {
+    throw new Error(
+      "useAuth debe utilizarse dentro de AuthProvider"
+    );
+  }
+
+  return context;
+};
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(
+    leerUsuarioGuardado
+  );
+
   const [loading, setLoading] = useState(true);
 
   const limpiarSesion = useCallback(() => {
@@ -33,67 +104,125 @@ export const AuthProvider = ({ children }) => {
     try {
       const token = localStorage.getItem("token");
 
-      if (!token) return null;
+      if (!token) {
+        limpiarSesion();
+        return null;
+      }
 
       const res = await getMe();
+      const usuario = res.usuario;
 
-      setUser(res.usuario);
-      localStorage.setItem("usuario", JSON.stringify(res.usuario));
+      if (!usuario) {
+        limpiarSesion();
+        return null;
+      }
 
-      return res.usuario;
+      guardarUsuario(usuario);
+      setUser(usuario);
+
+      return usuario;
     } catch (error) {
-      console.error("ERROR REFRESCANDO USUARIO:", error);
+      console.error(
+        "ERROR REFRESCANDO USUARIO:",
+        error
+      );
+
       limpiarSesion();
       return null;
     }
   }, [limpiarSesion]);
 
   useEffect(() => {
-    const usuarioGuardado = localStorage.getItem("usuario");
+    let activo = true;
 
-    if (usuarioGuardado) {
-      setUser(JSON.parse(usuarioGuardado));
-    }
+    const inicializarSesion = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const usuarioGuardado = leerUsuarioGuardado();
 
-    setLoading(false);
-  }, []);
+        if (!token) {
+          limpiarSesion();
+          return;
+        }
+
+        if (usuarioGuardado && activo) {
+          setUser(usuarioGuardado);
+        }
+
+        await refreshUser();
+      } finally {
+        if (activo) {
+          setLoading(false);
+        }
+      }
+    };
+
+    inicializarSesion();
+
+    return () => {
+      activo = false;
+    };
+  }, [refreshUser, limpiarSesion]);
 
   useEffect(() => {
-    if (!user) return;
-    if (!AUTO_REFRESH) return;
+    if (!user || !AUTO_REFRESH) {
+      return undefined;
+    }
 
-    const interval = setInterval(() => {
+    const interval = window.setInterval(() => {
       refreshUser();
     }, REFRESH_TIME);
 
-    return () => clearInterval(interval);
+    return () => {
+      window.clearInterval(interval);
+    };
   }, [user, refreshUser]);
 
-  const login = async (credentials) => {
-    try {
-      const response = await loginUser(credentials);
+  const login = useCallback(
+    async (credentials) => {
+      try {
+        const response = await loginUser(credentials);
 
-      const usuario = response.usuario;
-      const token = response.token;
+        const usuario = response.usuario;
+        const token = response.token;
 
-      localStorage.setItem("token", token);
-      localStorage.setItem("usuario", JSON.stringify(usuario));
+        if (!usuario || !token) {
+          limpiarSesion();
 
-      setUser(usuario);
+          return {
+            ok: false,
+            message:
+              "La respuesta del inicio de sesión no es válida",
+          };
+        }
 
-      return {
-        ok: true,
-        usuario,
-      };
-    } catch (error) {
-      return {
-        ok: false,
-        message:
-          error.response?.data?.message ||
-          "Correo o contraseña incorrectos",
-      };
-    }
-  };
+        localStorage.setItem("token", token);
+        guardarUsuario(usuario);
+        setUser(usuario);
+
+        return {
+          ok: true,
+          usuario,
+        };
+      } catch (error) {
+        console.error(
+          "ERROR INICIANDO SESIÓN:",
+          error
+        );
+
+        limpiarSesion();
+
+        return {
+          ok: false,
+          message:
+            error.response?.data?.message ||
+            error.response?.data?.msg ||
+            "Correo o contraseña incorrectos",
+        };
+      }
+    },
+    [limpiarSesion]
+  );
 
   const logout = useCallback(async () => {
     try {
@@ -103,13 +232,19 @@ export const AuthProvider = ({ children }) => {
         await logoutUser();
       }
     } catch (error) {
-      console.error("ERROR CERRANDO SESIÓN:", error);
+      console.error(
+        "ERROR CERRANDO SESIÓN:",
+        error
+      );
     } finally {
       limpiarSesion();
     }
   }, [limpiarSesion]);
 
-  useAutoLogout(logout, !!user);
+  useAutoLogout(
+    logout,
+    Boolean(user)
+  );
 
   return (
     <AuthContext.Provider
@@ -119,6 +254,7 @@ export const AuthProvider = ({ children }) => {
         login,
         logout,
         refreshUser,
+        isAuthenticated: Boolean(user),
       }}
     >
       {children}
