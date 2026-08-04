@@ -3,15 +3,21 @@ const router = express.Router();
 
 const {
   validarJWT,
-} = require("../../../middlewares/auth.middleware");
+} = require(
+  "../../../middlewares/auth.middleware"
+);
 
 const {
   validarPermiso,
-} = require("../../../middlewares/permiso.middleware");
+} = require(
+  "../../../middlewares/permiso.middleware"
+);
 
 const {
   validarEstadoCuenta,
-} = require("../../../middlewares/estado.middleware");
+} = require(
+  "../../../middlewares/estado.middleware"
+);
 
 const {
   listarClientes,
@@ -21,10 +27,6 @@ const {
   cambiarEstadoCliente,
 } = require("./clientes.controller");
 
-// ===============================
-// LISTAR CLIENTES
-// ===============================
-
 router.get(
   "/",
   validarJWT,
@@ -32,10 +34,6 @@ router.get(
   validarPermiso("clientes.ver"),
   listarClientes
 );
-
-// ===============================
-// OBTENER CLIENTE
-// ===============================
 
 router.get(
   "/:id",
@@ -45,10 +43,6 @@ router.get(
   obtenerCliente
 );
 
-// ===============================
-// CREAR CLIENTE
-// ===============================
-
 router.post(
   "/",
   validarJWT,
@@ -57,10 +51,6 @@ router.post(
   crearCliente
 );
 
-// ===============================
-// ACTUALIZAR CLIENTE
-// ===============================
-
 router.put(
   "/:id",
   validarJWT,
@@ -68,10 +58,6 @@ router.put(
   validarPermiso("clientes.editar"),
   actualizarCliente
 );
-
-// ===============================
-// CAMBIAR ESTADO
-// ===============================
 
 router.patch(
   "/:id/estado",
