@@ -1,7 +1,7 @@
 const PDFDocument = require("pdfkit");
 const path = require("path");
 const fs = require("fs");
-const db = require("../config/db");
+const db = require("../../../shared/database/db");
 
 const FILES_URL = process.env.FILES_URL || "http://localhost:3000";
 

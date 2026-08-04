@@ -1,4 +1,4 @@
-const db = require("../../../config/db");
+const db = require("../../../shared/database/db");
 
 const getIdEmpresa = (req) => Number(req.usuario.id_empresa);
 

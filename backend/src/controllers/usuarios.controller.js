@@ -1,4 +1,4 @@
-const pool = require('../config/db');
+const pool = require("../shared/database/db");
 const bcrypt = require('bcryptjs');
 const { registrarLog } = require('../helpers/logs');
 const {subirImagen, eliminarImagen} = require("../services/cloudinary.service");

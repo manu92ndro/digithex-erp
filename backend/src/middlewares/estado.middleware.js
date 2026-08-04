@@ -1,4 +1,4 @@
-const pool = require('../config/db');
+const pool = require("../shared/database/db");
 
 const validarEstadoCuenta = async (req, res, next) => {
   try {

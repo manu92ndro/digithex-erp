@@ -1,4 +1,4 @@
-const pool = require('../config/db');
+const pool = require("../shared/database/db");
 
 const validarPermiso = (permisoRequerido) => {
   return async (req, res, next) => {

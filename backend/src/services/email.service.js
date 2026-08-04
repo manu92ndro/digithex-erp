@@ -1,5 +1,5 @@
 const nodemailer = require("nodemailer");
-const db = require("../config/db");
+const db = require("../shared/database/db");
 
 const getEmailConfig = async (id_empresa) => {
   const [rows] = await db.query(

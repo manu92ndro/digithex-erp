@@ -1,4 +1,4 @@
-const db = require("../config/db");
+const db = require("../shared/database/db");
 const { probarConexionCorreoEmpresa } = require("../services/email.service");
 const {subirImagen, eliminarImagen,} = require("../services/cloudinary.service");
 

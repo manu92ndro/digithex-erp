@@ -1,5 +1,5 @@
 const jwt = require("jsonwebtoken");
-const pool = require("../config/db");
+const pool = require("../shared/database/db");
 
 const validarJWT = async (req, res, next) => {
  

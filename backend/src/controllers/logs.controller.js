@@ -1,4 +1,4 @@
-const pool = require('../config/db');
+const pool = require("../shared/database/db");
 const ExcelJS = require('exceljs');
 
 const construirFiltrosLogs = (query) => {

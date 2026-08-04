@@ -1,4 +1,4 @@
-const db = require("../../../config/db");
+const db = require("../../../shared/database/db");
 const {
   registrarLog,
 } = require("../../../helpers/logs");
