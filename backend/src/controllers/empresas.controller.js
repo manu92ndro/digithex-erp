@@ -4,7 +4,10 @@ const { registrarLog } = require("../shared/logging/logs");
 const sharp = require("sharp");
 const fs = require("fs");
 const path = require("path");
-const {subirImagen, eliminarImagen} = require("../services/cloudinary.service");
+const {
+  subirImagen,
+  eliminarImagen,
+} = require("../shared/cloudinary/cloudinary.service");
 const esSuperAdmin = (req) => {
   return req.usuario?.rol?.toUpperCase() === 'SUPER ADMIN';
 };

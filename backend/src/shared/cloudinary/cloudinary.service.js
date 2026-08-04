@@ -1,4 +1,4 @@
-const cloudinary = require("../config/cloudinary");
+const cloudinary = require("./cloudinary.config");
 const sharp = require("sharp");
 const fs = require("fs");
 const path = require("path");

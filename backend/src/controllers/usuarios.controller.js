@@ -1,7 +1,10 @@
 const pool = require("../shared/database/db");
 const bcrypt = require('bcryptjs');
 const { registrarLog } = require("../shared/logging/logs");
-const {subirImagen, eliminarImagen} = require("../services/cloudinary.service");
+const {
+  subirImagen,
+  eliminarImagen,
+} = require("../shared/cloudinary/cloudinary.service");
 
 const sharp = require("sharp");
 const fs = require("fs");
