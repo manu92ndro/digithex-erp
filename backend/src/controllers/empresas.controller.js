@@ -1,5 +1,5 @@
 const pool = require("../shared/database/db");
-const { registrarLog } = require('../helpers/logs');
+const { registrarLog } = require("../shared/logging/logs");
 
 const sharp = require("sharp");
 const fs = require("fs");

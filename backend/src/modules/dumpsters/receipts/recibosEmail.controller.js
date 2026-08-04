@@ -10,7 +10,7 @@ const {
 
 const {
   registrarLog,
-} = require("../../../helpers/logs");
+} = require("../../../shared/logging/logs");
 
 const getIdEmpresa = (req) => Number(req.usuario.id_empresa);
 

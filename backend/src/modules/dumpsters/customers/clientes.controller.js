@@ -1,7 +1,8 @@
 const db = require("../../../shared/database/db");
+
 const {
   registrarLog,
-} = require("../../../helpers/logs");
+} = require("../../../shared/logging/logs");
 
 const esSuperAdmin = (usuario) =>
   usuario?.rol === "SUPER ADMIN" || usuario?.rol_nombre === "SUPER ADMIN";

@@ -1,6 +1,6 @@
 const pool = require("../shared/database/db");
 const bcrypt = require('bcryptjs');
-const { registrarLog } = require('../helpers/logs');
+const { registrarLog } = require("../shared/logging/logs");
 const {subirImagen, eliminarImagen} = require("../services/cloudinary.service");
 
 const sharp = require("sharp");

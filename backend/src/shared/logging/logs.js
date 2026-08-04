@@ -1,4 +1,4 @@
-const pool = require("../shared/database/db");
+const pool = require("../database/db");
 
 const registrarLog = async ({
   req,
@@ -8,15 +8,21 @@ const registrarLog = async ({
   descripcion,
 }) => {
   try {
-    const usuario = req.usuario || usuarioManual || {};
+    const usuario =
+      req?.usuario ||
+      usuarioManual ||
+      {};
+
+    const forwardedFor =
+      req?.headers?.["x-forwarded-for"];
 
     const ip =
-      req.headers["x-forwarded-for"] ||
-      req.socket.remoteAddress ||
+      forwardedFor?.split(",")[0]?.trim() ||
+      req?.socket?.remoteAddress ||
       null;
 
     const userAgent =
-      req.headers["user-agent"] ||
+      req?.headers?.["user-agent"] ||
       null;
 
     await pool.query(
@@ -37,15 +43,18 @@ const registrarLog = async ({
       [
         usuario.id_usuario || null,
         usuario.id_empresa || null,
-        modulo,
-        accion,
+        modulo || "Sistema",
+        accion || "SIN_ACCION",
         descripcion || null,
         ip,
         userAgent,
       ]
     );
   } catch (error) {
-    console.error("ERROR REGISTRANDO LOG:", error.message);
+    console.error(
+      "ERROR REGISTRANDO LOG:",
+      error.message
+    );
   }
 };
 

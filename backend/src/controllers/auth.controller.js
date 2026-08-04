@@ -1,7 +1,7 @@
 const pool = require("../shared/database/db");
 const bcrypt = require('bcryptjs');
 const { generarJWT } = require('../helpers/jwt');
-const { registrarLog } = require('../helpers/logs');
+const { registrarLog } = require("../shared/logging/logs");
 
 const obtenerUsuarioSesion = async (id_usuario) => {
   const [rows] = await pool.query(`
