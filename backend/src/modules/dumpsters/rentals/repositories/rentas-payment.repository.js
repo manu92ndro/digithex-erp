@@ -310,6 +310,199 @@ const actualizarSaldo = async (
 };
 
 // ======================================================
+// BLOQUEAR PAGO PARA ANULAR
+// ======================================================
+
+const bloquearPago = async (
+  conn,
+  {
+    idPago,
+    idRenta,
+    idEmpresa,
+  }
+) => {
+  const [rows] = await conn.query(
+    `
+    SELECT
+      id_pago,
+      id_empresa,
+      id_renta,
+      id_cliente,
+      monto_abonado,
+      tax_pago,
+      tipo_pago,
+      estado_pago,
+      observaciones,
+      motivo_anulacion,
+      anulado_por,
+      fecha_anulacion
+    FROM tb_renta_pagos
+    WHERE id_pago = ?
+      AND id_renta = ?
+      AND id_empresa = ?
+    LIMIT 1
+    FOR UPDATE
+    `,
+    [
+      idPago,
+      idRenta,
+      idEmpresa,
+    ]
+  );
+
+  return rows[0] || null;
+};
+
+// ======================================================
+// BLOQUEAR RENTA PARA VALIDAR ESTADO
+// ======================================================
+
+const bloquearRenta = async (
+  conn,
+  {
+    idRenta,
+    idEmpresa,
+  }
+) => {
+  const [rows] = await conn.query(
+    `
+    SELECT
+      id_renta,
+      id_empresa,
+      estado
+    FROM tb_rentas
+    WHERE id_renta = ?
+      AND id_empresa = ?
+    LIMIT 1
+    FOR UPDATE
+    `,
+    [
+      idRenta,
+      idEmpresa,
+    ]
+  );
+
+  return rows[0] || null;
+};
+
+// ======================================================
+// OBTENER EXTRAS VINCULADOS AL PAGO
+// ======================================================
+
+const obtenerIdsExtrasPago = async (
+  conn,
+  {
+    idPago,
+    idRenta,
+    idEmpresa,
+  }
+) => {
+  const [rows] = await conn.query(
+    `
+    SELECT DISTINCT
+      id_extra
+    FROM tb_renta_pago_detalles
+    WHERE id_pago = ?
+      AND id_renta = ?
+      AND id_empresa = ?
+      AND tipo_concepto = 'extra'
+      AND id_extra IS NOT NULL
+    `,
+    [
+      idPago,
+      idRenta,
+      idEmpresa,
+    ]
+  );
+
+  return rows
+    .map((row) =>
+      Number(row.id_extra)
+    )
+    .filter(
+      (id) =>
+        Number.isInteger(id) &&
+        id > 0
+    );
+};
+
+// ======================================================
+// ANULAR PAGO
+// ======================================================
+
+const anularPago = async (
+  conn,
+  {
+    idPago,
+    idRenta,
+    idEmpresa,
+    motivo,
+    anuladoPor,
+  }
+) => {
+  const [result] = await conn.query(
+    `
+    UPDATE tb_renta_pagos
+    SET
+      estado_pago = 'anulado',
+      motivo_anulacion = ?,
+      anulado_por = ?,
+      fecha_anulacion = NOW()
+    WHERE id_pago = ?
+      AND id_renta = ?
+      AND id_empresa = ?
+      AND estado_pago <> 'anulado'
+    `,
+    [
+      motivo,
+      anuladoPor,
+      idPago,
+      idRenta,
+      idEmpresa,
+    ]
+  );
+
+  return result.affectedRows;
+};
+
+// ======================================================
+// DEVOLVER EXTRAS A PENDIENTE
+// ======================================================
+
+const devolverExtrasAPendiente = async (
+  conn,
+  {
+    idRenta,
+    idEmpresa,
+    idsExtras,
+  }
+) => {
+  if (
+    !Array.isArray(idsExtras) ||
+    idsExtras.length === 0
+  ) {
+    return 0;
+  }
+
+  const [result] = await conn.query(
+    `
+    UPDATE tb_renta_extras
+    SET estado_pago = 'pendiente'
+    WHERE id_renta = ?
+      AND id_empresa = ?
+      AND id_extra IN (?)
+      AND estado_pago = 'pagado'
+    `,
+    [
+      idRenta,
+      idEmpresa,
+      idsExtras,
+    ]
+  );
+
+  return result.affectedRows;
+};
+// ======================================================
 // EXPORTACIONES
 // ======================================================
 
@@ -321,4 +514,10 @@ module.exports = {
   insertarDetallesPago,
   marcarExtrasPagados,
   actualizarSaldo,
+  bloquearPago,
+  bloquearRenta,
+  obtenerIdsExtrasPago,
+  anularPago,
+  devolverExtrasAPendiente,
+  
 };

@@ -40,15 +40,20 @@ import {
   getRentaDetalle,
   addExtraRenta,
   finalizarRenta,
+  cancelarRenta,
   registrarPagoRenta,
   actualizarFechaRetiro,
-  cancelarRenta,
-  eliminarExtraRenta,
+  anularExtraRenta,
+  
 } from "../api/rentas";
 
 import { createCliente } from "../api/clientes";
 import { showSuccess, showError } from "../utils/alerts";
-import { abrirReciboRenta, enviarReciboCorreo } from "../api/recibos";
+
+import {
+  abrirReciboRenta,
+  enviarReciboCorreo,
+} from "../api/recibos";
 
 
 const formatFecha = (fecha) => {
@@ -235,6 +240,7 @@ const initialForm = {
   estado_pago: "pending",
   monto_abonado: "",
   tipo_pago: "",
+  
 };
 
 const initialCliente = {
@@ -325,8 +331,27 @@ function Rentas() {
   const [conceptosSeleccionados, setConceptosSeleccionados] = useState([]);
 
   const [guardandoExtra, setGuardandoExtra] = useState(false);
-  const [eliminandoExtraId, setEliminandoExtraId] = useState(null);
   const [modalMapa, setModalMapa] = useState(false);
+
+  const [
+    modalAnularExtra,
+    setModalAnularExtra,
+  ] = useState(false);
+
+  const [
+    extraParaAnular,
+    setExtraParaAnular,
+  ] = useState(null);
+
+  const [
+    motivoAnulacionExtra,
+    setMotivoAnulacionExtra,
+  ] = useState("");
+
+  const [
+    anulandoExtra,
+    setAnulandoExtra,
+  ] = useState(false);
 
 
   const normalizarTaxRate = (valor) => {
@@ -596,11 +621,6 @@ function Rentas() {
     (r) => getEstadoVisual(r).label === "En uso"
   ).length;
  
-
-
- 
-
-
   const fechaOriginalInicio =
     rentaDetalle?.fecha_inicio?.split("T")[0] || "";
 
@@ -1380,43 +1400,35 @@ const confirmarFinalizacionRenta = async () => {
     (totalSeleccionadoPago + taxPagoSeleccionado).toFixed(2)
   );
 
-  const eliminarExtra = async (extra) => {
-    if (!canEditRenta) {
-      showError(t("rentals.no_permission_edit"));
-      return;
-    }
 
-    if (rentaBloqueada) {
-      showError(t("rentals.closed_no_modify_charges"));
-      return;
-    }
-
-    if (String(extra.estado_pago || "").toLowerCase() !== "pendiente") {
-      showError(t("rentals.only_pending_extras_cancel"));
-      return;
-    }
-
-    const confirmar = window.confirm(
-      t("rentals.confirm_cancel_extra")
+  const refrescarDetalleRenta = async (
+    idRenta
+  ) => {
+    const data = await getRentaDetalle(
+      idRenta
     );
 
-    if (!confirmar) return;
+    setRentaDetalle(
+      data.renta || null
+    );
 
-    try {
-      setEliminandoExtraId(extra.id_extra);
+    setExtrasDetalle(
+      data.extras || []
+    );
 
-      await eliminarExtraRenta(extra.id_extra);
+    setPagosDetalle(
+      data.pagos || []
+    );
 
-      showSuccess(t("rentals.extra_cancelled"));
+    setDetallesPago(
+      data.detalles_pago || []
+    );
 
-      await abrirDetalleRenta(rentaDetalle.id_renta);
-      await cargarDatos();
-    } catch (error) {
-      showError(error.response?.data?.msg || t("rentals.error_cancel_extra"));
-    } finally {
-      setEliminandoExtraId(null);
-    }
+    setConceptosSeleccionados([]);
+
+    return data;
   };
+
 
   const verRecibo = async () => {
     try {
@@ -1607,6 +1619,169 @@ const confirmarFinalizacionRenta = async () => {
       String(a.id)
     );
   });
+
+  const abrirModalAnularExtra = (
+    extra
+  ) => {
+    if (!extra?.id_extra) {
+      showError(
+        "No se pudo identificar el cargo extra"
+      );
+      return;
+    }
+
+    const estadoExtra = String(
+      extra.estado_pago || ""
+    ).toLowerCase();
+
+    if (estadoExtra === "pagado") {
+      showError(
+        "No se puede anular un cargo extra pagado"
+      );
+      return;
+    }
+
+    if (estadoExtra === "anulado") {
+      showError(
+        "Este cargo extra ya está anulado"
+      );
+      return;
+    }
+
+    setExtraParaAnular(extra);
+    setMotivoAnulacionExtra("");
+    setModalAnularExtra(true);
+  };
+
+  const cerrarModalAnularExtra = () => {
+    if (anulandoExtra) {
+      return;
+    }
+
+    setModalAnularExtra(false);
+    setExtraParaAnular(null);
+    setMotivoAnulacionExtra("");
+  };
+
+  const confirmarAnulacionExtra =
+    async () => {
+      if (anulandoExtra) {
+        return;
+      }
+
+      const idExtra = Number(
+        extraParaAnular?.id_extra
+      );
+
+      const idRenta = Number(
+        rentaDetalle?.id_renta
+      );
+
+      const motivo =
+        motivoAnulacionExtra.trim();
+
+      if (
+        !Number.isInteger(idExtra) ||
+        idExtra <= 0
+      ) {
+        showError(
+          "No se pudo identificar el cargo extra"
+        );
+        return;
+      }
+
+      if (
+        !Number.isInteger(idRenta) ||
+        idRenta <= 0
+      ) {
+        showError(
+          "No se pudo identificar la renta"
+        );
+        return;
+      }
+
+      if (motivo.length < 3) {
+        showError(
+          "Ingrese el motivo de la anulación"
+        );
+        return;
+      }
+
+      if (motivo.length > 500) {
+        showError(
+          "El motivo no puede superar los 500 caracteres"
+        );
+        return;
+      }
+
+      setAnulandoExtra(true);
+
+      try {
+        const respuesta =
+          await anularExtraRenta(
+            idExtra,
+            motivo
+          );
+
+        /*
+        * Primero cerramos el modal porque el backend
+        * ya confirmó la operación.
+        */
+        setModalAnularExtra(false);
+        setExtraParaAnular(null);
+        setMotivoAnulacionExtra("");
+
+        showSuccess(
+          respuesta?.msg ||
+            "Cargo extra anulado correctamente"
+        );
+
+        /*
+        * Refrescar solamente el modal de la renta.
+        */
+        try {
+          await refrescarDetalleRenta(
+            idRenta
+          );
+        } catch (refreshError) {
+          console.error(
+            "El extra se anuló, pero no se pudo refrescar el detalle:",
+            refreshError
+          );
+
+          showError(
+            "El cargo fue anulado, pero no se pudo actualizar la vista. Cierre y vuelva a abrir la renta."
+          );
+        }
+
+        /*
+        * Actualizar también el listado general sin
+        * confundir un fallo de refresco con un fallo
+        * de anulación.
+        */
+        try {
+          await cargarRentas();
+        } catch (refreshError) {
+          console.error(
+            "Error actualizando el listado:",
+            refreshError
+          );
+        }
+      } catch (error) {
+        console.error(
+          "Error anulando cargo extra:",
+          error
+        );
+
+        showError(
+          error.response?.data?.msg ||
+            error.response?.data?.message ||
+            "No se pudo anular el cargo extra"
+        );
+      } finally {
+        setAnulandoExtra(false);
+      }
+    };
 
  
 
@@ -2982,62 +3157,154 @@ const confirmarFinalizacionRenta = async () => {
                                 ✅ {t("no_pending_charges")}
                               </div>
                             ) : (
-                              conceptosPago.map((item) => (
-                                <label
-                                  key={item.id}
-                                  className={`flex items-center gap-3 px-3 py-3 cursor-pointer hover:bg-slate-50 ${
-                                    conceptosSeleccionados.includes(item.id) ? "bg-blue-50" : ""
-                                  }`}
-                                >
-                                  <input
-                                    type="checkbox"
-                                    checked={conceptosSeleccionados.includes(item.id)}
-                                    onChange={() => toggleConceptoPago(item.id)}
-                                    disabled={!canEditRenta || rentaBloqueada || saldoActualDetalle <= 0}
-                                  />
+                              conceptosPago.map((item) => {
+                                const esExtra =
+                                  item.tipo === "extra";
 
-                                  <div className="flex-1">
-                                    <div className="font-semibold">
-                                      {item.tipo === "renta" ? t("rental") : t("extra")}
-                                    </div>
+                                const extraCompleto = esExtra
+                                  ? extrasDetalle.find(
+                                      (extra) =>
+                                        Number(extra.id_extra) ===
+                                        Number(item.id_extra)
+                                    )
+                                  : null;
 
-                                    <div className="text-sm text-slate-700">
-                                      {item.descripcion}
-                                    </div>
+                                const estadoExtra = String(
+                                  extraCompleto?.estado_pago ||
+                                    item.estado_pago ||
+                                    ""
+                                )
+                                  .trim()
+                                  .toLowerCase();
 
-                                    <div className="text-xs text-slate-500">
-                                      {item.detalle}
+                                const puedeAnularExtra =
+                                  esExtra &&
+                                  estadoExtra === "pendiente" &&
+                                  canEditRenta &&
+                                  !rentaBloqueada;
+
+                                return (
+                                  <div
+                                    key={item.id}
+                                    className={`
+                                      flex items-center gap-3
+                                      border-b px-3 py-3
+                                      transition-colors
+                                      ${
+                                        conceptosSeleccionados.includes(
+                                          item.id
+                                        )
+                                          ? "bg-blue-50"
+                                          : "bg-white hover:bg-slate-50"
+                                      }
+                                    `}
+                                  >
+                                    {/* CONCEPTO SELECCIONABLE */}
+                                    <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-3">
+                                      <input
+                                        type="checkbox"
+                                        checked={conceptosSeleccionados.includes(
+                                          item.id
+                                        )}
+                                        onChange={() =>
+                                          toggleConceptoPago(item.id)
+                                        }
+                                        disabled={
+                                          !canEditRenta ||
+                                          rentaBloqueada ||
+                                          saldoActualDetalle <= 0
+                                        }
+                                        className="
+                                          h-4 w-4 rounded
+                                          border-slate-300
+                                          text-blue-600
+                                          focus:ring-blue-500
+                                          disabled:cursor-not-allowed
+                                        "
+                                      />
+
+                                      <div className="min-w-0 flex-1">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                          <span className="font-semibold text-slate-800">
+                                            {esExtra
+                                              ? t("extra")
+                                              : t("rental")}
+                                          </span>
+
+                                          {esExtra && (
+                                            <span className="rounded-full bg-orange-100 px-2 py-0.5 text-[11px] font-semibold text-orange-700">
+                                              {extraCompleto?.tipo_extra ||
+                                                "Cargo extra"}
+                                            </span>
+                                          )}
+                                        </div>
+
+                                        <p className="mt-0.5 truncate text-sm text-slate-700">
+                                          {item.descripcion}
+                                        </p>
+
+                                        <p className="mt-0.5 text-xs text-slate-500">
+                                          {item.detalle}
+                                        </p>
+                                      </div>
+                                    </label>
+
+                                    {/* MONTO Y ACCIONES */}
+                                    <div className="flex shrink-0 items-center gap-3">
+                                      <strong
+                                        className={
+                                          esExtra
+                                            ? "text-blue-700"
+                                            : saldoActualDetalle > 0
+                                              ? "text-red-600"
+                                              : "text-green-700"
+                                        }
+                                      >
+                                        $
+                                        {Number(
+                                          item.total || 0
+                                        ).toFixed(2)}
+                                      </strong>
+
+                                      {puedeAnularExtra && (
+                                        <button
+                                          type="button"
+                                          onClick={(event) => {
+                                            event.preventDefault();
+                                            event.stopPropagation();
+
+                                            if (!extraCompleto) {
+                                              showError(
+                                                "No se pudo identificar el cargo extra"
+                                              );
+                                              return;
+                                            }
+
+                                            abrirModalAnularExtra(
+                                              extraCompleto
+                                            );
+                                          }}
+                                          className="
+                                            inline-flex items-center
+                                            gap-1.5 rounded-lg
+                                            border border-red-200
+                                            bg-red-50 px-3 py-1.5
+                                            text-xs font-semibold
+                                            text-red-700
+                                            transition-colors
+                                            hover:border-red-300
+                                            hover:bg-red-100
+                                          "
+                                          title="Anular cargo extra"
+                                        >
+                                          <Ban size={14} />
+                                          Anular
+                                        </button>
+                                      )}
                                     </div>
                                   </div>
-
-                                  <strong
-                                    className={
-                                      item.tipo === "extra"
-                                        ? "text-blue-700"
-                                        : saldoActualDetalle > 0
-                                        ? "text-red-600"
-                                        : "text-green-700"
-                                    }
-                                  >
-                                  {item.tipo === "extra" && canEditRenta && !rentaBloqueada && (
-                                    <button
-                                      type="button"
-                                      disabled={eliminandoExtraId === item.id_extra}
-                                      onClick={(e) => {
-                                        e.preventDefault();
-                                        eliminarExtra(item);
-                                      }}
-                                      className="px-3 py-1 bg-red-600 text-white rounded-lg text-xs hover:bg-red-700 disabled:opacity-60"
-                                    >
-                                      {eliminandoExtraId === item.id_extra ? t("voiding") : t("void")}
-                                    </button>
-                                  )}  
-
-
-                                    ${Number(item.total || 0).toFixed(2)}
-                                  </strong>
-                                </label>
-                              ))
+                                );
+                              })
                             )}
 
                             <div
@@ -3938,6 +4205,194 @@ const confirmarFinalizacionRenta = async () => {
           </div>
         </div>
       )}
+
+      {modalAnularExtra &&
+        extraParaAnular && (
+          <div
+            className="
+              fixed inset-0 z-[80]
+              flex items-center
+              justify-center
+              bg-slate-950/55
+              p-4
+              backdrop-blur-[2px]
+            "
+          >
+            <div
+              className="
+                w-full max-w-md
+                overflow-hidden
+                rounded-2xl
+                bg-white
+                shadow-2xl
+              "
+            >
+              {/* HEADER */}
+              <div className="border-b border-slate-200 px-5 py-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="font-bold text-slate-900">
+                      Anular cargo extra
+                    </h3>
+
+                    <p className="mt-1 text-sm text-slate-500">
+                      El cargo permanecerá en el historial como anulado.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={
+                      cerrarModalAnularExtra
+                    }
+                    disabled={anulandoExtra}
+                    className="
+                      rounded-lg p-2
+                      text-slate-400
+                      hover:bg-slate-100
+                      hover:text-slate-700
+                      disabled:opacity-40
+                    "
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+              </div>
+
+              {/* CONTENIDO */}
+              <div className="space-y-4 p-5">
+                <div className="rounded-xl border border-red-100 bg-red-50 p-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="font-semibold text-red-900">
+                        {extraParaAnular.tipo_extra ||
+                          "Cargo extra"}
+                      </p>
+
+                      <p className="mt-1 text-sm text-red-700">
+                        {extraParaAnular.descripcion ||
+                          "Sin descripción"}
+                      </p>
+                    </div>
+
+                    <p className="shrink-0 text-lg font-bold text-red-800">
+                      $
+                      {Number(
+                        extraParaAnular.monto ||
+                          0
+                      ).toFixed(2)}
+                    </p>
+                  </div>
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="motivo-anulacion-extra"
+                    className="mb-1.5 block text-sm font-semibold text-slate-700"
+                  >
+                    Motivo de la anulación
+                  </label>
+
+                  <textarea
+                    id="motivo-anulacion-extra"
+                    rows={4}
+                    maxLength={500}
+                    autoFocus
+                    value={
+                      motivoAnulacionExtra
+                    }
+                    onChange={(e) =>
+                      setMotivoAnulacionExtra(
+                        e.target.value
+                      )
+                    }
+                    placeholder="Ejemplo: cargo registrado por error"
+                    className="
+                      w-full resize-none
+                      rounded-xl border
+                      border-slate-300
+                      px-3 py-2.5
+                      text-sm text-slate-800
+                      outline-none
+                      transition
+                      focus:border-red-400
+                      focus:ring-2
+                      focus:ring-red-100
+                    "
+                  />
+
+                  <div className="mt-1 flex items-center justify-between">
+                    <p className="text-xs text-slate-400">
+                      Mínimo 3 caracteres
+                    </p>
+
+                    <p className="text-xs text-slate-400">
+                      {
+                        motivoAnulacionExtra.length
+                      }
+                      /500
+                    </p>
+                  </div>
+                </div>
+
+                <div className="rounded-lg bg-amber-50 px-3 py-2.5 text-xs text-amber-800">
+                  El monto será retirado del total y del saldo pendiente de la renta.
+                </div>
+              </div>
+
+              {/* FOOTER */}
+              <div className="flex justify-end gap-2 border-t border-slate-200 bg-slate-50 px-5 py-4">
+                <button
+                  type="button"
+                  onClick={
+                    cerrarModalAnularExtra
+                  }
+                  disabled={anulandoExtra}
+                  className="
+                    rounded-lg border
+                    border-slate-300
+                    bg-white px-4 py-2
+                    text-sm font-semibold
+                    text-slate-700
+                    hover:bg-slate-100
+                    disabled:opacity-50
+                  "
+                >
+                  Volver
+                </button>
+
+                <button
+                  type="button"
+                  onClick={
+                    confirmarAnulacionExtra
+                  }
+                  disabled={
+                    anulandoExtra ||
+                    motivoAnulacionExtra.trim()
+                      .length < 3
+                  }
+                  className="
+                    inline-flex items-center
+                    gap-2 rounded-lg
+                    bg-red-600 px-4 py-2
+                    text-sm font-semibold
+                    text-white
+                    hover:bg-red-700
+                    disabled:cursor-not-allowed
+                    disabled:opacity-50
+                  "
+                >
+                  <Ban size={16} />
+
+                  {anulandoExtra
+                    ? "Anulando..."
+                    : "Confirmar anulación"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
 
       <LocationPickerModal
         open={modalMapa}

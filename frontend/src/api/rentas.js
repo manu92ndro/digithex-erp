@@ -58,15 +58,17 @@ export const actualizarFechaRetiro = async (id, payload) => {
   return data;
 };
 
-export const eliminarExtraRenta = async (idExtra) => {
-  const { data } = await api.patch(`/rentas/extras/${idExtra}/inactivar`);
+export const anularExtraRenta = async (
+  idExtra,
+  motivo
+) => {
+  const { data } = await api.patch(
+    `/rentas/extras/${idExtra}/anular`,
+    {
+      motivo,
+    }
+  );
+
   return data;
 };
 
-export const enviarReciboCorreo = async (id_renta, correo = null) => {
-  const { data } = await api.post(`/recibos/${id_renta}/email`, {
-    correo,
-  });
-
-  return data;
-};

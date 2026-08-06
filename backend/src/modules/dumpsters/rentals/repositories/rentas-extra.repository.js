@@ -1,90 +1,324 @@
-const bloquearRenta = async (conn, { idRenta, idEmpresa }) => {
+// ======================================================
+// BLOQUEAR RENTA
+// ======================================================
+
+const bloquearRenta = async (
+  conn,
+  {
+    idRenta,
+    idEmpresa,
+  }
+) => {
   const [rows] = await conn.query(
-    `SELECT id_renta, estado FROM tb_rentas
-     WHERE id_renta = ? AND id_empresa = ?
-     LIMIT 1 FOR UPDATE`,
-    [idRenta, idEmpresa]
+    `
+    SELECT
+      id_renta,
+      id_empresa,
+      estado
+
+    FROM tb_rentas
+
+    WHERE id_renta = ?
+      AND id_empresa = ?
+
+    LIMIT 1
+    FOR UPDATE
+    `,
+    [
+      idRenta,
+      idEmpresa,
+    ]
   );
+
   return rows[0] || null;
 };
 
-const insertarExtra = async (conn, data) => {
+// ======================================================
+// INSERTAR CARGO EXTRA
+// ======================================================
+
+const insertarExtra = async (
+  conn,
+  {
+    idEmpresa,
+    idRenta,
+    tipoExtra,
+    descripcion,
+    monto,
+    creadoPor,
+  }
+) => {
   const [result] = await conn.query(
-    `INSERT INTO tb_renta_extras (
-       id_empresa, id_renta, tipo_extra, descripcion, monto,
-       fecha_registro, creado_por, estado_pago
-     ) VALUES (?, ?, ?, ?, ?, NOW(), ?, 'pendiente')`,
-    [data.idEmpresa, data.idRenta, data.tipoExtra, data.descripcion, data.monto, data.creadoPor]
+    `
+    INSERT INTO tb_renta_extras
+    (
+      id_empresa,
+      id_renta,
+      tipo_extra,
+      descripcion,
+      monto,
+      fecha_registro,
+      creado_por,
+      estado_pago
+    )
+    VALUES
+    (
+      ?, ?, ?, ?, ?,
+      NOW(),
+      ?,
+      'pendiente'
+    )
+    `,
+    [
+      idEmpresa,
+      idRenta,
+      tipoExtra,
+      descripcion || null,
+      monto,
+      creadoPor,
+    ]
   );
+
   return result.insertId;
 };
 
-const sumarExtras = async (conn, { idRenta, idEmpresa }) => {
+// ======================================================
+// SUMAR EXTRAS ACTIVOS
+// Excluye los cargos anulados.
+// ======================================================
+
+const sumarExtras = async (
+  conn,
+  {
+    idRenta,
+    idEmpresa,
+  }
+) => {
   const [rows] = await conn.query(
-    `SELECT COALESCE(SUM(monto), 0) AS total_extras
-     FROM tb_renta_extras
-     WHERE id_empresa = ? AND id_renta = ? AND estado_pago <> 'anulado'`,
-    [idEmpresa, idRenta]
+    `
+    SELECT
+      COALESCE(
+        SUM(monto),
+        0
+      ) AS total_extras
+
+    FROM tb_renta_extras
+
+    WHERE id_empresa = ?
+      AND id_renta = ?
+      AND estado_pago <> 'anulado'
+    `,
+    [
+      idEmpresa,
+      idRenta,
+    ]
   );
-  return Number(rows[0]?.total_extras || 0);
+
+  return Number(
+    rows[0]?.total_extras || 0
+  );
 };
 
-const sumarPagos = async (conn, { idRenta, idEmpresa }) => {
+// ======================================================
+// SUMAR PAGOS VÁLIDOS
+// Excluye pagos anulados.
+// ======================================================
+
+const sumarPagos = async (
+  conn,
+  {
+    idRenta,
+    idEmpresa,
+  }
+) => {
   const [rows] = await conn.query(
-    `SELECT COALESCE(SUM(monto_abonado), 0) AS total_pagado
-     FROM tb_renta_pagos
-     WHERE id_empresa = ? AND id_renta = ? AND estado_pago <> 'anulado'`,
-    [idEmpresa, idRenta]
+    `
+    SELECT
+      COALESCE(
+        SUM(monto_abonado),
+        0
+      ) AS total_pagado
+
+    FROM tb_renta_pagos
+
+    WHERE id_empresa = ?
+      AND id_renta = ?
+      AND estado_pago <> 'anulado'
+    `,
+    [
+      idEmpresa,
+      idRenta,
+    ]
   );
-  return Number(rows[0]?.total_pagado || 0);
+
+  return Number(
+    rows[0]?.total_pagado || 0
+  );
 };
 
-const bloquearFinanzas = async (conn, { idRenta, idEmpresa }) => {
+// ======================================================
+// BLOQUEAR FINANZAS
+// ======================================================
+
+const bloquearFinanzas = async (
+  conn,
+  {
+    idRenta,
+    idEmpresa,
+  }
+) => {
   const [rows] = await conn.query(
-    `SELECT subtotal_base, tax_amount FROM tb_renta_finanzas
-     WHERE id_empresa = ? AND id_renta = ? LIMIT 1 FOR UPDATE`,
-    [idEmpresa, idRenta]
+    `
+    SELECT
+      id_finanza,
+      id_empresa,
+      id_renta,
+      subtotal_base,
+      tax_amount,
+      total_extras,
+      total_final,
+      saldo_pendiente
+
+    FROM tb_renta_finanzas
+
+    WHERE id_empresa = ?
+      AND id_renta = ?
+
+    LIMIT 1
+    FOR UPDATE
+    `,
+    [
+      idEmpresa,
+      idRenta,
+    ]
   );
+
   return rows[0] || null;
 };
 
-const actualizarFinanzas = async (conn, data) => {
-  await conn.query(
-    `UPDATE tb_renta_finanzas
-     SET total_extras = ?, total_final = ?, saldo_pendiente = ?
-     WHERE id_empresa = ? AND id_renta = ?`,
-    [data.totalExtras, data.totalFinal, data.saldoPendiente, data.idEmpresa, data.idRenta]
-  );
-};
+// ======================================================
+// ACTUALIZAR FINANZAS RECALCULADAS
+// ======================================================
 
-const bloquearExtra = async (conn, { idExtra, idEmpresa }) => {
-  const [rows] = await conn.query(
-    `SELECT id_extra, id_renta, monto, estado_pago FROM tb_renta_extras
-     WHERE id_extra = ? AND id_empresa = ? FOR UPDATE`,
-    [idExtra, idEmpresa]
-  );
-  return rows[0] || null;
-};
-
-const anularExtra = async (conn, { idExtra, idEmpresa }) => {
+const actualizarFinanzas = async (
+  conn,
+  {
+    idRenta,
+    idEmpresa,
+    totalExtras,
+    totalFinal,
+    saldoPendiente,
+  }
+) => {
   const [result] = await conn.query(
-    `UPDATE tb_renta_extras SET estado_pago = 'anulado'
-     WHERE id_extra = ? AND id_empresa = ? AND estado_pago = 'pendiente'`,
-    [idExtra, idEmpresa]
+    `
+    UPDATE tb_renta_finanzas
+
+    SET
+      total_extras = ?,
+      total_final = ?,
+      saldo_pendiente = ?
+
+    WHERE id_empresa = ?
+      AND id_renta = ?
+    `,
+    [
+      totalExtras,
+      totalFinal,
+      saldoPendiente,
+      idEmpresa,
+      idRenta,
+    ]
   );
+
   return result.affectedRows;
 };
 
-const restarExtraFinanzas = async (conn, data) => {
-  await conn.query(
-    `UPDATE tb_renta_finanzas SET
-       total_extras = GREATEST(total_extras - ?, 0),
-       total_final = GREATEST(total_final - ?, 0),
-       saldo_pendiente = GREATEST(saldo_pendiente - ?, 0)
-     WHERE id_renta = ? AND id_empresa = ?`,
-    [data.monto, data.monto, data.monto, data.idRenta, data.idEmpresa]
+// ======================================================
+// BLOQUEAR EXTRA
+// Se usa tanto para consultar como para anular.
+// ======================================================
+
+const bloquearExtra = async (
+  conn,
+  {
+    idExtra,
+    idEmpresa,
+  }
+) => {
+  const [rows] = await conn.query(
+    `
+    SELECT
+      id_extra,
+      id_empresa,
+      id_renta,
+      tipo_extra,
+      descripcion,
+      monto,
+      estado_pago,
+      motivo_anulacion,
+      anulado_por,
+      fecha_anulacion
+
+    FROM tb_renta_extras
+
+    WHERE id_extra = ?
+      AND id_empresa = ?
+
+    LIMIT 1
+    FOR UPDATE
+    `,
+    [
+      idExtra,
+      idEmpresa,
+    ]
   );
+
+  return rows[0] || null;
 };
+
+// ======================================================
+// ANULAR EXTRA
+// Conserva el registro y guarda auditoría de negocio.
+// ======================================================
+
+const anularExtra = async (
+  conn,
+  {
+    idExtra,
+    idEmpresa,
+    motivo,
+    anuladoPor,
+  }
+) => {
+  const [result] = await conn.query(
+    `
+    UPDATE tb_renta_extras
+
+    SET
+      estado_pago = 'anulado',
+      motivo_anulacion = ?,
+      anulado_por = ?,
+      fecha_anulacion = NOW()
+
+    WHERE id_extra = ?
+      AND id_empresa = ?
+      AND estado_pago = 'pendiente'
+    `,
+    [
+      motivo,
+      anuladoPor,
+      idExtra,
+      idEmpresa,
+    ]
+  );
+
+  return result.affectedRows;
+};
+
+// ======================================================
+// EXPORTACIONES
+// ======================================================
 
 module.exports = {
   bloquearRenta,
@@ -95,5 +329,4 @@ module.exports = {
   actualizarFinanzas,
   bloquearExtra,
   anularExtra,
-  restarExtraFinanzas,
 };

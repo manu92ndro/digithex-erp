@@ -11,12 +11,31 @@ const {
   cancelarRenta,
   registrarPagoRenta,
   actualizarFechaRetiro,
-  inactivarExtraRenta,
+  anularExtraRenta,
+  anularPagoRenta,
 } = require("./rentas.controller");
 
-const { validarJWT } = require("../../../middlewares/auth.middleware");
-const { validarPermiso } = require("../../../middlewares/permiso.middleware");
-const { validarEstadoCuenta } = require("../../../middlewares/estado.middleware");
+const {
+  validarJWT,
+} = require(
+  "../../../middlewares/auth.middleware"
+);
+
+const {
+  validarPermiso,
+} = require(
+  "../../../middlewares/permiso.middleware"
+);
+
+const {
+  validarEstadoCuenta,
+} = require(
+  "../../../middlewares/estado.middleware"
+);
+
+// ======================================================
+// FORM DATA
+// ======================================================
 
 router.get(
   "/form-data",
@@ -26,6 +45,10 @@ router.get(
   getRentasFormData
 );
 
+// ======================================================
+// LISTAR RENTAS
+// ======================================================
+
 router.get(
   "/",
   validarJWT,
@@ -33,6 +56,10 @@ router.get(
   validarPermiso("rentas.ver"),
   listarRentas
 );
+
+// ======================================================
+// OBTENER DETALLE
+// ======================================================
 
 router.get(
   "/:id",
@@ -42,21 +69,9 @@ router.get(
   obtenerRentaDetalle
 );
 
-router.post(
-  "/:id/extras",
-  validarJWT,
-  validarEstadoCuenta,
-  validarPermiso("rentas.editar"),
-  agregarExtraRenta
-);
-
-router.patch(
-  "/:id/finalizar",
-  validarJWT,
-  validarEstadoCuenta,
-  validarPermiso("rentas.finalizar"),
-  finalizarRenta
-);
+// ======================================================
+// CREAR RENTA
+// ======================================================
 
 router.post(
   "/",
@@ -66,6 +81,22 @@ router.post(
   crearRenta
 );
 
+// ======================================================
+// AGREGAR EXTRA
+// ======================================================
+
+router.post(
+  "/:id/extras",
+  validarJWT,
+  validarEstadoCuenta,
+  validarPermiso("rentas.editar"),
+  agregarExtraRenta
+);
+
+// ======================================================
+// REGISTRAR PAGO
+// ======================================================
+
 router.post(
   "/:id/pagos",
   validarJWT,
@@ -73,6 +104,22 @@ router.post(
   validarPermiso("rentas.editar"),
   registrarPagoRenta
 );
+
+// ======================================================
+// ANULAR PAGO
+// ======================================================
+
+router.patch(
+  "/:id/pagos/:id_pago/anular",
+  validarJWT,
+  validarEstadoCuenta,
+  validarPermiso("rentas.editar"),
+  anularPagoRenta
+);
+
+// ======================================================
+// ACTUALIZAR FECHA DE RETIRO
+// ======================================================
 
 router.patch(
   "/:id/fecha-retiro",
@@ -82,6 +129,22 @@ router.patch(
   actualizarFechaRetiro
 );
 
+// ======================================================
+// FINALIZAR RENTA
+// ======================================================
+
+router.patch(
+  "/:id/finalizar",
+  validarJWT,
+  validarEstadoCuenta,
+  validarPermiso("rentas.finalizar"),
+  finalizarRenta
+);
+
+// ======================================================
+// CANCELAR RENTA
+// ======================================================
+
 router.patch(
   "/:id/cancelar",
   validarJWT,
@@ -90,12 +153,16 @@ router.patch(
   cancelarRenta
 );
 
+// ======================================================
+// ANULAR EXTRA CON MOTIVO
+// ======================================================
+
 router.patch(
-  "/extras/:id_extra/inactivar",
+  "/extras/:id_extra/anular",
   validarJWT,
   validarEstadoCuenta,
   validarPermiso("rentas.editar"),
-  inactivarExtraRenta
+  anularExtraRenta
 );
 
 module.exports = router;
