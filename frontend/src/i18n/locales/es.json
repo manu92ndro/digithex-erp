@@ -498,10 +498,71 @@
 "clients_search_manage": "Busca, edita y gestiona el estado de los clientes.",
 "phone_number": "Número de teléfono",
 "email_address": "Dirección de correo",
-"client_address_placeholder": "Dirección del cliente"
+"client_address_placeholder": "Dirección del cliente",
+
+
+
+
+
+
+"rentals.operation_costs_tab": "Operación",
+"rentals.operation_costs_loading": "Cargando información operativa...",
+
+"rentals.delivery_operation_title": "Entrega del dumpster",
+"rentals.delivery_operation_description": "Registre la hora de salida y finalización de la entrega.",
+"rentals.delivery_registered_title": "Entrega registrada",
+"rentals.delivery_registered_message": "Este registro está cerrado y no puede modificarse desde el módulo de rentas.",
+"rentals.delivery_start": "Inicio de entrega",
+"rentals.delivery_end": "Fin de entrega",
+"rentals.delivery_time_registered": "Tiempo registrado",
+"rentals.delivery_notes_placeholder": "Ejemplo: entrega realizada sin inconvenientes",
+"rentals.delivery_register_button": "Registrar entrega",
+
+"rentals.pickup_operation_title": "Retiro y disposición",
+"rentals.pickup_operation_description": "Registre el tiempo y los datos del lugar de descarga.",
+"rentals.pickup_registered_title": "Retiro registrado",
+"rentals.pickup_registered_message": "Este registro está cerrado y no puede modificarse desde el módulo de rentas.",
+"rentals.pickup_start": "Inicio del retiro",
+"rentals.pickup_end": "Fin del retiro",
+"rentals.pickup_time_registered": "Tiempo registrado",
+"rentals.disposal_location": "Lugar de disposición",
+"rentals.disposal_location_placeholder": "Ejemplo: ABC Transfer Station",
+"rentals.ticket_number": "Número de ticket",
+"rentals.ticket_number_placeholder": "Ejemplo: 45872",
+"rentals.disposal_amount": "Valor pagado en disposición",
+"rentals.pickup_notes_placeholder": "Ejemplo: retiro y descarga realizados correctamente",
+"rentals.pickup_register_button": "Registrar retiro",
+
+"rentals.operation_start": "Inicio",
+"rentals.operation_end": "Finalización",
+"rentals.operation_time": "Tiempo",
+"rentals.operation_hours": "horas",
+"rentals.operation_notes": "Observaciones",
+"rentals.operation_registered_by": "Registrado por",
+"rentals.operation_disposal": "Disposición",
+"rentals.operation_ticket": "Ticket",
+"rentals.operation_amount_paid": "Valor pagado",
+"rentals.operation_saving": "Guardando...",
+
+"rentals.operation_single_registration": "Esta información solo puede registrarse una vez.",
+"rentals.operation_already_registered": "Esta operación ya fue registrada y no puede modificarse.",
+
+"rentals.operation_no_permission": "No tienes permiso para registrar información operativa.",
+"rentals.operation_rental_not_found": "No se pudo identificar la renta.",
+"rentals.operation_dates_required": "Ingresa la hora de inicio y finalización.",
+"rentals.operation_invalid_time_range": "La hora final debe ser posterior a la hora inicial.",
+"rentals.operation_invalid_disposal_amount": "El valor de disposición no puede ser negativo.",
+"rentals.delivery_saved": "Entrega registrada correctamente.",
+"rentals.pickup_saved": "Retiro registrado correctamente.",
+"rentals.delivery_save_error": "No se pudo registrar la entrega.",
+"rentals.pickup_save_error": "No se pudo registrar el retiro.",
+"rentals.operation_load_error": "No se pudo cargar la información operativa."
+
+
 
 
 
 
  
 }
+

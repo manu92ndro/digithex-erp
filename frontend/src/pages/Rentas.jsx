@@ -29,6 +29,8 @@ import {
   Save,
   AlertTriangle,
   ReceiptText,
+  Calculator,
+  Landmark,
 } from "lucide-react";
 
 import DashboardLayout from "../layouts/DashboardLayout";
@@ -44,6 +46,9 @@ import {
   registrarPagoRenta,
   actualizarFechaRetiro,
   anularExtraRenta,
+
+  getCostosRenta,
+  guardarCostoRenta,
   
 } from "../api/rentas";
 
@@ -257,6 +262,21 @@ const initialExtra = {
   aplica_tax: false,
 };
 
+const initialCostoEntrega = {
+  hora_inicio: "",
+  hora_fin: "",
+  observaciones: "",
+};
+
+const initialCostoRetiro = {
+  hora_inicio: "",
+  hora_fin: "",
+  lugar_disposicion: "",
+  numero_ticket: "",
+  costo_disposicion: "",
+  observaciones: "",
+};
+
 function Rentas() {
   const { t } = useTranslation();
   const { hasPermission } = usePermission();
@@ -352,6 +372,41 @@ function Rentas() {
     anulandoExtra,
     setAnulandoExtra,
   ] = useState(false);
+
+  const [
+    costosRenta,
+    setCostosRenta,
+  ] = useState([]);
+
+  const [
+    resumenCostos,
+    setResumenCostos,
+  ] = useState(null);
+
+  const [
+    tarifaCostoHora,
+    setTarifaCostoHora,
+  ] = useState(0);
+
+  const [
+    costoEntregaForm,
+    setCostoEntregaForm,
+  ] = useState(initialCostoEntrega);
+
+  const [
+    costoRetiroForm,
+    setCostoRetiroForm,
+  ] = useState(initialCostoRetiro);
+
+  const [
+    cargandoCostos,
+    setCargandoCostos,
+  ] = useState(false);
+
+  const [
+    guardandoCosto,
+    setGuardandoCosto,
+  ] = useState(null);
 
 
   const normalizarTaxRate = (valor) => {
@@ -808,32 +863,168 @@ function Rentas() {
     }
   };
 
-  const abrirDetalleRenta = async (id) => {
-    try {
-      const data = await getRentaDetalle(id);
+  const cargarCostosRenta = async (
+      idRenta
+    ) => {
+      const id = Number(idRenta);
 
-      console.log("DETALLE RENTA API:", data);
-      console.log(
-        "DETALLES DE PAGO:",
-        data.detalles_pago
-      );
+      if (
+        !Number.isInteger(id) ||
+        id <= 0
+      ) {
+        return;
+      }
+
+      try {
+        setCargandoCostos(true);
+
+        const data =
+          await getCostosRenta(id);
+
+        const costos =
+          data.costos || [];
+
+        setCostosRenta(costos);
+
+        setResumenCostos(
+          data.resumen || null
+        );
+
+        const tarifa =
+          Number(
+            data.tarifa_hora ||
+              costos[0]?.tarifa_hora ||
+              0
+          );
+
+        setTarifaCostoHora(tarifa);
+
+        const entrega = costos.find(
+          (costo) =>
+            costo.tipo_operacion ===
+            "entrega"
+        );
+
+        const retiro = costos.find(
+          (costo) =>
+            costo.tipo_operacion ===
+            "retiro"
+        );
+
+        setCostoEntregaForm({
+          hora_inicio:
+            formatFechaHoraInput(
+              entrega?.hora_inicio
+            ),
+
+          hora_fin:
+            formatFechaHoraInput(
+              entrega?.hora_fin
+            ),
+
+          observaciones:
+            entrega?.observaciones ||
+            "",
+        });
+
+        setCostoRetiroForm({
+          hora_inicio:
+            formatFechaHoraInput(
+              retiro?.hora_inicio
+            ),
+
+          hora_fin:
+            formatFechaHoraInput(
+              retiro?.hora_fin
+            ),
+
+          lugar_disposicion:
+            retiro?.lugar_disposicion ||
+            "",
+
+          numero_ticket:
+            retiro?.numero_ticket ||
+            "",
+
+          costo_disposicion:
+            retiro
+              ? String(
+                  retiro.costo_disposicion ||
+                    ""
+                )
+              : "",
+
+          observaciones:
+            retiro?.observaciones ||
+            "",
+        });
+      } catch (error) {
+        console.error(
+          "Error cargando costos:",
+          error
+        );
+
+        showError(
+          error.response?.data?.msg ||
+            "No se pudieron cargar los costos"
+        );
+      } finally {
+        setCargandoCostos(false);
+      }
+    };
+
+  const abrirDetalleRenta = async (
+    id
+  ) => {
+    try {
+      const data =
+        await getRentaDetalle(id);
 
       setTabDetalle("resumen");
-      setRentaDetalle(data.renta);
-      setExtrasDetalle(data.extras || []);
-      setPagosDetalle(data.pagos || []);
-      setDetallesPago(data.detalles_pago || []);
+
+      setRentaDetalle(
+        data.renta
+      );
+
+      setExtrasDetalle(
+        data.extras || []
+      );
+
+      setPagosDetalle(
+        data.pagos || []
+      );
+
+      setDetallesPago(
+        data.detalles_pago || []
+      );
+
       setConceptosSeleccionados([]);
 
       setFechasRentaForm({
         fecha_inicio:
-          data.renta?.fecha_inicio?.split("T")[0] || "",
+          data.renta?.fecha_inicio
+            ?.split("T")[0] || "",
 
         fecha_estimada_devolucion:
-          data.renta?.fecha_estimada_devolucion?.split("T")[0] || "",
+          data.renta
+            ?.fecha_estimada_devolucion
+            ?.split("T")[0] || "",
       });
 
       setModalDetalle(true);
+
+      /*
+      * Los costos se cargan después.
+      * Si fallan, no impiden abrir la renta.
+      */
+      try {
+        await cargarCostosRenta(id);
+      } catch (error) {
+        console.error(
+          "No se pudieron cargar los costos:",
+          error
+        );
+      }
     } catch (error) {
       console.error(
         "ERROR CARGANDO DETALLE:",
@@ -842,7 +1033,9 @@ function Rentas() {
 
       showError(
         error.response?.data?.msg ||
-          t("rentals.error_load_detail")
+          t(
+            "rentals.error_load_detail"
+          )
       );
     }
   };
@@ -1120,6 +1313,8 @@ function Rentas() {
       showError(error.response?.data?.msg || t("rentals.error_update_dates"));
     }
   };
+
+  
 
   const abrirModalCancelarRenta = () => {
     if (!canCancelRenta) {
@@ -1760,7 +1955,7 @@ const confirmarFinalizacionRenta = async () => {
         * de anulación.
         */
         try {
-          await cargarRentas();
+          await cargarDatos();
         } catch (refreshError) {
           console.error(
             "Error actualizando el listado:",
@@ -1782,8 +1977,333 @@ const confirmarFinalizacionRenta = async () => {
         setAnulandoExtra(false);
       }
     };
+  
+  const formatFechaHoraInput = (
+    valor
+  ) => {
+    if (!valor) {
+      return "";
+    }
 
- 
+    const fecha = new Date(valor);
+
+    if (
+      Number.isNaN(
+        fecha.getTime()
+      )
+    ) {
+      return "";
+    }
+
+    const year =
+      fecha.getFullYear();
+
+    const month = String(
+      fecha.getMonth() + 1
+    ).padStart(2, "0");
+
+    const day = String(
+      fecha.getDate()
+    ).padStart(2, "0");
+
+    const hours = String(
+      fecha.getHours()
+    ).padStart(2, "0");
+
+    const minutes = String(
+      fecha.getMinutes()
+    ).padStart(2, "0");
+
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };  
+
+  const calcularHorasFormulario = (
+  inicio,
+  fin
+) => {
+  if (!inicio || !fin) {
+    return 0;
+  }
+
+  const fechaInicio =
+    new Date(inicio);
+
+  const fechaFin =
+    new Date(fin);
+
+  if (
+    Number.isNaN(
+      fechaInicio.getTime()
+    ) ||
+    Number.isNaN(
+      fechaFin.getTime()
+    )
+  ) {
+    return 0;
+  }
+
+  const diferencia =
+    fechaFin.getTime() -
+    fechaInicio.getTime();
+
+  if (diferencia <= 0) {
+    return 0;
+  }
+
+  return Number(
+    (
+      diferencia /
+      (1000 * 60 * 60)
+    ).toFixed(2)
+  );
+};
+
+const horasEntregaVista =
+  calcularHorasFormulario(
+    costoEntregaForm.hora_inicio,
+    costoEntregaForm.hora_fin
+  );
+
+const costoEntregaVista =
+  Number(
+    (
+      horasEntregaVista *
+      tarifaCostoHora
+    ).toFixed(2)
+  );
+
+const horasRetiroVista =
+  calcularHorasFormulario(
+    costoRetiroForm.hora_inicio,
+    costoRetiroForm.hora_fin
+  );
+
+const costoRetiroOperativoVista =
+  Number(
+    (
+      horasRetiroVista *
+      tarifaCostoHora
+    ).toFixed(2)
+  );
+
+const costoDisposicionVista =
+  Number(
+    costoRetiroForm
+      .costo_disposicion || 0
+  );
+
+const costoRetiroTotalVista =
+  Number(
+    (
+      costoRetiroOperativoVista +
+      costoDisposicionVista
+    ).toFixed(2)
+  ); 
+
+  const guardarCostoEntrega =
+  async (e) => {
+    e.preventDefault();
+
+    if (!canEditRenta) {
+      showError(
+        "No tiene permiso para registrar costos"
+      );
+      return;
+    }
+
+    if (
+      !rentaDetalle?.id_renta
+    ) {
+      showError(
+        "No se pudo identificar la renta"
+      );
+      return;
+    }
+
+    if (
+      !costoEntregaForm.hora_inicio ||
+      !costoEntregaForm.hora_fin
+    ) {
+      showError(
+        "Ingrese la hora de inicio y finalización"
+      );
+      return;
+    }
+
+    if (horasEntregaVista <= 0) {
+      showError(
+        "La hora final debe ser posterior a la hora inicial"
+      );
+      return;
+    }
+
+    try {
+      setGuardandoCosto(
+        "entrega"
+      );
+
+      const respuesta =
+        await guardarCostoRenta(
+          rentaDetalle.id_renta,
+          {
+            tipo_operacion:
+              "entrega",
+
+            hora_inicio:
+              costoEntregaForm
+                .hora_inicio,
+
+            hora_fin:
+              costoEntregaForm
+                .hora_fin,
+
+            observaciones:
+              costoEntregaForm
+                .observaciones,
+          }
+        );
+
+      showSuccess(
+        respuesta?.msg ||
+          "Costo de entrega guardado"
+      );
+
+      await cargarCostosRenta(
+        rentaDetalle.id_renta
+      );
+    } catch (error) {
+      showError(
+        error.response?.data?.msg ||
+          "No se pudo guardar el costo de entrega"
+      );
+    } finally {
+      setGuardandoCosto(null);
+    }
+  };
+const guardarCostoRetiro =
+  async (e) => {
+    e.preventDefault();
+
+    if (!canEditRenta) {
+      showError(
+        "No tiene permiso para registrar costos"
+      );
+      return;
+    }
+
+    if (
+      !rentaDetalle?.id_renta
+    ) {
+      showError(
+        "No se pudo identificar la renta"
+      );
+      return;
+    }
+
+    if (
+      !costoRetiroForm.hora_inicio ||
+      !costoRetiroForm.hora_fin
+    ) {
+      showError(
+        "Ingrese la hora de inicio y finalización"
+      );
+      return;
+    }
+
+    if (horasRetiroVista <= 0) {
+      showError(
+        "La hora final debe ser posterior a la hora inicial"
+      );
+      return;
+    }
+
+    if (
+      Number(
+        costoRetiroForm
+          .costo_disposicion || 0
+      ) < 0
+    ) {
+      showError(
+        "El costo de disposición no puede ser negativo"
+      );
+      return;
+    }
+
+    try {
+      setGuardandoCosto(
+        "retiro"
+      );
+
+      const respuesta =
+        await guardarCostoRenta(
+          rentaDetalle.id_renta,
+          {
+            tipo_operacion:
+              "retiro",
+
+            hora_inicio:
+              costoRetiroForm
+                .hora_inicio,
+
+            hora_fin:
+              costoRetiroForm
+                .hora_fin,
+
+            lugar_disposicion:
+              costoRetiroForm
+                .lugar_disposicion,
+
+            numero_ticket:
+              costoRetiroForm
+                .numero_ticket,
+
+            costo_disposicion:
+              Number(
+                costoRetiroForm
+                  .costo_disposicion ||
+                  0
+              ),
+
+            observaciones:
+              costoRetiroForm
+                .observaciones,
+          }
+        );
+
+      showSuccess(
+        respuesta?.msg ||
+          "Costo de retiro guardado"
+      );
+
+      await cargarCostosRenta(
+        rentaDetalle.id_renta
+      );
+    } catch (error) {
+      showError(
+        error.response?.data?.msg ||
+          "No se pudo guardar el costo de retiro"
+      );
+    } finally {
+      setGuardandoCosto(null);
+    }
+  };
+
+  const costoEntregaRegistrado =
+  costosRenta.find(
+    (item) =>
+      String(
+        item.tipo_operacion || ""
+      ).toLowerCase() === "entrega"
+  ) || null;
+
+const costoRetiroRegistrado =
+  costosRenta.find(
+    (item) =>
+      String(
+        item.tipo_operacion || ""
+      ).toLowerCase() === "retiro"
+  ) || null;
+
 
   return (
     <DashboardLayout>
@@ -2947,6 +3467,8 @@ const confirmarFinalizacionRenta = async () => {
                   {[
                     ["resumen", t("summary"), ClipboardList, true],
                     ["finanzas", t("rentals.finance_payment"), CreditCard, true],
+                    ["costos", t("rentals.operation_costs_tab"),Calculator, true,
+],
                     ["extra", t("rentals.extra_charge"), PlusCircle, !rentaBloqueada && canEditRenta],
                     ["reagendar", t("rentals.reschedule"), RotateCcw, !rentaBloqueada && canEditRenta],
                     ["movimientos", t("movements"), History, true],
@@ -3517,6 +4039,744 @@ const confirmarFinalizacionRenta = async () => {
                           </div>
                         )}
                       </section>
+                    </div>
+                  )}
+
+                  {tabDetalle === "costos" && (
+                    <div className="space-y-4">
+                      {cargandoCostos ? (
+                        <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-slate-500">
+                          {t(
+                            "rentals.operation_costs_loading"
+                          )}
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                          {/* ==================================================
+                              ENTREGA
+                          ================================================== */}
+
+                          <section className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+                            <div className="border-b border-blue-200 bg-blue-50 px-4 py-3">
+                              <div className="flex items-center gap-3">
+                                <div className="rounded-lg bg-blue-100 p-2 text-blue-700">
+                                  <Truck size={18} />
+                                </div>
+
+                                <div>
+                                  <h3 className="font-bold text-blue-900">
+                                    {t(
+                                      "rentals.delivery_operation_title"
+                                    )}
+                                  </h3>
+
+                                  <p className="text-xs text-blue-700">
+                                    {t(
+                                      "rentals.delivery_operation_description"
+                                    )}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+
+                            {costoEntregaRegistrado ? (
+                              <div className="space-y-4 p-4">
+                                <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+                                  <div className="flex items-start gap-3">
+                                    <CheckCircle
+                                      size={20}
+                                      className="mt-0.5 shrink-0 text-emerald-600"
+                                    />
+
+                                    <div>
+                                      <p className="font-bold text-emerald-800">
+                                        {t(
+                                          "rentals.delivery_registered_title"
+                                        )}
+                                      </p>
+
+                                      <p className="mt-1 text-sm text-emerald-700">
+                                        {t(
+                                          "rentals.delivery_registered_message"
+                                        )}
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="divide-y rounded-xl border border-slate-200">
+                                  <div className="grid grid-cols-[130px_1fr] px-3 py-2.5">
+                                    <strong className="text-slate-600">
+                                      {t(
+                                        "rentals.operation_start"
+                                      )}
+                                      :
+                                    </strong>
+
+                                    <span className="text-slate-800">
+                                      {new Date(
+                                        costoEntregaRegistrado.hora_inicio
+                                      ).toLocaleString()}
+                                    </span>
+                                  </div>
+
+                                  <div className="grid grid-cols-[130px_1fr] px-3 py-2.5">
+                                    <strong className="text-slate-600">
+                                      {t(
+                                        "rentals.operation_end"
+                                      )}
+                                      :
+                                    </strong>
+
+                                    <span className="text-slate-800">
+                                      {new Date(
+                                        costoEntregaRegistrado.hora_fin
+                                      ).toLocaleString()}
+                                    </span>
+                                  </div>
+
+                                  <div className="grid grid-cols-[130px_1fr] px-3 py-2.5">
+                                    <strong className="text-slate-600">
+                                      {t(
+                                        "rentals.operation_time"
+                                      )}
+                                      :
+                                    </strong>
+
+                                    <span className="font-semibold text-blue-700">
+                                      {Number(
+                                        costoEntregaRegistrado.horas_operacion ||
+                                          0
+                                      ).toFixed(2)}{" "}
+                                      {t(
+                                        "rentals.operation_hours"
+                                      )}
+                                    </span>
+                                  </div>
+
+                                  <div className="grid grid-cols-[130px_1fr] px-3 py-2.5">
+                                    <strong className="text-slate-600">
+                                      {t(
+                                        "rentals.operation_notes"
+                                      )}
+                                      :
+                                    </strong>
+
+                                    <span className="text-slate-800">
+                                      {costoEntregaRegistrado.observaciones ||
+                                        "-"}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {costoEntregaRegistrado.registrado_por_nombre && (
+                                  <p className="text-center text-xs text-slate-400">
+                                    {t(
+                                      "rentals.operation_registered_by"
+                                    )}{" "}
+                                    {
+                                      costoEntregaRegistrado.registrado_por_nombre
+                                    }
+                                  </p>
+                                )}
+                              </div>
+                            ) : (
+                              <form
+                                onSubmit={
+                                  guardarCostoEntrega
+                                }
+                                className="space-y-4 p-4"
+                              >
+                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                  <div>
+                                    <label className="mb-1 block text-sm font-semibold text-slate-700">
+                                      {t(
+                                        "rentals.delivery_start"
+                                      )}
+                                    </label>
+
+                                    <input
+                                      type="datetime-local"
+                                      value={
+                                        costoEntregaForm.hora_inicio
+                                      }
+                                      onChange={(e) =>
+                                        setCostoEntregaForm(
+                                          (prev) => ({
+                                            ...prev,
+                                            hora_inicio:
+                                              e.target.value,
+                                          })
+                                        )
+                                      }
+                                      disabled={
+                                        !canEditRenta ||
+                                        rentaDetalle?.estado ===
+                                          "cancelado" ||
+                                        guardandoCosto ===
+                                          "entrega"
+                                      }
+                                      className="w-full rounded-lg border border-slate-300 px-3 py-2 disabled:bg-slate-100"
+                                      required
+                                    />
+                                  </div>
+
+                                  <div>
+                                    <label className="mb-1 block text-sm font-semibold text-slate-700">
+                                      {t(
+                                        "rentals.delivery_end"
+                                      )}
+                                    </label>
+
+                                    <input
+                                      type="datetime-local"
+                                      value={
+                                        costoEntregaForm.hora_fin
+                                      }
+                                      onChange={(e) =>
+                                        setCostoEntregaForm(
+                                          (prev) => ({
+                                            ...prev,
+                                            hora_fin:
+                                              e.target.value,
+                                          })
+                                        )
+                                      }
+                                      disabled={
+                                        !canEditRenta ||
+                                        rentaDetalle?.estado ===
+                                          "cancelado" ||
+                                        guardandoCosto ===
+                                          "entrega"
+                                      }
+                                      className="w-full rounded-lg border border-slate-300 px-3 py-2 disabled:bg-slate-100"
+                                      required
+                                    />
+                                  </div>
+                                </div>
+
+                                {horasEntregaVista >
+                                  0 && (
+                                  <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2.5 text-sm text-blue-700">
+                                    {t(
+                                      "rentals.delivery_time_registered"
+                                    )}
+                                    :{" "}
+                                    <strong>
+                                      {horasEntregaVista.toFixed(
+                                        2
+                                      )}{" "}
+                                      {t(
+                                        "rentals.operation_hours"
+                                      )}
+                                    </strong>
+                                  </div>
+                                )}
+
+                                <div>
+                                  <label className="mb-1 block text-sm font-semibold text-slate-700">
+                                    {t(
+                                      "rentals.operation_notes"
+                                    )}
+                                  </label>
+
+                                  <textarea
+                                    rows={3}
+                                    maxLength={500}
+                                    value={
+                                      costoEntregaForm.observaciones
+                                    }
+                                    onChange={(e) =>
+                                      setCostoEntregaForm(
+                                        (prev) => ({
+                                          ...prev,
+                                          observaciones:
+                                            e.target.value,
+                                        })
+                                      )
+                                    }
+                                    placeholder={t(
+                                      "rentals.delivery_notes_placeholder"
+                                    )}
+                                    disabled={
+                                      !canEditRenta ||
+                                      rentaDetalle?.estado ===
+                                        "cancelado" ||
+                                      guardandoCosto ===
+                                        "entrega"
+                                    }
+                                    className="w-full resize-none rounded-lg border border-slate-300 px-3 py-2 disabled:bg-slate-100"
+                                  />
+                                </div>
+
+                                {canEditRenta &&
+                                  rentaDetalle?.estado !==
+                                    "cancelado" && (
+                                    <button
+                                      type="submit"
+                                      disabled={
+                                        guardandoCosto ===
+                                          "entrega" ||
+                                        horasEntregaVista <= 0
+                                      }
+                                      className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                      <Save size={17} />
+
+                                      {guardandoCosto ===
+                                      "entrega"
+                                        ? t(
+                                            "rentals.operation_saving"
+                                          )
+                                        : t(
+                                            "rentals.delivery_register_button"
+                                          )}
+                                    </button>
+                                  )}
+                              </form>
+                            )}
+                          </section>
+
+                          {/* ==================================================
+                              RETIRO
+                          ================================================== */}
+
+                          <section className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+                            <div className="border-b border-orange-200 bg-orange-50 px-4 py-3">
+                              <div className="flex items-center gap-3">
+                                <div className="rounded-lg bg-orange-100 p-2 text-orange-700">
+                                  <Landmark size={18} />
+                                </div>
+
+                                <div>
+                                  <h3 className="font-bold text-orange-900">
+                                    {t(
+                                      "rentals.pickup_operation_title"
+                                    )}
+                                  </h3>
+
+                                  <p className="text-xs text-orange-700">
+                                    {t(
+                                      "rentals.pickup_operation_description"
+                                    )}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+
+                            {costoRetiroRegistrado ? (
+                              <div className="space-y-4 p-4">
+                                <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+                                  <div className="flex items-start gap-3">
+                                    <CheckCircle
+                                      size={20}
+                                      className="mt-0.5 shrink-0 text-emerald-600"
+                                    />
+
+                                    <div>
+                                      <p className="font-bold text-emerald-800">
+                                        {t(
+                                          "rentals.pickup_registered_title"
+                                        )}
+                                      </p>
+
+                                      <p className="mt-1 text-sm text-emerald-700">
+                                        {t(
+                                          "rentals.pickup_registered_message"
+                                        )}
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="divide-y rounded-xl border border-slate-200">
+                                  <div className="grid grid-cols-[140px_1fr] px-3 py-2.5">
+                                    <strong className="text-slate-600">
+                                      {t(
+                                        "rentals.operation_start"
+                                      )}
+                                      :
+                                    </strong>
+
+                                    <span className="text-slate-800">
+                                      {new Date(
+                                        costoRetiroRegistrado.hora_inicio
+                                      ).toLocaleString()}
+                                    </span>
+                                  </div>
+
+                                  <div className="grid grid-cols-[140px_1fr] px-3 py-2.5">
+                                    <strong className="text-slate-600">
+                                      {t(
+                                        "rentals.operation_end"
+                                      )}
+                                      :
+                                    </strong>
+
+                                    <span className="text-slate-800">
+                                      {new Date(
+                                        costoRetiroRegistrado.hora_fin
+                                      ).toLocaleString()}
+                                    </span>
+                                  </div>
+
+                                  <div className="grid grid-cols-[140px_1fr] px-3 py-2.5">
+                                    <strong className="text-slate-600">
+                                      {t(
+                                        "rentals.operation_time"
+                                      )}
+                                      :
+                                    </strong>
+
+                                    <span className="font-semibold text-orange-700">
+                                      {Number(
+                                        costoRetiroRegistrado.horas_operacion ||
+                                          0
+                                      ).toFixed(2)}{" "}
+                                      {t(
+                                        "rentals.operation_hours"
+                                      )}
+                                    </span>
+                                  </div>
+
+                                  <div className="grid grid-cols-[140px_1fr] px-3 py-2.5">
+                                    <strong className="text-slate-600">
+                                      {t(
+                                        "rentals.operation_disposal"
+                                      )}
+                                      :
+                                    </strong>
+
+                                    <span className="text-slate-800">
+                                      {costoRetiroRegistrado.lugar_disposicion ||
+                                        "-"}
+                                    </span>
+                                  </div>
+
+                                  <div className="grid grid-cols-[140px_1fr] px-3 py-2.5">
+                                    <strong className="text-slate-600">
+                                      {t(
+                                        "rentals.operation_ticket"
+                                      )}
+                                      :
+                                    </strong>
+
+                                    <span className="text-slate-800">
+                                      {costoRetiroRegistrado.numero_ticket ||
+                                        "-"}
+                                    </span>
+                                  </div>
+
+                                  <div className="grid grid-cols-[140px_1fr] px-3 py-2.5">
+                                    <strong className="text-slate-600">
+                                      {t(
+                                        "rentals.operation_amount_paid"
+                                      )}
+                                      :
+                                    </strong>
+
+                                    <span className="font-semibold text-slate-800">
+                                      $
+                                      {Number(
+                                        costoRetiroRegistrado.costo_disposicion ||
+                                          0
+                                      ).toFixed(2)}
+                                    </span>
+                                  </div>
+
+                                  <div className="grid grid-cols-[140px_1fr] px-3 py-2.5">
+                                    <strong className="text-slate-600">
+                                      {t(
+                                        "rentals.operation_notes"
+                                      )}
+                                      :
+                                    </strong>
+
+                                    <span className="text-slate-800">
+                                      {costoRetiroRegistrado.observaciones ||
+                                        "-"}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {costoRetiroRegistrado.registrado_por_nombre && (
+                                  <p className="text-center text-xs text-slate-400">
+                                    {t(
+                                      "rentals.operation_registered_by"
+                                    )}{" "}
+                                    {
+                                      costoRetiroRegistrado.registrado_por_nombre
+                                    }
+                                  </p>
+                                )}
+                              </div>
+                            ) : (
+                              <form
+                                onSubmit={
+                                  guardarCostoRetiro
+                                }
+                                className="space-y-4 p-4"
+                              >
+                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                  <div>
+                                    <label className="mb-1 block text-sm font-semibold text-slate-700">
+                                      {t(
+                                        "rentals.pickup_start"
+                                      )}
+                                    </label>
+
+                                    <input
+                                      type="datetime-local"
+                                      value={
+                                        costoRetiroForm.hora_inicio
+                                      }
+                                      onChange={(e) =>
+                                        setCostoRetiroForm(
+                                          (prev) => ({
+                                            ...prev,
+                                            hora_inicio:
+                                              e.target.value,
+                                          })
+                                        )
+                                      }
+                                      disabled={
+                                        !canEditRenta ||
+                                        rentaDetalle?.estado ===
+                                          "cancelado" ||
+                                        guardandoCosto ===
+                                          "retiro"
+                                      }
+                                      className="w-full rounded-lg border border-slate-300 px-3 py-2 disabled:bg-slate-100"
+                                      required
+                                    />
+                                  </div>
+
+                                  <div>
+                                    <label className="mb-1 block text-sm font-semibold text-slate-700">
+                                      {t(
+                                        "rentals.pickup_end"
+                                      )}
+                                    </label>
+
+                                    <input
+                                      type="datetime-local"
+                                      value={
+                                        costoRetiroForm.hora_fin
+                                      }
+                                      onChange={(e) =>
+                                        setCostoRetiroForm(
+                                          (prev) => ({
+                                            ...prev,
+                                            hora_fin:
+                                              e.target.value,
+                                          })
+                                        )
+                                      }
+                                      disabled={
+                                        !canEditRenta ||
+                                        rentaDetalle?.estado ===
+                                          "cancelado" ||
+                                        guardandoCosto ===
+                                          "retiro"
+                                      }
+                                      className="w-full rounded-lg border border-slate-300 px-3 py-2 disabled:bg-slate-100"
+                                      required
+                                    />
+                                  </div>
+                                </div>
+
+                                {horasRetiroVista >
+                                  0 && (
+                                  <div className="rounded-lg border border-orange-200 bg-orange-50 px-3 py-2.5 text-sm text-orange-700">
+                                    {t(
+                                      "rentals.pickup_time_registered"
+                                    )}
+                                    :{" "}
+                                    <strong>
+                                      {horasRetiroVista.toFixed(
+                                        2
+                                      )}{" "}
+                                      {t(
+                                        "rentals.operation_hours"
+                                      )}
+                                    </strong>
+                                  </div>
+                                )}
+
+                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                  <div>
+                                    <label className="mb-1 block text-sm font-semibold text-slate-700">
+                                      {t(
+                                        "rentals.disposal_location"
+                                      )}
+                                    </label>
+
+                                    <input
+                                      type="text"
+                                      maxLength={150}
+                                      value={
+                                        costoRetiroForm.lugar_disposicion
+                                      }
+                                      onChange={(e) =>
+                                        setCostoRetiroForm(
+                                          (prev) => ({
+                                            ...prev,
+                                            lugar_disposicion:
+                                              e.target.value,
+                                          })
+                                        )
+                                      }
+                                      placeholder={t(
+                                        "rentals.disposal_location_placeholder"
+                                      )}
+                                      disabled={
+                                        !canEditRenta ||
+                                        rentaDetalle?.estado ===
+                                          "cancelado" ||
+                                        guardandoCosto ===
+                                          "retiro"
+                                      }
+                                      className="w-full rounded-lg border border-slate-300 px-3 py-2 disabled:bg-slate-100"
+                                    />
+                                  </div>
+
+                                  <div>
+                                    <label className="mb-1 block text-sm font-semibold text-slate-700">
+                                      {t(
+                                        "rentals.ticket_number"
+                                      )}
+                                    </label>
+
+                                    <input
+                                      type="text"
+                                      maxLength={100}
+                                      value={
+                                        costoRetiroForm.numero_ticket
+                                      }
+                                      onChange={(e) =>
+                                        setCostoRetiroForm(
+                                          (prev) => ({
+                                            ...prev,
+                                            numero_ticket:
+                                              e.target.value,
+                                          })
+                                        )
+                                      }
+                                      placeholder={t(
+                                        "rentals.ticket_number_placeholder"
+                                      )}
+                                      disabled={
+                                        !canEditRenta ||
+                                        rentaDetalle?.estado ===
+                                          "cancelado" ||
+                                        guardandoCosto ===
+                                          "retiro"
+                                      }
+                                      className="w-full rounded-lg border border-slate-300 px-3 py-2 disabled:bg-slate-100"
+                                    />
+                                  </div>
+                                </div>
+
+                                <div>
+                                  <label className="mb-1 block text-sm font-semibold text-slate-700">
+                                    {t(
+                                      "rentals.disposal_amount"
+                                    )}
+                                  </label>
+
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    value={
+                                      costoRetiroForm.costo_disposicion
+                                    }
+                                    onChange={(e) =>
+                                      setCostoRetiroForm(
+                                        (prev) => ({
+                                          ...prev,
+                                          costo_disposicion:
+                                            e.target.value,
+                                        })
+                                      )
+                                    }
+                                    placeholder="0.00"
+                                    disabled={
+                                      !canEditRenta ||
+                                      rentaDetalle?.estado ===
+                                        "cancelado" ||
+                                      guardandoCosto ===
+                                        "retiro"
+                                    }
+                                    className="w-full rounded-lg border border-slate-300 px-3 py-2 disabled:bg-slate-100"
+                                  />
+                                </div>
+
+                                <div>
+                                  <label className="mb-1 block text-sm font-semibold text-slate-700">
+                                    {t(
+                                      "rentals.operation_notes"
+                                    )}
+                                  </label>
+
+                                  <textarea
+                                    rows={3}
+                                    maxLength={500}
+                                    value={
+                                      costoRetiroForm.observaciones
+                                    }
+                                    onChange={(e) =>
+                                      setCostoRetiroForm(
+                                        (prev) => ({
+                                          ...prev,
+                                          observaciones:
+                                            e.target.value,
+                                        })
+                                      )
+                                    }
+                                    placeholder={t(
+                                      "rentals.pickup_notes_placeholder"
+                                    )}
+                                    disabled={
+                                      !canEditRenta ||
+                                      rentaDetalle?.estado ===
+                                        "cancelado" ||
+                                      guardandoCosto ===
+                                        "retiro"
+                                    }
+                                    className="w-full resize-none rounded-lg border border-slate-300 px-3 py-2 disabled:bg-slate-100"
+                                  />
+                                </div>
+
+                                {canEditRenta &&
+                                  rentaDetalle?.estado !==
+                                    "cancelado" && (
+                                    <button
+                                      type="submit"
+                                      disabled={
+                                        guardandoCosto ===
+                                          "retiro" ||
+                                        horasRetiroVista <= 0
+                                      }
+                                      className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-orange-600 px-4 py-2.5 font-semibold text-white hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                      <Save size={17} />
+
+                                      {guardandoCosto ===
+                                      "retiro"
+                                        ? t(
+                                            "rentals.operation_saving"
+                                          )
+                                        : t(
+                                            "rentals.pickup_register_button"
+                                          )}
+                                    </button>
+                                  )}
+                              </form>
+                            )}
+                          </section>
+                        </div>
+                      )}
                     </div>
                   )}
 

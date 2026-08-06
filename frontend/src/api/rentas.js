@@ -72,3 +72,24 @@ export const anularExtraRenta = async (
   return data;
 };
 
+export const getCostosRenta = async (
+  idRenta
+) => {
+  const { data } = await api.get(
+    `/rentas/${idRenta}/costos`
+  );
+
+  return data;
+};
+
+export const guardarCostoRenta = async (
+  idRenta,
+  payload
+) => {
+  const { data } = await api.put(
+    `/rentas/${idRenta}/costos`,
+    payload
+  );
+
+  return data;
+};
