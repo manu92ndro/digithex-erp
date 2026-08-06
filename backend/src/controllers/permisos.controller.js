@@ -1,5 +1,5 @@
-const pool = require('../config/db');
-const { registrarLog } = require('../helpers/logs');
+const pool = require("../shared/database/db");
+const { registrarLog } = require("../shared/logging/logs");
 
 // LISTAR TODOS LOS PERMISOS AGRUPADOS POR MÓDULO
 const getPermisos = async (req, res) => {

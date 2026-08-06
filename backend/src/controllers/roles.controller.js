@@ -1,5 +1,5 @@
-const pool = require('../config/db');
-const { registrarLog } = require('../helpers/logs');
+const pool = require("../shared/database/db");
+const { registrarLog } = require("../shared/logging/logs");
 
 const esSuperAdminRol = (rol = '') => {
   return rol.toUpperCase() === 'SUPER ADMIN';

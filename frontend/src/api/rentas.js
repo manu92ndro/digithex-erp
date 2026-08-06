@@ -26,13 +26,26 @@ export const addExtraRenta = async (id, payload) => {
 };
 
 export const finalizarRenta = async (id) => {
-  const { data } = await api.patch(`/rentas/${id}/finalizar`);
+  const { data } = await api.patch(
+    `/rentas/${id}/finalizar`,
+    {}
+  );
+
   return data;
 };
 
-export const cancelarRenta = async (id, data = {}) => {
-  const res = await api.patch(`/rentas/${id}/cancelar`, data);
-  return res.data;
+export const cancelarRenta = async (
+  id,
+  motivoCancelacion
+) => {
+  const { data } = await api.patch(
+    `/rentas/${id}/cancelar`,
+    {
+      motivo_cancelacion: motivoCancelacion,
+    }
+  );
+
+  return data;
 };
 
 export const registrarPagoRenta = async (id, payload) => {
@@ -45,15 +58,17 @@ export const actualizarFechaRetiro = async (id, payload) => {
   return data;
 };
 
-export const eliminarExtraRenta = async (idExtra) => {
-  const { data } = await api.patch(`/rentas/extras/${idExtra}/inactivar`);
+export const anularExtraRenta = async (
+  idExtra,
+  motivo
+) => {
+  const { data } = await api.patch(
+    `/rentas/extras/${idExtra}/anular`,
+    {
+      motivo,
+    }
+  );
+
   return data;
 };
 
-export const enviarReciboCorreo = async (id_renta, correo = null) => {
-  const { data } = await api.post(`/recibos/${id_renta}/email`, {
-    correo,
-  });
-
-  return data;
-};

@@ -1,7 +1,9 @@
-const db = require("../config/db");
-const { probarConexionCorreoEmpresa } = require("../services/email.service");
-const {subirImagen, eliminarImagen,} = require("../services/cloudinary.service");
-
+const db = require("../shared/database/db");
+const { probarConexionCorreoEmpresa } = require("../shared/mail/email.service");
+const {
+  subirImagen,
+  eliminarImagen,
+} = require("../shared/cloudinary/cloudinary.service");
 const getIdEmpresa = (req) => req.usuario.id_empresa;
 const updateQrEmpresa = async (req, res) => {
   try {

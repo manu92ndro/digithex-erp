@@ -40,15 +40,20 @@ import {
   getRentaDetalle,
   addExtraRenta,
   finalizarRenta,
+  cancelarRenta,
   registrarPagoRenta,
   actualizarFechaRetiro,
-  cancelarRenta,
-  eliminarExtraRenta,
+  anularExtraRenta,
+  
 } from "../api/rentas";
 
 import { createCliente } from "../api/clientes";
 import { showSuccess, showError } from "../utils/alerts";
-import { abrirReciboRenta, enviarReciboCorreo } from "../api/recibos";
+
+import {
+  abrirReciboRenta,
+  enviarReciboCorreo,
+} from "../api/recibos";
 
 
 const formatFecha = (fecha) => {
@@ -235,6 +240,7 @@ const initialForm = {
   estado_pago: "pending",
   monto_abonado: "",
   tipo_pago: "",
+  
 };
 
 const initialCliente = {
@@ -281,9 +287,26 @@ function Rentas() {
   const [form, setForm] = useState(initialForm);
 
   const [modalDetalle, setModalDetalle] = useState(false);
+
+  const [modalCancelarRenta, setModalCancelarRenta] =
+  useState(false);
+
+  const [modalFinalizarRenta, setModalFinalizarRenta] =
+    useState(false);
+
+  const [motivoCancelacion, setMotivoCancelacion] =
+    useState("");
+
+  const [procesandoOperacion, setProcesandoOperacion] =
+    useState(false);
+
   const [rentaDetalle, setRentaDetalle] = useState(null);
   const [extrasDetalle, setExtrasDetalle] = useState([]);
   const [pagosDetalle, setPagosDetalle] = useState([]);
+// Historial real de conceptos pagados
+  const [detallesPago, setDetallesPago] = useState([]);
+
+
   const [extraForm, setExtraForm] = useState(initialExtra);
   const [tabDetalle, setTabDetalle] = useState("resumen");
 
@@ -308,8 +331,27 @@ function Rentas() {
   const [conceptosSeleccionados, setConceptosSeleccionados] = useState([]);
 
   const [guardandoExtra, setGuardandoExtra] = useState(false);
-  const [eliminandoExtraId, setEliminandoExtraId] = useState(null);
   const [modalMapa, setModalMapa] = useState(false);
+
+  const [
+    modalAnularExtra,
+    setModalAnularExtra,
+  ] = useState(false);
+
+  const [
+    extraParaAnular,
+    setExtraParaAnular,
+  ] = useState(null);
+
+  const [
+    motivoAnulacionExtra,
+    setMotivoAnulacionExtra,
+  ] = useState("");
+
+  const [
+    anulandoExtra,
+    setAnulandoExtra,
+  ] = useState(false);
 
 
   const normalizarTaxRate = (valor) => {
@@ -408,6 +450,50 @@ function Rentas() {
   const pagosVisibles = pagosDetalle.filter(
     (p) => Number(p.monto_abonado || 0) > 0
   );
+
+  const movimientosPago = Object.values(
+    detallesPago.reduce((grupos, detalle) => {
+      const idPago = Number(detalle.id_pago);
+
+      if (!grupos[idPago]) {
+        grupos[idPago] = {
+          id_pago: idPago,
+
+          fecha_pago:
+            detalle.fecha_pago ||
+            detalle.fecha_creacion,
+
+          tipo_pago:
+            detalle.tipo_pago || null,
+
+          estado_pago:
+            detalle.estado_pago_general ||
+            "pagado",
+
+          observaciones:
+            detalle.observaciones_pago ||
+            null,
+
+          detalles: [],
+        };
+      }
+
+      grupos[idPago].detalles.push(detalle);
+
+      return grupos;
+    }, {})
+  ).sort((a, b) => {
+    const fechaA = new Date(
+      a.fecha_pago || 0
+    ).getTime();
+
+    const fechaB = new Date(
+      b.fecha_pago || 0
+    ).getTime();
+
+    // El primer pago realizado aparecerá como Pago #1
+    return fechaA - fechaB;
+  });
 
   const clientesFiltrados = useMemo(() => {
     const texto = busquedaCliente.toLowerCase().trim();
@@ -535,11 +621,6 @@ function Rentas() {
     (r) => getEstadoVisual(r).label === "En uso"
   ).length;
  
-
-
- 
-
-
   const fechaOriginalInicio =
     rentaDetalle?.fecha_inicio?.split("T")[0] || "";
 
@@ -662,11 +743,27 @@ function Rentas() {
 
       const payload = {
         ...form,
-        precio_base: precioBase,
-        aplica_tax_base: Boolean(form.aplica_tax_base),
+
+        precio_base: Number(
+          precioBase.toFixed(2)
+        ),
+
+        aplica_tax_base: Boolean(
+          form.aplica_tax_base
+        ),
+
         estado_pago: form.estado_pago,
-        monto_abonado: Number(totalCobroInicial.toFixed(2)),
-        tipo_pago: form.tipo_pago || null,
+
+        // Solo se envía el abono base.
+        // El backend calcula y agrega el impuesto.
+        monto_abonado: Number(
+          montoPagoInicial.toFixed(2)
+        ),
+
+        tipo_pago:
+          form.estado_pago === "pending"
+            ? null
+            : form.tipo_pago || "cash",
       };
 
       await createRenta(payload);
@@ -715,65 +812,183 @@ function Rentas() {
     try {
       const data = await getRentaDetalle(id);
 
+      console.log("DETALLE RENTA API:", data);
+      console.log(
+        "DETALLES DE PAGO:",
+        data.detalles_pago
+      );
+
       setTabDetalle("resumen");
       setRentaDetalle(data.renta);
       setExtrasDetalle(data.extras || []);
       setPagosDetalle(data.pagos || []);
+      setDetallesPago(data.detalles_pago || []);
       setConceptosSeleccionados([]);
 
       setFechasRentaForm({
-        fecha_inicio: data.renta?.fecha_inicio?.split("T")[0] || "",
+        fecha_inicio:
+          data.renta?.fecha_inicio?.split("T")[0] || "",
+
         fecha_estimada_devolucion:
           data.renta?.fecha_estimada_devolucion?.split("T")[0] || "",
       });
 
       setModalDetalle(true);
     } catch (error) {
-      showError(error.response?.data?.msg || t("rentals.error_load_detail"));
+      console.error(
+        "ERROR CARGANDO DETALLE:",
+        error
+      );
+
+      showError(
+        error.response?.data?.msg ||
+          t("rentals.error_load_detail")
+      );
     }
   };
 
   const guardarExtra = async (e) => {
     e.preventDefault();
 
-    if (guardandoExtra) return;
-    if (!rentaDetalle?.id_renta) return;
-
-    if (!canEditRenta) {
-      showError(t("rentals.no_permission_edit"));
+    if (guardandoExtra) {
       return;
     }
 
-    if (rentaBloqueada) {
-      showError(t("rentals.closed_no_extra"));
+    const idRenta = Number(
+      rentaDetalle?.id_renta
+    );
+
+    if (
+      !Number.isInteger(idRenta) ||
+      idRenta <= 0
+    ) {
+      showError(
+        "No se pudo identificar la renta"
+      );
       return;
     }
 
-    if (!extraForm.tipo_extra) {
-      showError(t("rentals.select_charge_type"));
+    const tipoExtra = String(
+      extraForm.tipo_extra || ""
+    ).trim();
+
+    const descripcion = String(
+      extraForm.descripcion || ""
+    ).trim();
+
+    const monto = Number(
+      extraForm.monto
+    );
+
+    if (!tipoExtra) {
+      showError(
+        "Seleccione el tipo de cargo"
+      );
       return;
     }
 
-    if (Number(extraForm.monto || 0) <= 0) {
-      showError(t("rentals.charge_amount_greater_zero"));
+    if (
+      !Number.isFinite(monto) ||
+      monto <= 0
+    ) {
+      showError(
+        "El monto del cargo debe ser mayor que cero"
+      );
       return;
     }
+
+    setGuardandoExtra(true);
 
     try {
-      setGuardandoExtra(true);
+      // ==========================================
+      // 1. GUARDAR EL EXTRA
+      // ==========================================
 
-      await addExtraRenta(rentaDetalle.id_renta, {
-        ...extraForm,
+      const respuesta =
+        await addExtraRenta(
+          idRenta,
+          {
+            tipo_extra: tipoExtra,
+            descripcion:
+              descripcion || null,
+            monto,
+            aplica_tax: false,
+          }
+        );
+
+      /*
+      * Llegar aquí significa que el extra
+      * se guardó correctamente.
+      */
+
+      showSuccess(
+        respuesta?.msg ||
+          "Cargo extra agregado correctamente"
+      );
+
+      // Limpiar formulario inmediatamente
+      setExtraForm({
+        tipo_extra: "",
+        descripcion: "",
+        monto: "",
         aplica_tax: false,
       });
 
-      showSuccess(t("rentals.extra_added"));
+      setConceptosSeleccionados([]);
 
-      setExtraForm(initialExtra);
-      await abrirDetalleRenta(rentaDetalle.id_renta);
-      await cargarDatos();
+      // ==========================================
+      // 2. REFRESCAR SOLO EL DETALLE DE LA RENTA
+      // ==========================================
+
+      try {
+        const detalleActualizado =
+          await getRentaDetalle(
+            idRenta
+          );
+
+        setRentaDetalle(
+          detalleActualizado.renta
+        );
+
+        setExtrasDetalle(
+          detalleActualizado.extras ||
+            []
+        );
+
+        setPagosDetalle(
+          detalleActualizado.pagos ||
+            []
+        );
+
+        setDetallesPago(
+          detalleActualizado
+            .detalles_pago || []
+        );
+      } catch (refreshError) {
+        console.error(
+          "El extra fue creado, pero no se pudo actualizar el detalle:",
+          refreshError
+        );
+
+        /*
+        * No mostramos “Error al guardar”.
+        * El registro ya existe.
+        */
+        showError(
+          "El cargo fue agregado, pero no se pudo actualizar la vista. Cierre y vuelva a abrir la renta."
+        );
+      }
     } catch (error) {
-      showError(error.response?.data?.msg || t("rentals.error_add_extra"));
+      console.error(
+        "Error agregando extra:",
+        error
+      );
+
+      showError(
+        error.response?.data?.msg ||
+          error.response?.data?.message ||
+          "No se pudo agregar el cargo extra"
+      );
     } finally {
       setGuardandoExtra(false);
     }
@@ -906,62 +1121,132 @@ function Rentas() {
     }
   };
 
-  const cancelarRentaActual = async () => {
+  const abrirModalCancelarRenta = () => {
     if (!canCancelRenta) {
       showError(t("rentals.no_permission_cancel"));
       return;
     }
 
-    const motivo = window.prompt(t("rentals.cancellation_reason_prompt"));
-
-    if (!motivo || !motivo.trim()) {
-      showError(t("rentals.cancellation_reason_required"));
+    if (!rentaDetalle?.id_renta) {
+      showError("No se pudo identificar la renta");
       return;
     }
 
-    const confirmar = window.confirm(
-      t("rentals.confirm_cancel_rental")
-    );
-
-    if (!confirmar) return;
-
-    try {
-      await cancelarRenta(rentaDetalle.id_renta, {
-        motivo_cancelacion: motivo.trim(),
-      });
-
-      showSuccess(t("rentals.rental_cancelled"));
-      setModalDetalle(false);
-      await cargarDatos();
-    } catch (error) {
-      showError(error.response?.data?.msg || t("rentals.error_cancel_rental"));
-    }
-  };
-
-  const finalizarRentaActual = async () => {
-    if (!canFinishRenta) {
-      showError(t("rentals.no_permission_finish"));
+    if (rentaBloqueada) {
+      showError("Esta renta ya está cerrada");
       return;
     }
 
-    if (!rentaDetalle?.id_renta) return;
+    setMotivoCancelacion("");
+    setModalCancelarRenta(true);
+  };
 
-    const confirmar = window.confirm(
-      t("rentals.confirm_finish_rental")
-    );
+  const confirmarCancelacionRenta = async () => {
+    const motivo = motivoCancelacion.trim();
 
-    if (!confirmar) return;
+    if (!motivo) {
+      showError(
+        t("rentals.cancellation_reason_required")
+      );
+      return;
+    }
+
+    if (motivo.length < 3) {
+      showError(
+        "El motivo debe tener al menos 3 caracteres"
+      );
+      return;
+    }
 
     try {
-      await finalizarRenta(rentaDetalle.id_renta);
-      showSuccess(t("rentals.rental_finished"));
+      setProcesandoOperacion(true);
 
+      const data = await cancelarRenta(
+        rentaDetalle.id_renta,
+        {
+          motivo_cancelacion: motivo,
+        }
+      );
+
+      showSuccess(
+        data?.msg ||
+          t("rentals.rental_cancelled")
+      );
+
+      setModalCancelarRenta(false);
       setModalDetalle(false);
+      setMotivoCancelacion("");
+
       await cargarDatos();
     } catch (error) {
-      showError(error.response?.data?.msg || t("rentals.error_finish_rental"));
+      console.error(
+        "ERROR CANCELANDO RENTA:",
+        error
+      );
+
+      showError(
+        error.response?.data?.msg ||
+          error.response?.data?.message ||
+          error.message ||
+          t("rentals.error_cancel_rental")
+      );
+    } finally {
+      setProcesandoOperacion(false);
     }
   };
+
+  const abrirModalFinalizarRenta = () => {
+  if (!canFinishRenta) {
+    showError(t("rentals.no_permission_finish"));
+    return;
+  }
+
+  if (!rentaDetalle?.id_renta) {
+    showError("No se pudo identificar la renta");
+    return;
+  }
+
+  if (rentaBloqueada) {
+    showError("Esta renta ya está cerrada");
+    return;
+  }
+
+  setModalFinalizarRenta(true);
+};
+
+const confirmarFinalizacionRenta = async () => {
+  try {
+    setProcesandoOperacion(true);
+
+    const data = await finalizarRenta(
+      rentaDetalle.id_renta
+    );
+
+    showSuccess(
+      data?.msg ||
+        t("rentals.rental_finished")
+    );
+
+    setModalFinalizarRenta(false);
+    setModalDetalle(false);
+
+    await cargarDatos();
+  } catch (error) {
+    console.error(
+      "ERROR FINALIZANDO RENTA:",
+      error
+    );
+
+    showError(
+      error.response?.data?.msg ||
+        error.response?.data?.message ||
+        error.message ||
+        t("rentals.error_finish_rental")
+    );
+  } finally {
+    setProcesandoOperacion(false);
+  }
+};
 
   const enviarChoferWhatsapp = () => {
     if (!rentaDetalle) return;
@@ -1115,43 +1400,35 @@ function Rentas() {
     (totalSeleccionadoPago + taxPagoSeleccionado).toFixed(2)
   );
 
-  const eliminarExtra = async (extra) => {
-    if (!canEditRenta) {
-      showError(t("rentals.no_permission_edit"));
-      return;
-    }
 
-    if (rentaBloqueada) {
-      showError(t("rentals.closed_no_modify_charges"));
-      return;
-    }
-
-    if (String(extra.estado_pago || "").toLowerCase() !== "pendiente") {
-      showError(t("rentals.only_pending_extras_cancel"));
-      return;
-    }
-
-    const confirmar = window.confirm(
-      t("rentals.confirm_cancel_extra")
+  const refrescarDetalleRenta = async (
+    idRenta
+  ) => {
+    const data = await getRentaDetalle(
+      idRenta
     );
 
-    if (!confirmar) return;
+    setRentaDetalle(
+      data.renta || null
+    );
 
-    try {
-      setEliminandoExtraId(extra.id_extra);
+    setExtrasDetalle(
+      data.extras || []
+    );
 
-      await eliminarExtraRenta(extra.id_extra);
+    setPagosDetalle(
+      data.pagos || []
+    );
 
-      showSuccess(t("rentals.extra_cancelled"));
+    setDetallesPago(
+      data.detalles_pago || []
+    );
 
-      await abrirDetalleRenta(rentaDetalle.id_renta);
-      await cargarDatos();
-    } catch (error) {
-      showError(error.response?.data?.msg || t("rentals.error_cancel_extra"));
-    } finally {
-      setEliminandoExtraId(null);
-    }
+    setConceptosSeleccionados([]);
+
+    return data;
   };
+
 
   const verRecibo = async () => {
     try {
@@ -1185,6 +1462,326 @@ function Rentas() {
       );
     }
   };
+
+  // ======================================================
+  // MOVIMIENTOS SIMPLES
+  // Pagos de renta + extras pendientes/pagados
+  // Ordenados del más reciente al más antiguo
+  // ======================================================
+
+  const idsExtrasConDetalle = new Set(
+    detallesPago
+      .filter(
+        (detalle) =>
+          String(
+            detalle.tipo_concepto || ""
+          ).toLowerCase() === "extra"
+      )
+      .map((detalle) =>
+        Number(detalle.id_extra)
+      )
+  );
+
+  const movimientosSimples = [
+    // Pagos registrados con detalle
+    ...detallesPago.map((detalle) => {
+      const esExtra =
+        String(
+          detalle.tipo_concepto || ""
+        ).toLowerCase() === "extra";
+
+      return {
+        id: `pago-${detalle.id_pago_detalle}`,
+
+        id_pago:
+          detalle.id_pago,
+
+        id_extra:
+          detalle.id_extra,
+
+        tipo:
+          esExtra ? "extra" : "renta",
+
+        titulo:
+          esExtra
+            ? detalle.tipo_extra
+              ? `Cargo extra · ${detalle.tipo_extra}`
+              : "Cargo extra"
+            : "Pago de renta",
+
+        descripcion:
+          detalle.descripcion ||
+          (esExtra
+            ? "Cargo adicional"
+            : "Pago aplicado al saldo de la renta"),
+
+        estado: "pagado",
+
+        fecha:
+          detalle.fecha_pago ||
+          detalle.fecha_creacion,
+
+        tipo_pago:
+          detalle.tipo_pago || null,
+
+        monto_base:
+          Number(
+            detalle.monto_base || 0
+          ),
+
+        tax_monto:
+          Number(
+            detalle.tax_monto || 0
+          ),
+
+        total_cobrado:
+          Number(
+            detalle.total_cobrado || 0
+          ),
+      };
+    }),
+
+    // Extras que todavía no tienen detalle de pago
+    ...extrasDetalle
+      .filter(
+        (extra) =>
+          !idsExtrasConDetalle.has(
+            Number(extra.id_extra)
+          )
+      )
+      .filter(
+        (extra) =>
+          String(
+            extra.estado_pago || ""
+          ).toLowerCase() !== "anulado"
+      )
+      .map((extra) => {
+        const estadoExtra =
+          String(
+            extra.estado_pago || ""
+          ).toLowerCase();
+
+        return {
+          id: `extra-${extra.id_extra}`,
+
+          id_pago: null,
+
+          id_extra:
+            extra.id_extra,
+
+          tipo: "extra",
+
+          titulo:
+            extra.tipo_extra
+              ? `Cargo extra · ${extra.tipo_extra}`
+              : "Cargo extra",
+
+          descripcion:
+            extra.descripcion ||
+            "Cargo adicional",
+
+          estado:
+            estadoExtra === "pagado"
+              ? "pagado"
+              : "pendiente",
+
+          fecha:
+            extra.fecha_registro,
+
+          tipo_pago: null,
+
+          monto_base:
+            Number(extra.monto || 0),
+
+          tax_monto: 0,
+
+          total_cobrado:
+            estadoExtra === "pagado"
+              ? Number(extra.monto || 0)
+              : 0,
+        };
+      }),
+  ].sort((a, b) => {
+    const fechaA = new Date(
+      a.fecha || 0
+    ).getTime();
+
+    const fechaB = new Date(
+      b.fecha || 0
+    ).getTime();
+
+    // Más reciente primero
+    if (fechaB !== fechaA) {
+      return fechaB - fechaA;
+    }
+
+    return String(b.id).localeCompare(
+      String(a.id)
+    );
+  });
+
+  const abrirModalAnularExtra = (
+    extra
+  ) => {
+    if (!extra?.id_extra) {
+      showError(
+        "No se pudo identificar el cargo extra"
+      );
+      return;
+    }
+
+    const estadoExtra = String(
+      extra.estado_pago || ""
+    ).toLowerCase();
+
+    if (estadoExtra === "pagado") {
+      showError(
+        "No se puede anular un cargo extra pagado"
+      );
+      return;
+    }
+
+    if (estadoExtra === "anulado") {
+      showError(
+        "Este cargo extra ya está anulado"
+      );
+      return;
+    }
+
+    setExtraParaAnular(extra);
+    setMotivoAnulacionExtra("");
+    setModalAnularExtra(true);
+  };
+
+  const cerrarModalAnularExtra = () => {
+    if (anulandoExtra) {
+      return;
+    }
+
+    setModalAnularExtra(false);
+    setExtraParaAnular(null);
+    setMotivoAnulacionExtra("");
+  };
+
+  const confirmarAnulacionExtra =
+    async () => {
+      if (anulandoExtra) {
+        return;
+      }
+
+      const idExtra = Number(
+        extraParaAnular?.id_extra
+      );
+
+      const idRenta = Number(
+        rentaDetalle?.id_renta
+      );
+
+      const motivo =
+        motivoAnulacionExtra.trim();
+
+      if (
+        !Number.isInteger(idExtra) ||
+        idExtra <= 0
+      ) {
+        showError(
+          "No se pudo identificar el cargo extra"
+        );
+        return;
+      }
+
+      if (
+        !Number.isInteger(idRenta) ||
+        idRenta <= 0
+      ) {
+        showError(
+          "No se pudo identificar la renta"
+        );
+        return;
+      }
+
+      if (motivo.length < 3) {
+        showError(
+          "Ingrese el motivo de la anulación"
+        );
+        return;
+      }
+
+      if (motivo.length > 500) {
+        showError(
+          "El motivo no puede superar los 500 caracteres"
+        );
+        return;
+      }
+
+      setAnulandoExtra(true);
+
+      try {
+        const respuesta =
+          await anularExtraRenta(
+            idExtra,
+            motivo
+          );
+
+        /*
+        * Primero cerramos el modal porque el backend
+        * ya confirmó la operación.
+        */
+        setModalAnularExtra(false);
+        setExtraParaAnular(null);
+        setMotivoAnulacionExtra("");
+
+        showSuccess(
+          respuesta?.msg ||
+            "Cargo extra anulado correctamente"
+        );
+
+        /*
+        * Refrescar solamente el modal de la renta.
+        */
+        try {
+          await refrescarDetalleRenta(
+            idRenta
+          );
+        } catch (refreshError) {
+          console.error(
+            "El extra se anuló, pero no se pudo refrescar el detalle:",
+            refreshError
+          );
+
+          showError(
+            "El cargo fue anulado, pero no se pudo actualizar la vista. Cierre y vuelva a abrir la renta."
+          );
+        }
+
+        /*
+        * Actualizar también el listado general sin
+        * confundir un fallo de refresco con un fallo
+        * de anulación.
+        */
+        try {
+          await cargarRentas();
+        } catch (refreshError) {
+          console.error(
+            "Error actualizando el listado:",
+            refreshError
+          );
+        }
+      } catch (error) {
+        console.error(
+          "Error anulando cargo extra:",
+          error
+        );
+
+        showError(
+          error.response?.data?.msg ||
+            error.response?.data?.message ||
+            "No se pudo anular el cargo extra"
+        );
+      } finally {
+        setAnulandoExtra(false);
+      }
+    };
 
  
 
@@ -2560,62 +3157,154 @@ function Rentas() {
                                 ✅ {t("no_pending_charges")}
                               </div>
                             ) : (
-                              conceptosPago.map((item) => (
-                                <label
-                                  key={item.id}
-                                  className={`flex items-center gap-3 px-3 py-3 cursor-pointer hover:bg-slate-50 ${
-                                    conceptosSeleccionados.includes(item.id) ? "bg-blue-50" : ""
-                                  }`}
-                                >
-                                  <input
-                                    type="checkbox"
-                                    checked={conceptosSeleccionados.includes(item.id)}
-                                    onChange={() => toggleConceptoPago(item.id)}
-                                    disabled={!canEditRenta || rentaBloqueada || saldoActualDetalle <= 0}
-                                  />
+                              conceptosPago.map((item) => {
+                                const esExtra =
+                                  item.tipo === "extra";
 
-                                  <div className="flex-1">
-                                    <div className="font-semibold">
-                                      {item.tipo === "renta" ? t("rental") : t("extra")}
-                                    </div>
+                                const extraCompleto = esExtra
+                                  ? extrasDetalle.find(
+                                      (extra) =>
+                                        Number(extra.id_extra) ===
+                                        Number(item.id_extra)
+                                    )
+                                  : null;
 
-                                    <div className="text-sm text-slate-700">
-                                      {item.descripcion}
-                                    </div>
+                                const estadoExtra = String(
+                                  extraCompleto?.estado_pago ||
+                                    item.estado_pago ||
+                                    ""
+                                )
+                                  .trim()
+                                  .toLowerCase();
 
-                                    <div className="text-xs text-slate-500">
-                                      {item.detalle}
+                                const puedeAnularExtra =
+                                  esExtra &&
+                                  estadoExtra === "pendiente" &&
+                                  canEditRenta &&
+                                  !rentaBloqueada;
+
+                                return (
+                                  <div
+                                    key={item.id}
+                                    className={`
+                                      flex items-center gap-3
+                                      border-b px-3 py-3
+                                      transition-colors
+                                      ${
+                                        conceptosSeleccionados.includes(
+                                          item.id
+                                        )
+                                          ? "bg-blue-50"
+                                          : "bg-white hover:bg-slate-50"
+                                      }
+                                    `}
+                                  >
+                                    {/* CONCEPTO SELECCIONABLE */}
+                                    <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-3">
+                                      <input
+                                        type="checkbox"
+                                        checked={conceptosSeleccionados.includes(
+                                          item.id
+                                        )}
+                                        onChange={() =>
+                                          toggleConceptoPago(item.id)
+                                        }
+                                        disabled={
+                                          !canEditRenta ||
+                                          rentaBloqueada ||
+                                          saldoActualDetalle <= 0
+                                        }
+                                        className="
+                                          h-4 w-4 rounded
+                                          border-slate-300
+                                          text-blue-600
+                                          focus:ring-blue-500
+                                          disabled:cursor-not-allowed
+                                        "
+                                      />
+
+                                      <div className="min-w-0 flex-1">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                          <span className="font-semibold text-slate-800">
+                                            {esExtra
+                                              ? t("extra")
+                                              : t("rental")}
+                                          </span>
+
+                                          {esExtra && (
+                                            <span className="rounded-full bg-orange-100 px-2 py-0.5 text-[11px] font-semibold text-orange-700">
+                                              {extraCompleto?.tipo_extra ||
+                                                "Cargo extra"}
+                                            </span>
+                                          )}
+                                        </div>
+
+                                        <p className="mt-0.5 truncate text-sm text-slate-700">
+                                          {item.descripcion}
+                                        </p>
+
+                                        <p className="mt-0.5 text-xs text-slate-500">
+                                          {item.detalle}
+                                        </p>
+                                      </div>
+                                    </label>
+
+                                    {/* MONTO Y ACCIONES */}
+                                    <div className="flex shrink-0 items-center gap-3">
+                                      <strong
+                                        className={
+                                          esExtra
+                                            ? "text-blue-700"
+                                            : saldoActualDetalle > 0
+                                              ? "text-red-600"
+                                              : "text-green-700"
+                                        }
+                                      >
+                                        $
+                                        {Number(
+                                          item.total || 0
+                                        ).toFixed(2)}
+                                      </strong>
+
+                                      {puedeAnularExtra && (
+                                        <button
+                                          type="button"
+                                          onClick={(event) => {
+                                            event.preventDefault();
+                                            event.stopPropagation();
+
+                                            if (!extraCompleto) {
+                                              showError(
+                                                "No se pudo identificar el cargo extra"
+                                              );
+                                              return;
+                                            }
+
+                                            abrirModalAnularExtra(
+                                              extraCompleto
+                                            );
+                                          }}
+                                          className="
+                                            inline-flex items-center
+                                            gap-1.5 rounded-lg
+                                            border border-red-200
+                                            bg-red-50 px-3 py-1.5
+                                            text-xs font-semibold
+                                            text-red-700
+                                            transition-colors
+                                            hover:border-red-300
+                                            hover:bg-red-100
+                                          "
+                                          title="Anular cargo extra"
+                                        >
+                                          <Ban size={14} />
+                                          Anular
+                                        </button>
+                                      )}
                                     </div>
                                   </div>
-
-                                  <strong
-                                    className={
-                                      item.tipo === "extra"
-                                        ? "text-blue-700"
-                                        : saldoActualDetalle > 0
-                                        ? "text-red-600"
-                                        : "text-green-700"
-                                    }
-                                  >
-                                  {item.tipo === "extra" && canEditRenta && !rentaBloqueada && (
-                                    <button
-                                      type="button"
-                                      disabled={eliminandoExtraId === item.id_extra}
-                                      onClick={(e) => {
-                                        e.preventDefault();
-                                        eliminarExtra(item);
-                                      }}
-                                      className="px-3 py-1 bg-red-600 text-white rounded-lg text-xs hover:bg-red-700 disabled:opacity-60"
-                                    >
-                                      {eliminandoExtraId === item.id_extra ? t("voiding") : t("void")}
-                                    </button>
-                                  )}  
-
-
-                                    ${Number(item.total || 0).toFixed(2)}
-                                  </strong>
-                                </label>
-                              ))
+                                );
+                              })
                             )}
 
                             <div
@@ -2984,143 +3673,228 @@ function Rentas() {
                     </section>
                   )}
                   {tabDetalle === "movimientos" && (
-                    <section className="border rounded-lg overflow-hidden bg-white">
-                      <div className="bg-blue-50 text-blue-800 px-3 py-2 border-b font-semibold">
-                        {t("movements")}
+                    <section className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+                      {/* ENCABEZADO */}
+                      <div className="border-b border-slate-200 bg-slate-50 px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <History
+                            size={18}
+                            className="text-slate-500"
+                          />
+
+                          <h3 className="font-semibold text-slate-800">
+                            Movimientos
+                          </h3>
+                        </div>
+
+                        <p className="mt-1 text-xs text-slate-500">
+                          Pagos y cargos ordenados del más reciente al más antiguo.
+                        </p>
                       </div>
 
-                      {extrasDetalle.length === 0 ? (
-                        <div className="p-3 text-sm text-slate-500">
-                          {t("no_extra_charges")}
+                      {/* SIN MOVIMIENTOS */}
+                      {movimientosSimples.length === 0 ? (
+                        <div className="px-4 py-10 text-center">
+                          <History
+                            size={32}
+                            className="mx-auto mb-3 text-slate-300"
+                          />
+
+                          <p className="text-sm font-semibold text-slate-600">
+                            No hay movimientos registrados
+                          </p>
+
+                          <p className="mt-1 text-xs text-slate-400">
+                            Los pagos y cargos adicionales aparecerán aquí.
+                          </p>
                         </div>
                       ) : (
-                        <div className="divide-y">
-                          {extrasDetalle.map((extra, index) => {
-                            const extraPagado =
-                              String(extra.estado_pago || "").toLowerCase() === "pagado";
+                        <div className="space-y-3 bg-slate-50/60 p-3">
+                          {movimientosSimples.map((movimiento, index) => {
+                            const numeroMovimiento =
+                              movimientosSimples.length - index;
 
-                            const pagoRelacionado = extraPagado
-                              ? pagosVisibles.find((pago) => {
-                                  const obs = String(pago.observaciones || "").toLowerCase();
-                                  const desc = String(extra.descripcion || "").toLowerCase();
-                                  const montoPagoSinTax =
-                                    Number(pago.monto_abonado || 0) - Number(pago.tax_pago || 0);
+                            const esExtra =
+                              movimiento.tipo === "extra";
 
-                                  return (
-                                    obs.includes(desc) ||
-                                    Math.abs(montoPagoSinTax - Number(extra.monto || 0)) < 0.01
-                                  );
-                                })
-                              : null;
+                            const estaPagado =
+                              movimiento.estado === "pagado";
 
-                            return (
-                              <div key={extra.id_extra} className="p-4 border-b last:border-b-0">
-                                <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr] gap-6 items-start">
-                                  
-                                  {/* IZQUIERDA: CARGO */}
-                                  <div>
-                                    <div className="flex justify-between items-start">
-                                      <div>
-                                        <div className="font-bold text-slate-800">
-                                          {t("extra")} #{index + 1}
-                                        </div>
+                              const tipoPago =
+                                String(
+                                  movimiento.tipo_pago || ""
+                                ).toLowerCase();
 
-                                        <div className="text-sm font-semibold text-slate-700 mt-2">
-                                          {extra.tipo_extra}
-                                        </div>
+                              const nombreMetodo =
+                                tipoPago === "cash"
+                                  ? "Efectivo"
+                                  : tipoPago === "card"
+                                    ? "Tarjeta"
+                                    : tipoPago ===
+                                        "transfer"
+                                      ? "Transferencia"
+                                      : null;
 
-                                        <div className="text-sm text-slate-500">
-                                          {extra.descripcion || t("no_description")}
-                                        </div>
+                              return (
+                                <article
+                                  key={movimiento.id}
+                                  className="
+                                    rounded-xl border
+                                    border-slate-200
+                                    bg-white p-4
+                                    shadow-sm
+                                  "
+                                >
+                                  {/* FILA PRINCIPAL */}
+                                  <div className="flex items-start justify-between gap-4">
+                                    <div className="flex min-w-0 items-start gap-3">
+                                      {/* ICONO */}
+                                      <div
+                                        className={`
+                                          flex h-9 w-9 shrink-0
+                                          items-center justify-center
+                                          rounded-lg
+                                          ${
+                                            esExtra
+                                              ? "bg-orange-100 text-orange-700"
+                                              : "bg-blue-100 text-blue-700"
+                                          }
+                                        `}
+                                      >
+                                        {esExtra ? (
+                                          <PlusCircle size={17} />
+                                        ) : (
+                                          <DollarSign size={17} />
+                                        )}
                                       </div>
 
-                                      <span className="font-bold text-blue-600">
-                                        +${Number(extra.monto || 0).toFixed(2)}
-                                      </span>
+                                      {/* INFORMACIÓN */}
+                                      <div className="min-w-0">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                          <span className="inline-flex rounded-full bg-blue-100 px-2.5 py-1 text-xs font-bold text-blue-700 border border-blue-200">
+                                            Pago #{numeroMovimiento}
+                                          </span>
+
+                                          <h4 className="font-semibold text-slate-800">
+                                            {movimiento.titulo}
+                                          </h4>
+
+                                          <span
+                                            className={`
+                                              inline-flex rounded-full
+                                              px-2.5 py-1
+                                              text-xs font-semibold
+                                              ${
+                                                estaPagado
+                                                  ? "bg-emerald-100 text-emerald-700"
+                                                  : "bg-amber-100 text-amber-700"
+                                              }
+                                            `}
+                                          >
+                                            {estaPagado
+                                              ? "Pago realizado"
+                                              : "Pago pendiente"}
+                                          </span>
+                                        </div>
+
+                                        <p className="mt-1 text-sm text-slate-500">
+                                          {movimiento.descripcion}
+                                        </p>
+                                      </div>
                                     </div>
 
-                                    <div className="mt-4 space-y-1 text-sm text-slate-600">
-                                      <div>
-                                        <strong>{t("generated")}:</strong>{" "}
-                                        {formatFecha(extra.fecha_registro)}
-                                      </div>
+                                    {/* MONTO PRINCIPAL */}
+                                    <div className="shrink-0 text-right">
+                                      <p className="text-xs text-slate-400">
+                                        {estaPagado
+                                          ? "Cobrado"
+                                          : "Pendiente"}
+                                      </p>
 
-                                      
+                                      <p
+                                        className={`
+                                          mt-1 text-lg font-bold
+                                          ${
+                                            estaPagado
+                                              ? "text-emerald-700"
+                                              : "text-amber-700"
+                                          }
+                                        `}
+                                      >
+                                        $
+                                        {estaPagado
+                                          ? Number(
+                                              movimiento.total_cobrado ||
+                                                movimiento.monto_base ||
+                                                0
+                                            ).toFixed(2)
+                                          : Number(
+                                              movimiento.monto_base ||
+                                                0
+                                            ).toFixed(2)}
+                                      </p>
                                     </div>
                                   </div>
 
-                                  {/* DERECHA: PAGO */}
-                                  <div className="border-l pl-6">
-                                    {extra.estado_pago === "pagado" ? (
-                                      pagoRelacionado ? (
-                                        <>
-                                          <div className="font-semibold text-green-700">
-                                            ✓ {t("payment_registered")}
-                                          </div>
+                                  {/* DETALLES PEQUEÑOS */}
+                                  <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-slate-100 pt-3 text-xs text-slate-500">
+                                    <span>
+                                      <strong className="font-medium text-slate-600">
+                                        Fecha:
+                                      </strong>{" "}
+                                      {formatFecha(
+                                        movimiento.fecha
+                                      )}
+                                    </span>
 
-                                          <div className="mt-4 space-y-1 text-sm text-slate-600">
-                                            <div>
-                                              <strong>{t("date")}:</strong>{" "}
-                                              {formatFecha(pagoRelacionado.fecha_pago)}
-                                            </div>
+                                    {estaPagado &&
+                                      nombreMetodo && (
+                                        <span>
+                                          <strong className="font-medium text-slate-600">
+                                            Método:
+                                          </strong>{" "}
+                                          {nombreMetodo}
+                                        </span>
+                                      )}
 
-                                            <div>
-                                              <strong>{t("method")}:</strong>{" "}
-                                              {pagoRelacionado.tipo_pago === "card"
-                                                ? t("card")
-                                                : pagoRelacionado.tipo_pago === "cash"
-                                                ? t("cash")
-                                                : t("transfer")}
-                                            </div>
+                                    {estaPagado &&
+                                      Number(
+                                        movimiento.tax_monto ||
+                                          0
+                                      ) > 0 && (
+                                        <span>
+                                          <strong className="font-medium text-slate-600">
+                                            Base:
+                                          </strong>{" "}
+                                          $
+                                          {Number(
+                                            movimiento.monto_base ||
+                                              0
+                                          ).toFixed(2)}
+                                        </span>
+                                      )}
 
-                                            <div>
-                                              <strong>{t("charged")}:</strong>{" "}
-                                              <span className="font-bold text-green-700">
-                                                ${Number(pagoRelacionado.monto_abonado || 0).toFixed(2)}
-                                              </span>
-                                            </div>
-
-                                            {Number(pagoRelacionado.tax_pago || 0) > 0 && (
-                                              <div>
-                                                <strong>{t("tax")}:</strong>{" "}
-                                                <span className="text-blue-700 font-semibold">
-                                                  ${Number(pagoRelacionado.tax_pago).toFixed(2)}
-                                                </span>
-                                              </div>
-                                            )}
-                                          </div>
-                                        </>
-                                      ) : (
-                                        <div className="h-full flex items-center text-sm text-amber-600 italic">
-                                          {t("extra_paid_no_payment_found")}
-                                        </div>
-                                      )
-                                    ) : (
-                                      <>
-                                        <div className="font-semibold text-red-600">
-                                          {t("pending_payment")}
-                                        </div>
-
-                                        <div className="mt-4 space-y-1 text-sm text-slate-500">
-                                          <div>
-                                            <strong>{t("date")}:</strong> -
-                                          </div>
-
-                                          <div>
-                                            <strong>{t("method")}:</strong> -
-                                          </div>
-
-                                          <div>
-                                            <strong>{t("charged")}:</strong> $0.00
-                                          </div>
-                                        </div>
-                                      </>
-                                    )}
+                                    {estaPagado &&
+                                      Number(
+                                        movimiento.tax_monto ||
+                                          0
+                                      ) > 0 && (
+                                        <span className="text-blue-700">
+                                          <strong className="font-medium">
+                                            Tax:
+                                          </strong>{" "}
+                                          $
+                                          {Number(
+                                            movimiento.tax_monto ||
+                                              0
+                                          ).toFixed(2)}
+                                        </span>
+                                      )}
                                   </div>
-                                </div>
-                              </div>
-                            );
-                          })}
+                                </article>
+                              );
+                            }
+                          )}
                         </div>
                       )}
                     </section>
@@ -3143,8 +3917,17 @@ function Rentas() {
                       {canCancelRenta && (
                         <button
                           type="button"
-                          onClick={cancelarRentaActual}
-                          className="inline-flex items-center gap-2 px-4 py-2 bg-red-100 text-red-700 rounded-lg"
+                          onClick={abrirModalCancelarRenta}
+                          disabled={procesandoOperacion}
+                          className="
+                            inline-flex items-center gap-2
+                            px-4 py-2
+                            bg-red-100 text-red-700
+                            rounded-lg
+                            hover:bg-red-200
+                            disabled:opacity-50
+                            disabled:cursor-not-allowed
+                          "
                         >
                           <Ban size={16} />
                           {t("rentals.cancel_rental")}
@@ -3163,8 +3946,17 @@ function Rentas() {
                       {canFinishRenta && (
                         <button
                           type="button"
-                          onClick={finalizarRentaActual}
-                          className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg"
+                          onClick={abrirModalFinalizarRenta}
+                          disabled={procesandoOperacion}
+                          className="
+                            inline-flex items-center gap-2
+                            px-4 py-2
+                            bg-green-600 text-white
+                            rounded-lg
+                            hover:bg-green-700
+                            disabled:opacity-50
+                            disabled:cursor-not-allowed
+                          "
                         >
                           <CheckCircle size={16} />
                           {t("rentals.finish_rental")}
@@ -3197,6 +3989,410 @@ function Rentas() {
           );
         })()}
       </div>
+
+
+      {modalCancelarRenta && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b px-5 py-4">
+              <div>
+                <h3 className="flex items-center gap-2 text-lg font-bold text-slate-800">
+                  <Ban size={20} className="text-red-600" />
+                  Cancelar renta
+                </h3>
+                <p className="mt-1 text-sm text-slate-500">
+                  Renta #{rentaDetalle?.id_renta || "-"}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  if (procesandoOperacion) return;
+                  setModalCancelarRenta(false);
+                  setMotivoCancelacion("");
+                }}
+                disabled={procesandoOperacion}
+                className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 disabled:opacity-50"
+                aria-label="Cerrar"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="space-y-4 p-5">
+              <div className="rounded-xl border border-red-100 bg-red-50 p-4">
+                <div className="flex gap-3">
+                  <AlertTriangle
+                    size={20}
+                    className="mt-0.5 shrink-0 text-red-600"
+                  />
+                  <div>
+                    <p className="font-semibold text-red-800">
+                      Esta acción cancelará la renta
+                    </p>
+                    <p className="mt-1 text-sm text-red-700">
+                      El dumpster volverá a estar disponible y los pagos
+                      asociados serán anulados.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="motivo_cancelacion"
+                  className="mb-1 block text-sm font-semibold text-slate-700"
+                >
+                  Motivo de cancelación
+                  <span className="text-red-600"> *</span>
+                </label>
+
+                <textarea
+                  id="motivo_cancelacion"
+                  value={motivoCancelacion}
+                  onChange={(e) => setMotivoCancelacion(e.target.value)}
+                  rows={4}
+                  maxLength={500}
+                  autoFocus
+                  placeholder="Ejemplo: El cliente canceló el servicio..."
+                  disabled={procesandoOperacion}
+                  className="w-full resize-none rounded-xl border border-slate-300 px-3 py-2 outline-none focus:border-red-500 focus:ring-2 focus:ring-red-100 disabled:bg-slate-100"
+                />
+
+                <div className="mt-1 flex justify-between text-xs">
+                  <span className="text-slate-500">
+                    Mínimo 3 caracteres
+                  </span>
+                  <span className="text-slate-400">
+                    {motivoCancelacion.length}/500
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 border-t bg-slate-50 px-5 py-4">
+              <button
+                type="button"
+                onClick={() => {
+                  setModalCancelarRenta(false);
+                  setMotivoCancelacion("");
+                }}
+                disabled={procesandoOperacion}
+                className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-slate-700 hover:bg-slate-100 disabled:opacity-50"
+              >
+                Volver
+              </button>
+
+              <button
+                type="button"
+                onClick={confirmarCancelacionRenta}
+                disabled={
+                  procesandoOperacion ||
+                  motivoCancelacion.trim().length < 3
+                }
+                className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {procesandoOperacion ? (
+                  <>
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    Cancelando...
+                  </>
+                ) : (
+                  <>
+                    <Ban size={16} />
+                    Confirmar cancelación
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {modalFinalizarRenta && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b px-5 py-4">
+              <h3 className="flex items-center gap-2 text-lg font-bold text-slate-800">
+                <CheckCircle size={21} className="text-green-600" />
+                Finalizar renta
+              </h3>
+
+              <button
+                type="button"
+                onClick={() => {
+                  if (!procesandoOperacion) {
+                    setModalFinalizarRenta(false);
+                  }
+                }}
+                disabled={procesandoOperacion}
+                className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 disabled:opacity-50"
+                aria-label="Cerrar"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="p-5">
+              <div className="rounded-xl border border-green-100 bg-green-50 p-4">
+                <p className="font-semibold text-green-800">
+                  ¿Confirmas que el servicio fue completado?
+                </p>
+                <p className="mt-2 text-sm text-green-700">
+                  Se finalizará la renta #{rentaDetalle?.id_renta || "-"} y el
+                  dumpster{" "}
+                  <strong>{rentaDetalle?.dumpster_codigo || "-"}</strong>{" "}
+                  volverá a estar disponible.
+                </p>
+              </div>
+
+              {Number(rentaDetalle?.saldo_pendiente || 0) > 0 && (
+                <div className="mt-4 rounded-xl border border-orange-200 bg-orange-50 p-4">
+                  <div className="flex gap-3">
+                    <AlertTriangle
+                      size={20}
+                      className="shrink-0 text-orange-600"
+                    />
+                    <div>
+                      <p className="font-semibold text-orange-800">
+                        Existe saldo pendiente
+                      </p>
+                      <p className="mt-1 text-sm text-orange-700">
+                        Saldo actual:{" "}
+                        <strong>
+                          $
+                          {Number(
+                            rentaDetalle?.saldo_pendiente || 0
+                          ).toFixed(2)}
+                        </strong>
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-3 border-t bg-slate-50 px-5 py-4">
+              <button
+                type="button"
+                onClick={() => setModalFinalizarRenta(false)}
+                disabled={procesandoOperacion}
+                className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-slate-700 hover:bg-slate-100 disabled:opacity-50"
+              >
+                Volver
+              </button>
+
+              <button
+                type="button"
+                onClick={confirmarFinalizacionRenta}
+                disabled={procesandoOperacion}
+                className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {procesandoOperacion ? (
+                  <>
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    Finalizando...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle size={16} />
+                    Finalizar renta
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {modalAnularExtra &&
+        extraParaAnular && (
+          <div
+            className="
+              fixed inset-0 z-[80]
+              flex items-center
+              justify-center
+              bg-slate-950/55
+              p-4
+              backdrop-blur-[2px]
+            "
+          >
+            <div
+              className="
+                w-full max-w-md
+                overflow-hidden
+                rounded-2xl
+                bg-white
+                shadow-2xl
+              "
+            >
+              {/* HEADER */}
+              <div className="border-b border-slate-200 px-5 py-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="font-bold text-slate-900">
+                      Anular cargo extra
+                    </h3>
+
+                    <p className="mt-1 text-sm text-slate-500">
+                      El cargo permanecerá en el historial como anulado.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={
+                      cerrarModalAnularExtra
+                    }
+                    disabled={anulandoExtra}
+                    className="
+                      rounded-lg p-2
+                      text-slate-400
+                      hover:bg-slate-100
+                      hover:text-slate-700
+                      disabled:opacity-40
+                    "
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+              </div>
+
+              {/* CONTENIDO */}
+              <div className="space-y-4 p-5">
+                <div className="rounded-xl border border-red-100 bg-red-50 p-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="font-semibold text-red-900">
+                        {extraParaAnular.tipo_extra ||
+                          "Cargo extra"}
+                      </p>
+
+                      <p className="mt-1 text-sm text-red-700">
+                        {extraParaAnular.descripcion ||
+                          "Sin descripción"}
+                      </p>
+                    </div>
+
+                    <p className="shrink-0 text-lg font-bold text-red-800">
+                      $
+                      {Number(
+                        extraParaAnular.monto ||
+                          0
+                      ).toFixed(2)}
+                    </p>
+                  </div>
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="motivo-anulacion-extra"
+                    className="mb-1.5 block text-sm font-semibold text-slate-700"
+                  >
+                    Motivo de la anulación
+                  </label>
+
+                  <textarea
+                    id="motivo-anulacion-extra"
+                    rows={4}
+                    maxLength={500}
+                    autoFocus
+                    value={
+                      motivoAnulacionExtra
+                    }
+                    onChange={(e) =>
+                      setMotivoAnulacionExtra(
+                        e.target.value
+                      )
+                    }
+                    placeholder="Ejemplo: cargo registrado por error"
+                    className="
+                      w-full resize-none
+                      rounded-xl border
+                      border-slate-300
+                      px-3 py-2.5
+                      text-sm text-slate-800
+                      outline-none
+                      transition
+                      focus:border-red-400
+                      focus:ring-2
+                      focus:ring-red-100
+                    "
+                  />
+
+                  <div className="mt-1 flex items-center justify-between">
+                    <p className="text-xs text-slate-400">
+                      Mínimo 3 caracteres
+                    </p>
+
+                    <p className="text-xs text-slate-400">
+                      {
+                        motivoAnulacionExtra.length
+                      }
+                      /500
+                    </p>
+                  </div>
+                </div>
+
+                <div className="rounded-lg bg-amber-50 px-3 py-2.5 text-xs text-amber-800">
+                  El monto será retirado del total y del saldo pendiente de la renta.
+                </div>
+              </div>
+
+              {/* FOOTER */}
+              <div className="flex justify-end gap-2 border-t border-slate-200 bg-slate-50 px-5 py-4">
+                <button
+                  type="button"
+                  onClick={
+                    cerrarModalAnularExtra
+                  }
+                  disabled={anulandoExtra}
+                  className="
+                    rounded-lg border
+                    border-slate-300
+                    bg-white px-4 py-2
+                    text-sm font-semibold
+                    text-slate-700
+                    hover:bg-slate-100
+                    disabled:opacity-50
+                  "
+                >
+                  Volver
+                </button>
+
+                <button
+                  type="button"
+                  onClick={
+                    confirmarAnulacionExtra
+                  }
+                  disabled={
+                    anulandoExtra ||
+                    motivoAnulacionExtra.trim()
+                      .length < 3
+                  }
+                  className="
+                    inline-flex items-center
+                    gap-2 rounded-lg
+                    bg-red-600 px-4 py-2
+                    text-sm font-semibold
+                    text-white
+                    hover:bg-red-700
+                    disabled:cursor-not-allowed
+                    disabled:opacity-50
+                  "
+                >
+                  <Ban size={16} />
+
+                  {anulandoExtra
+                    ? "Anulando..."
+                    : "Confirmar anulación"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
 
       <LocationPickerModal
         open={modalMapa}
