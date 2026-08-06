@@ -13,6 +13,8 @@ const {
   actualizarFechaRetiro,
   anularExtraRenta,
   anularPagoRenta,
+  obtenerCostosRenta,
+  guardarCostoRenta,
 } = require("./rentas.controller");
 
 const {
@@ -32,6 +34,28 @@ const {
 } = require(
   "../../../middlewares/estado.middleware"
 );
+
+
+// ======================================================
+// COSTOS DE LA RENTA
+// ======================================================
+
+router.get(
+  "/:id/costos",
+  validarJWT,
+  validarEstadoCuenta,
+  validarPermiso("rentas.ver"),
+  obtenerCostosRenta
+);
+
+router.put(
+  "/:id/costos",
+  validarJWT,
+  validarEstadoCuenta,
+  validarPermiso("rentas.editar"),
+  guardarCostoRenta
+);
+
 
 // ======================================================
 // FORM DATA

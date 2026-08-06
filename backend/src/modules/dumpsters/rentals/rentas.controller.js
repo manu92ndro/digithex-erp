@@ -18,6 +18,10 @@ const paymentService = require(
   "./services/rentas-payment.service"
 );
 
+const costosService = require(
+  "./services/rentas-costos.service"
+);
+
 // ======================================================
 // MANEJO CENTRALIZADO DE ERRORES
 // ======================================================
@@ -459,7 +463,77 @@ const anularPagoRenta = async (
   }
 };
 
+// ======================================================
+// OBTENER COSTOS DE LA RENTA
+// ======================================================
 
+const obtenerCostosRenta = async (
+  req,
+  res
+) => {
+  try {
+    const resultado =
+      await costosService.obtenerCostos({
+        idRenta:
+          req.params.id,
+
+        usuario:
+          req.usuario,
+
+        query:
+          req.query,
+      });
+
+    return res.json({
+      ok: true,
+      ...resultado,
+    });
+  } catch (error) {
+    return responderError(
+      res,
+      error,
+      "Error al obtener costos de la renta"
+    );
+  }
+};
+
+// ======================================================
+// GUARDAR COSTO DE LA RENTA
+// ======================================================
+
+const guardarCostoRenta = async (
+  req,
+  res
+) => {
+  try {
+    const resultado =
+      await costosService.guardarCosto({
+        idRenta:
+          req.params.id,
+
+        datos:
+          req.body,
+
+        usuario:
+          req.usuario,
+
+        req,
+      });
+
+    return res.json({
+      ok: true,
+      msg:
+        "Costo de la renta guardado correctamente",
+      ...resultado,
+    });
+  } catch (error) {
+    return responderError(
+      res,
+      error,
+      "Error al guardar costos de la renta"
+    );
+  }
+};
 
 // ======================================================
 // EXPORTACIONES
@@ -477,4 +551,6 @@ module.exports = {
   actualizarFechaRetiro,
   anularExtraRenta,
   anularPagoRenta,
+  obtenerCostosRenta,
+  guardarCostoRenta,
 };

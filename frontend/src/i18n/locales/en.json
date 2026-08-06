@@ -497,6 +497,63 @@
 "clients_search_manage": "Search, edit and manage client status.",
 "phone_number": "Phone number",
 "email_address": "Email address",
-"client_address_placeholder": "Client address"
+"client_address_placeholder": "Client address",
+
+
+"rentals.operation_costs_tab": "Operation",
+"rentals.operation_costs_loading": "Loading operational information...",
+
+"rentals.delivery_operation_title": "Dumpster delivery",
+"rentals.delivery_operation_description": "Enter the departure and completion times for the delivery.",
+"rentals.delivery_registered_title": "Delivery recorded",
+"rentals.delivery_registered_message": "This record is closed and cannot be changed from the rentals module.",
+"rentals.delivery_start": "Delivery start",
+"rentals.delivery_end": "Delivery completion",
+"rentals.delivery_time_registered": "Recorded time",
+"rentals.delivery_notes_placeholder": "Example: delivery completed without issues",
+"rentals.delivery_register_button": "Record delivery",
+
+"rentals.pickup_operation_title": "Pickup and disposal",
+"rentals.pickup_operation_description": "Enter the pickup time and disposal location information.",
+"rentals.pickup_registered_title": "Pickup recorded",
+"rentals.pickup_registered_message": "This record is closed and cannot be changed from the rentals module.",
+"rentals.pickup_start": "Pickup start",
+"rentals.pickup_end": "Pickup completion",
+"rentals.pickup_time_registered": "Recorded time",
+"rentals.disposal_location": "Disposal location",
+"rentals.disposal_location_placeholder": "Example: ABC Transfer Station",
+"rentals.ticket_number": "Ticket number",
+"rentals.ticket_number_placeholder": "Example: 45872",
+"rentals.disposal_amount": "Amount paid for disposal",
+"rentals.pickup_notes_placeholder": "Example: pickup and disposal completed successfully",
+"rentals.pickup_register_button": "Record pickup",
+
+"rentals.operation_start": "Start",
+"rentals.operation_end": "Completion",
+"rentals.operation_time": "Time",
+"rentals.operation_hours": "hours",
+"rentals.operation_notes": "Notes",
+"rentals.operation_registered_by": "Recorded by",
+"rentals.operation_disposal": "Disposal",
+"rentals.operation_ticket": "Ticket",
+"rentals.operation_amount_paid": "Amount paid",
+"rentals.operation_saving": "Saving...",
+
+"rentals.operation_single_registration": "This information can only be recorded once.",
+"rentals.operation_already_registered": "This operation has already been recorded and cannot be changed.",
+
+"rentals.operation_no_permission": "You do not have permission to record operational information.",
+"rentals.operation_rental_not_found": "The rental could not be identified.",
+"rentals.operation_dates_required": "Enter the start and completion times.",
+"rentals.operation_invalid_time_range": "The completion time must be later than the start time.",
+"rentals.operation_invalid_disposal_amount": "The disposal amount cannot be negative.",
+"rentals.delivery_saved": "Delivery recorded successfully.",
+"rentals.pickup_saved": "Pickup recorded successfully.",
+"rentals.delivery_save_error": "The delivery could not be recorded.",
+"rentals.pickup_save_error": "The pickup could not be recorded.",
+"rentals.operation_load_error": "The operational information could not be loaded."
+
+
+
 
 }
