@@ -27,20 +27,33 @@ const responderError = (
   error,
   mensajePredeterminado
 ) => {
-  console.error(
-    mensajePredeterminado,
-    error
+  const status = Number(
+    error.status || 500
   );
 
+  /*
+   * Los errores esperados del negocio
+   * no necesitan imprimir todo el stack.
+   */
+  if (status >= 500) {
+    console.error(
+      mensajePredeterminado,
+      error
+    );
+  } else {
+    console.warn(
+      `[${error.code || "ERROR_NEGOCIO"}]`,
+      error.message
+    );
+  }
+
   return res
-    .status(error.status || 500)
+    .status(status)
     .json({
       ok: false,
-
       code:
         error.code ||
         "ERROR_INTERNO",
-
       msg:
         error.status
           ? error.message
