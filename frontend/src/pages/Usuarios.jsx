@@ -484,129 +484,324 @@ export default function Usuarios() {
                 onSubmit={handleSubmit}
                 className="grid grid-cols-1 md:grid-cols-2 gap-4 p-6"
               >
+
+                {/* ================================================= */}
+                {/* EMPRESA */}
+                {/* ================================================= */}
+
                 <div>
                   <label className="text-sm font-medium text-slate-600">
                     {t("company")}
                   </label>
+
                   <select
                     name="id_empresa"
                     value={form.id_empresa}
                     onChange={(e) => {
+
                       const value = e.target.value;
-                      setForm({
-                        ...form,
-                        id_empresa: value === "" ? "" : Number(value)
-                      });
+
+                      setForm((prev) => ({
+                        ...prev,
+
+                        id_empresa:
+                          value === ""
+                            ? ""
+                            : Number(value),
+
+                        // MUY IMPORTANTE
+                        // Si cambia empresa, limpiamos el rol anterior
+                        id_rol: ""
+                      }));
                     }}
-                    className="mt-1 w-full border border-slate-200 p-2.5 rounded-xl outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500"
+                    className="
+                      mt-1
+                      w-full
+                      border
+                      border-slate-200
+                      p-2.5
+                      rounded-xl
+                      outline-none
+                      focus:ring-2
+                      focus:ring-blue-100
+                      focus:border-blue-500
+                    "
                     required
                   >
+
                     <option value="">
                       {t("select_company")}
                     </option>
-                    {empresas.map((e) => (
-                      <option key={e.id_empresa} value={e.id_empresa}>
-                        {e.nombre_empresa || e.nombre}
+
+                    {empresas.map((empresa) => (
+
+                      <option
+                        key={empresa.id_empresa}
+                        value={empresa.id_empresa}
+                      >
+                        {empresa.nombre_empresa || empresa.nombre}
                       </option>
+
                     ))}
+
                   </select>
                 </div>
 
+
+                {/* ================================================= */}
+                {/* ROL */}
+                {/* ================================================= */}
+
                 <div>
+
                   <label className="text-sm font-medium text-slate-600">
                     {t("role")}
                   </label>
+
                   <select
                     name="id_rol"
                     value={form.id_rol}
+                    disabled={!form.id_empresa}
                     onChange={(e) => {
+
                       const value = e.target.value;
-                      setForm({
-                        ...form,
-                        id_rol: value === "" ? "" : Number(value)
-                      });
+
+                      setForm((prev) => ({
+                        ...prev,
+
+                        id_rol:
+                          value === ""
+                            ? ""
+                            : Number(value)
+                      }));
                     }}
-                    className="mt-1 w-full border border-slate-200 p-2.5 rounded-xl outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500"
+                    className="
+                      mt-1
+                      w-full
+                      border
+                      border-slate-200
+                      p-2.5
+                      rounded-xl
+                      outline-none
+                      focus:ring-2
+                      focus:ring-blue-100
+                      focus:border-blue-500
+                      disabled:bg-slate-100
+                      disabled:text-slate-400
+                      disabled:cursor-not-allowed
+                    "
                     required
                   >
+
                     <option value="">
-                      {t("select_role")}
+
+                      {!form.id_empresa
+                        ? t("select_company_first")
+                        : t("select_role")}
+
                     </option>
-                    {roles.map((r) => (
-                      <option key={r.id_rol} value={r.id_rol}>
-                        {r.rol || r.nombre}
-                      </option>
-                    ))}
+
+
+                    {roles
+                      .filter((rol) => {
+
+                        const perteneceEmpresa =
+                          Number(rol.id_empresa) ===
+                          Number(form.id_empresa);
+
+
+                        const estaActivo =
+                          Number(rol.estado) === 1;
+
+
+                        const esRolActual =
+                          Number(rol.id_rol) ===
+                          Number(form.id_rol);
+
+
+                        return (
+                          perteneceEmpresa &&
+                          (estaActivo || esRolActual)
+                        );
+
+                      })
+                      .map((rol) => (
+
+                        <option
+                          key={rol.id_rol}
+                          value={rol.id_rol}
+                        >
+
+                          {rol.rol || rol.nombre}
+
+                        </option>
+
+                      ))}
+
                   </select>
+
                 </div>
 
+
+                {/* ================================================= */}
+                {/* NOMBRE */}
+                {/* ================================================= */}
+
                 <div>
+
                   <label className="text-sm font-medium text-slate-600">
                     {t("name")}
                   </label>
 
+
                   <div className="relative mt-1">
+
                     <UserRound
                       size={17}
-                      className="absolute left-3 top-3 text-slate-400"
+                      className="
+                        absolute
+                        left-3
+                        top-3
+                        text-slate-400
+                      "
                     />
+
                     <input
                       name="nombres"
                       value={form.nombres}
                       onChange={handleChange}
                       placeholder={t("full_name")}
-                      className="w-full pl-10 border border-slate-200 p-2.5 rounded-xl outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500"
+                      className="
+                        w-full
+                        pl-10
+                        border
+                        border-slate-200
+                        p-2.5
+                        rounded-xl
+                        outline-none
+                        focus:ring-2
+                        focus:ring-blue-100
+                        focus:border-blue-500
+                      "
                       required
                     />
+
                   </div>
+
                 </div>
 
+
+                {/* ================================================= */}
+                {/* EMAIL */}
+                {/* ================================================= */}
+
                 <div>
+
                   <label className="text-sm font-medium text-slate-600">
                     {t("email")}
                   </label>
 
+
                   <div className="relative mt-1">
+
                     <Mail
                       size={17}
-                      className="absolute left-3 top-3 text-slate-400"
+                      className="
+                        absolute
+                        left-3
+                        top-3
+                        text-slate-400
+                      "
                     />
+
                     <input
                       type="email"
                       name="email"
                       value={form.email}
                       onChange={handleChange}
                       placeholder="correo@email.com"
-                      className="w-full pl-10 border border-slate-200 p-2.5 rounded-xl outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500"
+                      className="
+                        w-full
+                        pl-10
+                        border
+                        border-slate-200
+                        p-2.5
+                        rounded-xl
+                        outline-none
+                        focus:ring-2
+                        focus:ring-blue-100
+                        focus:border-blue-500
+                      "
                       required
                     />
+
                   </div>
+
                 </div>
 
+
+                {/* ================================================= */}
+                {/* CELULAR */}
+                {/* ================================================= */}
+
                 <div>
+
                   <label className="text-sm font-medium text-slate-600">
                     {t("cellphone")}
                   </label>
 
+
                   <div className="relative mt-1">
+
                     <Phone
                       size={17}
-                      className="absolute left-3 top-3 text-slate-400"
+                      className="
+                        absolute
+                        left-3
+                        top-3
+                        text-slate-400
+                      "
                     />
+
                     <input
                       name="celular"
                       value={form.celular}
                       onChange={handleChange}
                       placeholder={t("cellphone")}
-                      className="w-full pl-10 border border-slate-200 p-2.5 rounded-xl outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500"
+                      className="
+                        w-full
+                        pl-10
+                        border
+                        border-slate-200
+                        p-2.5
+                        rounded-xl
+                        outline-none
+                        focus:ring-2
+                        focus:ring-blue-100
+                        focus:border-blue-500
+                      "
                     />
+
                   </div>
+
                 </div>
 
+
+                {/* ================================================= */}
+                {/* PASSWORD */}
+                {/* ================================================= */}
+
                 <div>
+
                   <label className="text-sm font-medium text-slate-600">
-                    {t("password")} {idUsuario && `(${t("optional")})`}
+
+                    {t("password")}
+
+                    {idUsuario && ` (${t("optional")})`}
+
                   </label>
+
+
                   <input
                     type="password"
                     name="password_user"
@@ -617,51 +812,142 @@ export default function Usuarios() {
                         ? t("leave_empty_password")
                         : t("password")
                     }
-                    className="mt-1 w-full border border-slate-200 p-2.5 rounded-xl outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500"
+                    className="
+                      mt-1
+                      w-full
+                      border
+                      border-slate-200
+                      p-2.5
+                      rounded-xl
+                      outline-none
+                      focus:ring-2
+                      focus:ring-blue-100
+                      focus:border-blue-500
+                    "
                     required={!idUsuario}
                   />
+
                 </div>
 
+
+                {/* ================================================= */}
+                {/* ESTADO */}
+                {/* ================================================= */}
+
                 <div>
+
                   <label className="text-sm font-medium text-slate-600">
                     {t("status")}
                   </label>
+
+
                   <select
                     name="estado"
                     value={form.estado}
                     onChange={handleChange}
-                    className="mt-1 w-full border border-slate-200 p-2.5 rounded-xl outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500"
+                    className="
+                      mt-1
+                      w-full
+                      border
+                      border-slate-200
+                      p-2.5
+                      rounded-xl
+                      outline-none
+                      focus:ring-2
+                      focus:ring-blue-100
+                      focus:border-blue-500
+                    "
                   >
-                    <option value={1}>{t("active")}</option>
-                    <option value={0}>{t("inactive")}</option>
+
+                    <option value={1}>
+                      {t("active")}
+                    </option>
+
+                    <option value={0}>
+                      {t("inactive")}
+                    </option>
+
                   </select>
+
                 </div>
 
-                <div className="md:col-span-2 flex flex-col sm:flex-row justify-end gap-3 pt-4 border-t border-slate-100">
+
+                {/* ================================================= */}
+                {/* BOTONES */}
+                {/* ================================================= */}
+
+                <div
+                  className="
+                    md:col-span-2
+                    flex
+                    flex-col
+                    sm:flex-row
+                    justify-end
+                    gap-3
+                    pt-4
+                    border-t
+                    border-slate-100
+                  "
+                >
+
                   <button
                     type="button"
                     onClick={cerrarModal}
-                    className="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition"
+                    className="
+                      px-5
+                      py-2.5
+                      rounded-xl
+                      border
+                      border-slate-200
+                      text-slate-600
+                      hover:bg-slate-50
+                      transition
+                    "
                   >
                     {t("cancel")}
                   </button>
 
-                  {hasPermission(idUsuario ? "usuarios.editar" : "usuarios.crear") && (
+
+                  {hasPermission(
+                    idUsuario
+                      ? "usuarios.editar"
+                      : "usuarios.crear"
+                  ) && (
+
                     <button
                       type="submit"
                       disabled={loading}
-                      className="inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white px-5 py-2.5 rounded-xl transition"
+                      className="
+                        inline-flex
+                        items-center
+                        justify-center
+                        gap-2
+                        bg-blue-600
+                        hover:bg-blue-700
+                        disabled:opacity-60
+                        text-white
+                        px-5
+                        py-2.5
+                        rounded-xl
+                        transition
+                      "
                     >
+
                       <Save size={18} />
+
                       {loading
                         ? t("saving")
                         : idUsuario
                           ? t("update")
-                          : t("save")}
+                          : t("save")
+                      }
+
                     </button>
-                  )}  
-                    
+
+                  )}
+
                 </div>
+
               </form>
 
             </div>
