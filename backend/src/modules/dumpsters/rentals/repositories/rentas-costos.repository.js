@@ -1,5 +1,5 @@
 // ======================================================
-// REPOSITORY: COSTOS DE RENTAS
+// REPOSITORY: COSTOS / OPERACIÓN DE RENTAS
 // Tabla principal: tb_renta_costos
 // ======================================================
 
@@ -22,6 +22,10 @@ const bloquearRenta = async (
       r.id_dumpster,
       r.id_camion,
       r.estado,
+      r.fecha_inicio,
+      r.dias_renta,
+      r.fecha_estimada_devolucion,
+      r.fecha_real_devolucion,
 
       f.subtotal_base,
       f.total_extras,
@@ -77,7 +81,7 @@ const obtenerTarifaHora = async (
 };
 
 // ======================================================
-// CREAR O ACTUALIZAR COSTO
+// GUARDAR COSTO / OPERACIÓN
 // ======================================================
 
 const guardarCosto = async (
@@ -99,82 +103,167 @@ const guardarCosto = async (
     creadoPor,
   }
 ) => {
-  try {
-    const [result] =
-      await conn.query(
-        `
-        INSERT INTO tb_renta_costos
-        (
-          id_empresa,
-          id_renta,
-          tipo_operacion,
-          hora_inicio,
-          hora_fin,
-          horas_operacion,
-          tarifa_hora,
-          costo_operativo,
-          lugar_disposicion,
-          numero_ticket,
-          costo_disposicion,
-          costo_total,
-          observaciones,
-          estado,
-          creado_por,
-          fecha_registro,
-          fyh_actualizacion
-        )
-        VALUES
-        (
-          ?, ?, ?,
-          ?, ?,
-          ?, ?, ?,
-          ?, ?, ?,
-          ?, ?,
-          'registrado',
-          ?,
-          NOW(),
-          NOW()
-        )
-        `,
-        [
-          idEmpresa,
-          idRenta,
-          tipoOperacion,
-          horaInicio,
-          horaFin,
-          horasOperacion,
-          tarifaHora,
-          costoOperativo,
-          lugarDisposicion,
-          numeroTicket,
-          costoDisposicion,
-          costoTotal,
-          observaciones,
-          creadoPor,
-        ]
-      );
+  const [result] = await conn.query(
+    `
+    INSERT INTO tb_renta_costos
+    (
+      id_empresa,
+      id_renta,
+      tipo_operacion,
+      hora_inicio,
+      hora_fin,
+      horas_operacion,
+      tarifa_hora,
+      costo_operativo,
+      lugar_disposicion,
+      numero_ticket,
+      costo_disposicion,
+      costo_total,
+      observaciones,
+      estado,
+      creado_por,
+      fecha_registro,
+      fyh_actualizacion
+    )
+    VALUES
+    (
+      ?, ?, ?,
+      ?, ?,
+      ?, ?, ?,
+      ?, ?, ?,
+      ?, ?,
+      'registrado',
+      ?,
+      NOW(),
+      NOW()
+    )
+    `,
+    [
+      idEmpresa,
+      idRenta,
+      tipoOperacion,
+      horaInicio,
+      horaFin,
+      horasOperacion,
+      tarifaHora,
+      costoOperativo,
+      lugarDisposicion,
+      numeroTicket,
+      costoDisposicion,
+      costoTotal,
+      observaciones,
+      creadoPor,
+    ]
+  );
 
-    return {
-      insertId:
-        Number(result.insertId || 0),
+  return {
+    insertId: Number(result.insertId || 0),
+    affectedRows: Number(result.affectedRows || 0),
+  };
+};
 
-      affectedRows:
-        Number(result.affectedRows || 0),
-    };
-  } catch (error) {
-    /*
-     * La clave única:
-     * id_empresa + id_renta + tipo_operacion
-     * evita registrar dos entregas o dos retiros.
-     */
-    if (
-      error.code === "ER_DUP_ENTRY"
-    ) {
-      throw error;
-    }
+// ======================================================
+// CAMBIO DE ESTADO DESPUÉS DE ENTREGA
+// programada -> en_uso
+// La fecha programada original (fecha_inicio) NO se toca.
+// ======================================================
 
-    throw error;
+const registrarEntregaEnRenta = async (
+  conn,
+  {
+    idRenta,
+    idEmpresa,
+    fechaEstimadaDevolucion,
   }
+) => {
+  const [result] = await conn.query(
+    `
+    UPDATE tb_rentas
+
+    SET
+      estado = 'en_uso',
+      fecha_estimada_devolucion = ?,
+      fyh_actualizacion = NOW()
+
+    WHERE id_renta = ?
+      AND id_empresa = ?
+      AND estado = 'programada'
+    `,
+    [
+      fechaEstimadaDevolucion,
+      idRenta,
+      idEmpresa,
+    ]
+  );
+
+  return Number(result.affectedRows || 0);
+};
+
+// ======================================================
+// FINALIZAR DESPUÉS DEL RETIRO
+// en_uso -> finalizado
+// ======================================================
+
+const registrarRetiroEnRenta = async (
+  conn,
+  {
+    idRenta,
+    idEmpresa,
+    fechaRealDevolucion,
+  }
+) => {
+  const [result] = await conn.query(
+    `
+    UPDATE tb_rentas
+
+    SET
+      estado = 'finalizado',
+      fecha_real_devolucion = ?,
+      fyh_actualizacion = NOW()
+
+    WHERE id_renta = ?
+      AND id_empresa = ?
+      AND estado = 'en_uso'
+    `,
+    [
+      fechaRealDevolucion,
+      idRenta,
+      idEmpresa,
+    ]
+  );
+
+  return Number(result.affectedRows || 0);
+};
+
+// ======================================================
+// LIBERAR DUMPSTER AL REGISTRAR RETIRO
+// ======================================================
+
+const liberarDumpster = async (
+  conn,
+  {
+    idDumpster,
+    idEmpresa,
+  }
+) => {
+  const [result] = await conn.query(
+    `
+    UPDATE dumpsters
+
+    SET
+      estado = 'disponible',
+      fecha_actualizacion = CURRENT_TIMESTAMP
+
+    WHERE id_dumpster = ?
+      AND id_empresa = ?
+    `,
+    [
+      idDumpster,
+      idEmpresa,
+    ]
+  );
+
+  return Number(result.affectedRows || 0);
 };
 
 // ======================================================
@@ -361,6 +450,9 @@ module.exports = {
   bloquearRenta,
   obtenerTarifaHora,
   guardarCosto,
+  registrarEntregaEnRenta,
+  registrarRetiroEnRenta,
+  liberarDumpster,
   obtenerCostos,
   obtenerResumenCostos,
   obtenerFinanzas,

@@ -1,0 +1,7 @@
+{
+  "audit": "Auditoría",
+  "audit_description": "Consulta las acciones realizadas dentro del sistema.",
+  "system_logs": "Logs del sistema",
+  "search_logs": "Buscar por usuario, empresa, módulo, acción o IP...",
+  "no_logs": "No hay logs para mostrar."
+}

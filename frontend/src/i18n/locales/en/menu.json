@@ -1,0 +1,13 @@
+{
+  "menu_dashboard": "Dashboard",
+  "menu_perfil_empresa": "Company Profile",
+  "menu_empresas": "Companies",
+  "menu_usuarios": "Users",
+  "menu_roles": "Roles",
+  "menu_auditoría": "Audit",
+  "menu_clientes": "Clients",
+  "menu_dumpsters": "Dumpsters",
+  "menu_camiones": "Trucks",
+  "menu_rentas": "Rentals",
+  "menu_company_settings": "Company Settings"
+}

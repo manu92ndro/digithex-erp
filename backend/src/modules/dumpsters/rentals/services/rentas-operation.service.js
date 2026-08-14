@@ -23,34 +23,6 @@ const {
 );
 
 // ======================================================
-// ESTADOS PERMITIDOS POR OPERACIÓN
-// ======================================================
-
-/*
- * Cancelar significa que el servicio no llegó a completarse.
- *
- * "en_entrega" se permite únicamente si ese estado significa
- * que el chofer está en camino, pero todavía no ha entregado.
- *
- * Si en tu negocio "en_entrega" significa que el dumpster
- * ya fue entregado, elimínalo de esta lista.
- */
-const ESTADOS_CANCELABLES = [
-  "pendiente",
-  "programada",
-  "en_entrega",
-];
-
-/*
- * Una renta solo debe finalizarse cuando el dumpster ya estuvo
- * con el cliente o se encuentra en proceso de retiro.
- */
-const ESTADOS_FINALIZABLES = [
-  "en_uso",
-  "en_retiro",
-];
-
-// ======================================================
 // UTILIDADES
 // ======================================================
 
@@ -91,184 +63,39 @@ const validarMotivo = (
 };
 
 // ======================================================
-// FINALIZAR RENTA
+// FINALIZAR RENTA MANUALMENTE
+//
+// IMPORTANTE:
+// La finalización normal ahora sucede automáticamente
+// cuando se registra el RETIRO.
+//
+// Se conserva esta función solo para que una llamada vieja
+// del frontend no cierre la renta sin registrar retiro.
 // ======================================================
 
 const finalizarRenta = async ({
   idRenta,
   usuario,
-  req,
 }) => {
-  const id = validarId(
+  validarId(
     idRenta,
     "ID de la renta"
   );
 
-  const idEmpresa =
-    obtenerIdEmpresa({
-      usuario,
-    });
-
-  const resultado =
-    await ejecutarTransaccion(
-      db,
-      async (conn) => {
-        // ==============================================
-        // 1. BLOQUEAR Y OBTENER RENTA
-        // ==============================================
-
-        const renta =
-          await repository.bloquearRenta(
-            conn,
-            {
-              idRenta: id,
-              idEmpresa,
-            }
-          );
-
-        if (!renta) {
-          throw new RentaError(
-            "Renta no encontrada",
-            404,
-            "RENTA_NO_ENCONTRADA"
-          );
-        }
-
-        const estadoActual =
-          normalizarEstado(
-            renta.estado
-          );
-
-        // ==============================================
-        // 2. VALIDAR ESTADO
-        // ==============================================
-
-        if (
-          estadoActual ===
-          "finalizado"
-        ) {
-          throw new RentaError(
-            "La renta ya se encuentra finalizada",
-            409,
-            "RENTA_YA_FINALIZADA"
-          );
-        }
-
-        if (
-          estadoActual ===
-          "cancelado"
-        ) {
-          throw new RentaError(
-            "No se puede finalizar una renta cancelada",
-            409,
-            "RENTA_CANCELADA"
-          );
-        }
-
-        if (
-          !ESTADOS_FINALIZABLES.includes(
-            estadoActual
-          )
-        ) {
-          throw new RentaError(
-            "La renta solo puede finalizarse cuando está en uso o en proceso de retiro",
-            409,
-            "RENTA_NO_FINALIZABLE"
-          );
-        }
-
-        // ==============================================
-        // 3. FINALIZAR RENTA
-        // ==============================================
-
-        const rentaActualizada =
-          await repository.finalizar(
-            conn,
-            {
-              idRenta: id,
-              idEmpresa,
-            }
-          );
-
-        if (
-          Number(rentaActualizada) !== 1
-        ) {
-          throw new RentaError(
-            "No se pudo finalizar la renta",
-            409,
-            "RENTA_NO_FINALIZADA"
-          );
-        }
-
-        // ==============================================
-        // 4. LIBERAR DUMPSTER
-        // ==============================================
-
-        const dumpsterLiberado =
-          await repository.liberarDumpster(
-            conn,
-            {
-              idDumpster:
-                renta.id_dumpster,
-
-              idEmpresa,
-            }
-          );
-
-        if (
-          Number(dumpsterLiberado) !== 1
-        ) {
-          throw new RentaError(
-            "No se pudo liberar el dumpster",
-            500,
-            "DUMPSTER_NO_LIBERADO"
-          );
-        }
-
-        return {
-          idRenta: id,
-          idDumpster:
-            Number(
-              renta.id_dumpster
-            ),
-
-          estadoAnterior:
-            estadoActual,
-
-          estadoNuevo:
-            "finalizado",
-        };
-      }
-    );
-
-  // ====================================================
-  // AUDITORÍA
-  // ====================================================
-
-  await registrarLog({
-    req,
-    modulo: "Rentas",
-    accion: "FINALIZAR",
-    descripcion:
-      `Renta #${resultado.idRenta} finalizada. ` +
-      `Estado anterior: ${resultado.estadoAnterior}. ` +
-      `Dumpster #${resultado.idDumpster} liberado.`,
+  obtenerIdEmpresa({
+    usuario,
   });
 
-  return {
-    id_renta:
-      resultado.idRenta,
-
-    id_dumpster:
-      resultado.idDumpster,
-
-    estado:
-      resultado.estadoNuevo,
-  };
+  throw new RentaError(
+    "Para finalizar la renta debe registrar primero el retiro y la disposición. La renta se finalizará automáticamente.",
+    409,
+    "RETIRO_REQUERIDO_PARA_FINALIZAR"
+  );
 };
 
 // ======================================================
 // CANCELAR RENTA
+// Solo se cancela ANTES de entregar.
 // ======================================================
 
 const cancelarRenta = async ({
@@ -303,9 +130,7 @@ const cancelarRenta = async ({
   );
 
   if (
-    !Number.isInteger(
-      canceladoPor
-    ) ||
+    !Number.isInteger(canceladoPor) ||
     canceladoPor <= 0
   ) {
     throw new RentaError(
@@ -319,10 +144,6 @@ const cancelarRenta = async ({
     await ejecutarTransaccion(
       db,
       async (conn) => {
-        // ==============================================
-        // 1. BLOQUEAR Y OBTENER RENTA
-        // ==============================================
-
         const renta =
           await repository.bloquearRenta(
             conn,
@@ -345,13 +166,8 @@ const cancelarRenta = async ({
             renta.estado
           );
 
-        // ==============================================
-        // 2. VALIDAR ESTADO CANCELABLE
-        // ==============================================
-
         if (
-          estadoActual ===
-          "cancelado"
+          estadoActual === "cancelado"
         ) {
           throw new RentaError(
             "La renta ya se encuentra cancelada",
@@ -361,8 +177,7 @@ const cancelarRenta = async ({
         }
 
         if (
-          estadoActual ===
-          "finalizado"
+          estadoActual === "finalizado"
         ) {
           throw new RentaError(
             "No se puede cancelar una renta finalizada",
@@ -371,21 +186,20 @@ const cancelarRenta = async ({
           );
         }
 
+        /*
+         * Después de entregar el dumpster ya no hablamos
+         * de cancelación. Si está en uso debe registrarse
+         * su retiro, incluso si fue anticipado.
+         */
         if (
-          !ESTADOS_CANCELABLES.includes(
-            estadoActual
-          )
+          estadoActual !== "programada"
         ) {
           throw new RentaError(
-            "La renta ya fue entregada o se encuentra en uso. Debe finalizarse o registrarse un retiro anticipado, no cancelarse.",
+            "La renta ya fue entregada. Debe registrar un retiro, no cancelarla.",
             409,
             "RENTA_NO_CANCELABLE"
           );
         }
-
-        // ==============================================
-        // 3. CANCELAR RENTA
-        // ==============================================
 
         const rentaCancelada =
           await repository.cancelar(
@@ -394,23 +208,16 @@ const cancelarRenta = async ({
               idRenta: id,
               idEmpresa,
               motivo,
-              canceladoPor,
             }
           );
 
-        if (
-          Number(rentaCancelada) !== 1
-        ) {
+        if (rentaCancelada !== 1) {
           throw new RentaError(
             "No se pudo cancelar la renta",
             409,
             "RENTA_NO_CANCELADA"
           );
         }
-
-        // ==============================================
-        // 4. CANCELAR FINANZAS
-        // ==============================================
 
         const finanzasCanceladas =
           await repository.cancelarFinanzas(
@@ -422,9 +229,7 @@ const cancelarRenta = async ({
           );
 
         if (
-          Number(
-            finanzasCanceladas
-          ) !== 1
+          finanzasCanceladas !== 1
         ) {
           throw new RentaError(
             "No se pudieron cancelar las finanzas de la renta",
@@ -433,17 +238,6 @@ const cancelarRenta = async ({
           );
         }
 
-        // ==============================================
-        // 5. ANULAR PAGOS DE LA RENTA
-        // ==============================================
-
-        /*
-         * Esta operación se mantiene porque una renta cancelada
-         * antes de la entrega deja de tener cargos válidos.
-         *
-         * El repository debe guardar motivo, usuario y fecha
-         * si tb_renta_pagos ya posee esas columnas.
-         */
         const pagosAnulados =
           await repository.anularPagos(
             conn,
@@ -456,23 +250,18 @@ const cancelarRenta = async ({
             }
           );
 
-        // ==============================================
-        // 6. LIBERAR DUMPSTER
-        // ==============================================
-
         const dumpsterLiberado =
           await repository.liberarDumpster(
             conn,
             {
               idDumpster:
                 renta.id_dumpster,
-
               idEmpresa,
             }
           );
 
         if (
-          Number(dumpsterLiberado) !== 1
+          dumpsterLiberado !== 1
         ) {
           throw new RentaError(
             "No se pudo liberar el dumpster",
@@ -505,10 +294,6 @@ const cancelarRenta = async ({
       }
     );
 
-  // ====================================================
-  // AUDITORÍA
-  // ====================================================
-
   await registrarLog({
     req,
     modulo: "Rentas",
@@ -540,7 +325,10 @@ const cancelarRenta = async ({
 };
 
 // ======================================================
-// ACTUALIZAR FECHA DE RETIRO
+// ACTUALIZAR / REAGENDAR FECHA DE RETIRO
+//
+// Si está programada, calcula desde la fecha programada.
+// Si ya está en uso, calcula desde la entrega REAL.
 // ======================================================
 
 const actualizarFechaRetiro = async ({
@@ -577,10 +365,6 @@ const actualizarFechaRetiro = async ({
     await ejecutarTransaccion(
       db,
       async (conn) => {
-        // ==============================================
-        // 1. BLOQUEAR RENTA
-        // ==============================================
-
         const renta =
           await repository.bloquearRenta(
             conn,
@@ -603,30 +387,53 @@ const actualizarFechaRetiro = async ({
             renta.estado
           );
 
-        // ==============================================
-        // 2. VALIDAR ESTADO
-        // ==============================================
-
         if (
-          estadoActual ===
-            "finalizado" ||
-          estadoActual ===
-            "cancelado"
+          ![
+            "programada",
+            "en_uso",
+          ].includes(estadoActual)
         ) {
           throw new RentaError(
-            "No se pueden cambiar las fechas de una renta cerrada",
+            "Solo se puede reagendar una renta programada o en uso",
             409,
-            "RENTA_CERRADA"
+            "RENTA_NO_REAGENDABLE"
           );
         }
 
-        // ==============================================
-        // 3. CALCULAR DÍAS
-        // ==============================================
+        let fechaBase =
+          renta.fecha_inicio;
+
+        if (
+          estadoActual === "en_uso"
+        ) {
+          const entrega =
+            await repository
+              .obtenerEntregaRegistrada(
+                conn,
+                {
+                  idRenta: id,
+                  idEmpresa,
+                }
+              );
+
+          if (
+            !entrega ||
+            !entrega.hora_fin
+          ) {
+            throw new RentaError(
+              "No se encontró la entrega real de esta renta",
+              409,
+              "ENTREGA_REAL_NO_ENCONTRADA"
+            );
+          }
+
+          fechaBase =
+            entrega.hora_fin;
+        }
 
         const diasRenta =
           calcularDias(
-            renta.fecha_inicio,
+            fechaBase,
             fecha
           );
 
@@ -637,30 +444,26 @@ const actualizarFechaRetiro = async ({
           Number(diasRenta) <= 0
         ) {
           throw new RentaError(
-            "La fecha de retiro debe ser posterior a la fecha de inicio",
+            "La fecha de retiro debe ser posterior al inicio real de la renta",
             400,
             "FECHA_RETIRO_INVALIDA"
           );
         }
 
-        // ==============================================
-        // 4. ACTUALIZAR FECHA
-        // ==============================================
-
         const afectados =
-          await repository.actualizarFechaRetiro(
-            conn,
-            {
-              idRenta: id,
-              idEmpresa,
-              fecha,
-              diasRenta,
-            }
-          );
+          await repository
+            .actualizarFechaRetiro(
+              conn,
+              {
+                idRenta: id,
+                idEmpresa,
+                fecha,
+                diasRenta:
+                  Number(diasRenta),
+              }
+            );
 
-        if (
-          Number(afectados) !== 1
-        ) {
+        if (afectados !== 1) {
           throw new RentaError(
             "No se pudo actualizar la fecha de retiro",
             404,
@@ -670,17 +473,12 @@ const actualizarFechaRetiro = async ({
 
         return {
           idRenta: id,
-          fechaRetiro:
-            fecha,
+          fechaRetiro: fecha,
           diasRenta:
             Number(diasRenta),
         };
       }
     );
-
-  // ====================================================
-  // AUDITORÍA
-  // ====================================================
 
   await registrarLog({
     req,
