@@ -16,15 +16,12 @@ app.set("trust proxy", 1);
 // ===============================
 
 const allowedOrigins = process.env.CORS_ORIGINS
-  ? process.env.CORS_ORIGINS
-      .split(",")
-      .map((origin) => origin.trim())
-      .filter(Boolean)
+  ? process.env.CORS_ORIGINS.split(",")
   : [
       "http://localhost:5173",
+      "http://localhost:5174",
       "https://app.domthex.com",
     ];
-
 const corsOptions = {
   origin: (origin, callback) => {
     // Permitir solicitudes sin origin:

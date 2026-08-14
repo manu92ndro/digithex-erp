@@ -42,14 +42,14 @@ const normalizarTexto = (
     return null;
   }
 
-  return texto.slice(
-    0,
-    maximo
-  );
+  return texto.slice(0, maximo);
 };
 
+const dosDigitos = (valor) =>
+  String(valor).padStart(2, "0");
+
 // ======================================================
-// NORMALIZAR FECHA Y HORA
+// FECHAS
 // ======================================================
 
 const convertirFecha = (
@@ -66,11 +66,7 @@ const convertirFecha = (
 
   const fecha = new Date(valor);
 
-  if (
-    Number.isNaN(
-      fecha.getTime()
-    )
-  ) {
+  if (Number.isNaN(fecha.getTime())) {
     throw new RentaError(
       `${nombreCampo} no es válida`,
       400,
@@ -81,46 +77,44 @@ const convertirFecha = (
   return fecha;
 };
 
-// ======================================================
-// FORMATEAR FECHA PARA MYSQL
-// ======================================================
-
-const dosDigitos = (valor) =>
-  String(valor).padStart(
-    2,
-    "0"
-  );
-
 const formatearFechaMySQL = (
   fecha
 ) => {
   const parteFecha = [
     fecha.getFullYear(),
-
-    dosDigitos(
-      fecha.getMonth() + 1
-    ),
-
-    dosDigitos(
-      fecha.getDate()
-    ),
+    dosDigitos(fecha.getMonth() + 1),
+    dosDigitos(fecha.getDate()),
   ].join("-");
 
   const parteHora = [
-    dosDigitos(
-      fecha.getHours()
-    ),
-
-    dosDigitos(
-      fecha.getMinutes()
-    ),
-
-    dosDigitos(
-      fecha.getSeconds()
-    ),
+    dosDigitos(fecha.getHours()),
+    dosDigitos(fecha.getMinutes()),
+    dosDigitos(fecha.getSeconds()),
   ].join(":");
 
   return `${parteFecha} ${parteHora}`;
+};
+
+const formatearSoloFechaMySQL = (
+  fecha
+) => [
+  fecha.getFullYear(),
+  dosDigitos(fecha.getMonth() + 1),
+  dosDigitos(fecha.getDate()),
+].join("-");
+
+const agregarDias = (
+  fechaBase,
+  dias
+) => {
+  const fecha = new Date(fechaBase);
+
+  fecha.setHours(12, 0, 0, 0);
+  fecha.setDate(
+    fecha.getDate() + Number(dias || 0)
+  );
+
+  return fecha;
 };
 
 // ======================================================
@@ -145,20 +139,19 @@ const calcularHorasOperacion = (
 
   const horas =
     diferenciaMs /
-    (
-      1000 *
-      60 *
-      60
-    );
+    (1000 * 60 * 60);
 
   /*
-   * Protección inicial:
-   * una sola operación no debería
-   * superar 24 horas.
+   * 5 horas es el tiempo operativo habitual.
+   * NO lo usamos como bloqueo porque puede haber
+   * tráfico, distancia, espera en disposición, etc.
+   *
+   * 12 horas sí se considera un dato probablemente
+   * incorrecto y se bloquea.
    */
-  if (horas > 24) {
+  if (horas > 12) {
     throw new RentaError(
-      "El tiempo de la operación no puede superar 24 horas",
+      "El tiempo de la operación no puede superar 12 horas",
       400,
       "TIEMPO_OPERACION_EXCESIVO"
     );
@@ -168,7 +161,7 @@ const calcularHorasOperacion = (
 };
 
 // ======================================================
-// VALIDAR DATOS DEL COSTO
+// VALIDAR DATOS
 // ======================================================
 
 const validarDatosCosto = (
@@ -180,13 +173,8 @@ const validarDatosCosto = (
     .trim()
     .toLowerCase();
 
-  const operacionesPermitidas = [
-    "entrega",
-    "retiro",
-  ];
-
   if (
-    !operacionesPermitidas.includes(
+    !["entrega", "retiro"].includes(
       tipoOperacion
     )
   ) {
@@ -217,21 +205,13 @@ const validarDatosCosto = (
   let lugarDisposicion = null;
   let numeroTicket = null;
 
-  /*
-   * La disposición solamente corresponde
-   * a la operación de retiro.
-   */
-  if (
-    tipoOperacion === "retiro"
-  ) {
+  if (tipoOperacion === "retiro") {
     costoDisposicion =
       redondear(
         datos.costo_disposicion
       );
 
-    if (
-      costoDisposicion < 0
-    ) {
+    if (costoDisposicion < 0) {
       throw new RentaError(
         "El costo de disposición no puede ser negativo",
         400,
@@ -255,15 +235,14 @@ const validarDatosCosto = (
   return {
     tipoOperacion,
 
+    inicioDate: inicio,
+    finDate: fin,
+
     horaInicio:
-      formatearFechaMySQL(
-        inicio
-      ),
+      formatearFechaMySQL(inicio),
 
     horaFin:
-      formatearFechaMySQL(
-        fin
-      ),
+      formatearFechaMySQL(fin),
 
     horasOperacion,
 
@@ -280,7 +259,15 @@ const validarDatosCosto = (
 };
 
 // ======================================================
-// GUARDAR COSTO
+// REGISTRAR ENTREGA O RETIRO
+//
+// ENTREGA:
+// programada -> en_uso
+// y recalcula retiro desde la entrega REAL.
+//
+// RETIRO:
+// en_uso -> finalizado
+// guarda fecha real y libera dumpster.
 // ======================================================
 
 const guardarCosto = async ({
@@ -305,9 +292,7 @@ const guardarCosto = async ({
   );
 
   if (
-    !Number.isInteger(
-      creadoPor
-    ) ||
+    !Number.isInteger(creadoPor) ||
     creadoPor <= 0
   ) {
     throw new RentaError(
@@ -317,18 +302,16 @@ const guardarCosto = async ({
     );
   }
 
-  const costoValidado =
-    validarDatosCosto(
-      datos
-    );
+  const operacion =
+    validarDatosCosto(datos);
 
   const resultado =
     await ejecutarTransaccion(
       db,
       async (conn) => {
-        // ================================================
-        // 1. VALIDAR RENTA
-        // ================================================
+        // ==============================================
+        // 1. BLOQUEAR RENTA
+        // ==============================================
 
         const renta =
           await repository.bloquearRenta(
@@ -353,29 +336,57 @@ const guardarCosto = async ({
           .trim()
           .toLowerCase();
 
-        /*
-         * Por ahora solamente bloqueamos
-         * las rentas canceladas.
-         *
-         * Todavía no validamos estrictamente
-         * entrega o retiro por estado porque
-         * algunas rentas pueden seguir guardadas
-         * como "programada" aunque operativamente
-         * ya estén en uso.
-         */
+        // ==============================================
+        // 2. VALIDAR TRANSICIÓN
+        // ==============================================
+
         if (
           estadoRenta === "cancelado"
         ) {
           throw new RentaError(
-            "No se pueden registrar costos en una renta cancelada",
+            "No se pueden registrar operaciones en una renta cancelada",
             409,
             "RENTA_CANCELADA"
           );
         }
 
-        // ================================================
-        // 2. OBTENER TARIFA POR HORA
-        // ================================================
+        if (
+          estadoRenta === "finalizado"
+        ) {
+          throw new RentaError(
+            "La renta ya está finalizada",
+            409,
+            "RENTA_FINALIZADA"
+          );
+        }
+
+        if (
+          operacion.tipoOperacion ===
+            "entrega" &&
+          estadoRenta !== "programada"
+        ) {
+          throw new RentaError(
+            "La entrega solo puede registrarse cuando la renta está programada",
+            409,
+            "ESTADO_INVALIDO_PARA_ENTREGA"
+          );
+        }
+
+        if (
+          operacion.tipoOperacion ===
+            "retiro" &&
+          estadoRenta !== "en_uso"
+        ) {
+          throw new RentaError(
+            "El retiro solo puede registrarse cuando la renta está en uso",
+            409,
+            "ESTADO_INVALIDO_PARA_RETIRO"
+          );
+        }
+
+        // ==============================================
+        // 3. TARIFA POR HORA
+        // ==============================================
 
         const configuracion =
           await repository.obtenerTarifaHora(
@@ -391,9 +402,7 @@ const guardarCosto = async ({
               ?.costo_operativo_hora
           );
 
-        if (
-          tarifaHora <= 0
-        ) {
+        if (tarifaHora <= 0) {
           throw new RentaError(
             "Configure el costo operativo por hora de la empresa",
             400,
@@ -401,140 +410,296 @@ const guardarCosto = async ({
           );
         }
 
-        // ================================================
-        // 3. CALCULAR COSTOS
-        // ================================================
+        // ==============================================
+        // 4. CALCULAR COSTO
+        // ==============================================
 
         const costoOperativo =
           redondear(
-            costoValidado
-              .horasOperacion *
+            operacion.horasOperacion *
               tarifaHora
           );
 
         const costoTotal =
           redondear(
             costoOperativo +
-              costoValidado
-                .costoDisposicion
+              operacion.costoDisposicion
           );
 
-        // ================================================
-        // 4. INSERTAR O ACTUALIZAR
-        // ================================================
+        // ==============================================
+        // 5. GUARDAR OPERACIÓN
+        // ==============================================
 
-        const guardado =
-          await repository.guardarCosto(
-            conn,
-            {
-              idEmpresa,
-              idRenta: id,
+        let guardado;
 
-              tipoOperacion:
-                costoValidado
-                  .tipoOperacion,
+        try {
+          guardado =
+            await repository.guardarCosto(
+              conn,
+              {
+                idEmpresa,
+                idRenta: id,
 
-              horaInicio:
-                costoValidado
-                  .horaInicio,
+                tipoOperacion:
+                  operacion.tipoOperacion,
 
-              horaFin:
-                costoValidado
-                  .horaFin,
+                horaInicio:
+                  operacion.horaInicio,
 
-              horasOperacion:
-                costoValidado
-                  .horasOperacion,
+                horaFin:
+                  operacion.horaFin,
 
-              tarifaHora,
-              costoOperativo,
+                horasOperacion:
+                  operacion.horasOperacion,
 
-              lugarDisposicion:
-                costoValidado
-                  .lugarDisposicion,
+                tarifaHora,
+                costoOperativo,
 
-              numeroTicket:
-                costoValidado
-                  .numeroTicket,
+                lugarDisposicion:
+                  operacion
+                    .lugarDisposicion,
 
-              costoDisposicion:
-                costoValidado
-                  .costoDisposicion,
+                numeroTicket:
+                  operacion.numeroTicket,
 
-              costoTotal,
+                costoDisposicion:
+                  operacion
+                    .costoDisposicion,
 
-              observaciones:
-                costoValidado
-                  .observaciones,
+                costoTotal,
 
-              creadoPor,
-            }
-          );
+                observaciones:
+                  operacion.observaciones,
 
-        /*
-         * El repository debe devolver:
-         * {
-         *   insertId,
-         *   affectedRows
-         * }
-         */
+                creadoPor,
+              }
+            );
+        } catch (error) {
+          if (
+            error.code === "ER_DUP_ENTRY"
+          ) {
+            throw new RentaError(
+              `La ${operacion.tipoOperacion} ya fue registrada para esta renta`,
+              409,
+              "OPERACION_YA_REGISTRADA"
+            );
+          }
+
+          throw error;
+        }
+
         if (
           !guardado ||
           Number(
             guardado.affectedRows || 0
-          ) <= 0
+          ) !== 1
         ) {
           throw new RentaError(
-            "No se pudo guardar el costo de la renta",
+            "No se pudo registrar la operación",
             500,
-            "COSTO_NO_GUARDADO"
+            "OPERACION_NO_GUARDADA"
           );
         }
 
+        // ==============================================
+        // 6. ENTREGA: programada -> en_uso
+        // ==============================================
+
+        let estadoNuevo =
+          estadoRenta;
+
+        let fechaEstimadaDevolucion =
+          renta.fecha_estimada_devolucion;
+
+        let fechaRealDevolucion =
+          renta.fecha_real_devolucion;
+
+        if (
+          operacion.tipoOperacion ===
+          "entrega"
+        ) {
+          const diasRenta =
+            Number(renta.dias_renta || 0);
+
+          if (
+            !Number.isInteger(diasRenta) ||
+            diasRenta <= 0
+          ) {
+            throw new RentaError(
+              "La renta no tiene una duración válida",
+              400,
+              "DIAS_RENTA_INVALIDOS"
+            );
+          }
+
+          /*
+           * El alquiler comienza cuando TERMINA
+           * la entrega real.
+           */
+          const nuevaFechaRetiro =
+            agregarDias(
+              operacion.finDate,
+              diasRenta
+            );
+
+          fechaEstimadaDevolucion =
+            formatearSoloFechaMySQL(
+              nuevaFechaRetiro
+            );
+
+          const actualizada =
+            await repository
+              .registrarEntregaEnRenta(
+                conn,
+                {
+                  idRenta: id,
+                  idEmpresa,
+                  fechaEstimadaDevolucion,
+                }
+              );
+
+          if (actualizada !== 1) {
+            throw new RentaError(
+              "No se pudo cambiar la renta a en uso",
+              409,
+              "RENTA_NO_ACTUALIZADA_TRAS_ENTREGA"
+            );
+          }
+
+          estadoNuevo = "en_uso";
+        }
+
+        // ==============================================
+        // 7. RETIRO: en_uso -> finalizado
+        // ==============================================
+
+        if (
+          operacion.tipoOperacion ===
+          "retiro"
+        ) {
+          fechaRealDevolucion =
+            formatearSoloFechaMySQL(
+              operacion.finDate
+            );
+
+          const actualizada =
+            await repository
+              .registrarRetiroEnRenta(
+                conn,
+                {
+                  idRenta: id,
+                  idEmpresa,
+                  fechaRealDevolucion,
+                }
+              );
+
+          if (actualizada !== 1) {
+            throw new RentaError(
+              "No se pudo finalizar la renta después del retiro",
+              409,
+              "RENTA_NO_FINALIZADA_TRAS_RETIRO"
+            );
+          }
+
+          const liberado =
+            await repository
+              .liberarDumpster(
+                conn,
+                {
+                  idDumpster:
+                    renta.id_dumpster,
+                  idEmpresa,
+                }
+              );
+
+          if (liberado !== 1) {
+            throw new RentaError(
+              "No se pudo liberar el dumpster",
+              500,
+              "DUMPSTER_NO_LIBERADO"
+            );
+          }
+
+          estadoNuevo = "finalizado";
+        }
+
         return {
+          idCosto:
+            Number(
+              guardado.insertId || 0
+            ),
+
           tipoOperacion:
-            costoValidado
-              .tipoOperacion,
+            operacion.tipoOperacion,
+
+          estadoAnterior:
+            estadoRenta,
+
+          estadoNuevo,
+
+          horaInicio:
+            operacion.horaInicio,
+
+          horaFin:
+            operacion.horaFin,
 
           horasOperacion:
-            costoValidado
-              .horasOperacion,
+            operacion.horasOperacion,
 
           tarifaHora,
           costoOperativo,
 
           costoDisposicion:
-            costoValidado
-              .costoDisposicion,
+            operacion.costoDisposicion,
 
           costoTotal,
+
+          fechaEstimadaDevolucion,
+          fechaRealDevolucion,
+
+          advertenciaTiempo:
+            operacion.horasOperacion > 5,
         };
       }
     );
 
-  // ======================================================
-  // 5. AUDITORÍA
-  // ======================================================
+  // ====================================================
+  // AUDITORÍA
+  // ====================================================
 
   await registrarLog({
     req,
     modulo: "Rentas",
     accion:
-      "GUARDAR_COSTO_RENTA",
+      resultado.tipoOperacion ===
+      "entrega"
+        ? "REGISTRAR_ENTREGA"
+        : "REGISTRAR_RETIRO",
 
     descripcion:
-      `Costo de ${resultado.tipoOperacion} registrado en renta #${id}. ` +
-      `Horas: ${resultado.horasOperacion}, ` +
-      `operación: $${resultado.costoOperativo.toFixed(2)}, ` +
-      `disposición: $${resultado.costoDisposicion.toFixed(2)}, ` +
-      `total: $${resultado.costoTotal.toFixed(2)}`,
+      `${resultado.tipoOperacion === "entrega" ? "Entrega" : "Retiro"} registrado en renta #${id}. ` +
+      `Estado: ${resultado.estadoAnterior} -> ${resultado.estadoNuevo}. ` +
+      `Tiempo: ${resultado.horasOperacion} h. ` +
+      `Costo operativo: $${resultado.costoOperativo.toFixed(2)}. ` +
+      `Disposición: $${resultado.costoDisposicion.toFixed(2)}.`,
   });
 
   return {
     id_renta: id,
+    id_costo:
+      resultado.idCosto,
 
     tipo_operacion:
       resultado.tipoOperacion,
+
+    estado:
+      resultado.estadoNuevo,
+
+    hora_inicio:
+      resultado.horaInicio,
+
+    hora_fin:
+      resultado.horaFin,
 
     horas_operacion:
       resultado.horasOperacion,
@@ -550,6 +715,15 @@ const guardarCosto = async ({
 
     costo_total:
       resultado.costoTotal,
+
+    fecha_estimada_devolucion:
+      resultado.fechaEstimadaDevolucion,
+
+    fecha_real_devolucion:
+      resultado.fechaRealDevolucion,
+
+    advertencia_tiempo:
+      resultado.advertenciaTiempo,
   };
 };
 
@@ -611,19 +785,13 @@ const obtenerCostos = async ({
     );
   }
 
-  /*
-   * El impuesto cobrado no se considera
-   * ingreso operativo de la empresa.
-   */
   const ingresoOperativo =
     redondear(
       Number(
-        finanzas.subtotal_base ||
-          0
+        finanzas.subtotal_base || 0
       ) +
         Number(
-          finanzas.total_extras ||
-            0
+          finanzas.total_extras || 0
         )
     );
 
@@ -644,21 +812,13 @@ const obtenerCostos = async ({
           (
             utilidadEstimada /
             ingresoOperativo
-          ) *
-            100
+          ) * 100
         )
       : 0;
 
-  /*
-   * Si todavía no existen costos,
-   * buscamos la tarifa directamente
-   * desde configuración para que el
-   * formulario pueda mostrarla.
-   */
   let tarifaHora = costos[0]
     ? redondear(
-        costos[0]
-          .tarifa_hora
+        costos[0].tarifa_hora
       )
     : 0;
 
@@ -692,20 +852,17 @@ const obtenerCostos = async ({
     resumen: {
       costo_entrega:
         redondear(
-          resumen
-            ?.costo_entrega
+          resumen?.costo_entrega
         ),
 
       costo_retiro:
         redondear(
-          resumen
-            ?.costo_retiro
+          resumen?.costo_retiro
         ),
 
       costo_disposicion:
         redondear(
-          resumen
-            ?.costo_disposicion
+          resumen?.costo_disposicion
         ),
 
       costo_operativo_total:

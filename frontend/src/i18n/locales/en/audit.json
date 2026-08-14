@@ -1,0 +1,7 @@
+{
+  "audit": "Audit",
+  "audit_description": "Review actions performed within the system.",
+  "system_logs": "System logs",
+  "search_logs": "Search by user, company, module, action or IP...",
+  "no_logs": "No logs to display."
+}

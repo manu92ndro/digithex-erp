@@ -1,4 +1,10 @@
 // ======================================================
+// REPOSITORY: OPERACIONES GENERALES DE RENTAS
+// Cancelación y reprogramación.
+// La finalización normal ocurre al registrar el retiro.
+// ======================================================
+
+// ======================================================
 // BLOQUEAR RENTA
 // ======================================================
 
@@ -17,6 +23,7 @@ const bloquearRenta = async (
       id_dumpster,
       estado,
       fecha_inicio,
+      dias_renta,
       fecha_estimada_devolucion,
       fecha_real_devolucion,
       observaciones
@@ -39,7 +46,44 @@ const bloquearRenta = async (
 };
 
 // ======================================================
-// FINALIZAR RENTA
+// OBTENER ENTREGA REAL
+// ======================================================
+
+const obtenerEntregaRegistrada = async (
+  conn,
+  {
+    idRenta,
+    idEmpresa,
+  }
+) => {
+  const [rows] = await conn.query(
+    `
+    SELECT
+      hora_inicio,
+      hora_fin
+
+    FROM tb_renta_costos
+
+    WHERE id_renta = ?
+      AND id_empresa = ?
+      AND tipo_operacion = 'entrega'
+      AND estado = 'registrado'
+
+    LIMIT 1
+    `,
+    [
+      idRenta,
+      idEmpresa,
+    ]
+  );
+
+  return rows[0] || null;
+};
+
+// ======================================================
+// FINALIZAR MANUALMENTE
+// Se conserva por compatibilidad, pero NO debe ser
+// la vía normal. La vía normal es registrar el retiro.
 // ======================================================
 
 const finalizar = async (
@@ -60,10 +104,7 @@ const finalizar = async (
 
     WHERE id_renta = ?
       AND id_empresa = ?
-      AND estado IN (
-        'en_uso',
-        'en_retiro'
-      )
+      AND estado = 'en_uso'
     `,
     [
       idRenta,
@@ -71,11 +112,12 @@ const finalizar = async (
     ]
   );
 
-  return result.affectedRows;
+  return Number(result.affectedRows || 0);
 };
 
 // ======================================================
 // CANCELAR RENTA
+// Solo antes de entregar.
 // ======================================================
 
 const cancelar = async (
@@ -84,7 +126,6 @@ const cancelar = async (
     idRenta,
     idEmpresa,
     motivo,
-    canceladoPor,
   }
 ) => {
   const [result] = await conn.query(
@@ -109,11 +150,7 @@ const cancelar = async (
 
     WHERE id_renta = ?
       AND id_empresa = ?
-      AND estado IN (
-        'pendiente',
-        'programada',
-        'en_entrega'
-      )
+      AND estado = 'programada'
     `,
     [
       motivo,
@@ -122,7 +159,7 @@ const cancelar = async (
     ]
   );
 
-  return result.affectedRows;
+  return Number(result.affectedRows || 0);
 };
 
 // ======================================================
@@ -153,7 +190,7 @@ const liberarDumpster = async (
     ]
   );
 
-  return result.affectedRows;
+  return Number(result.affectedRows || 0);
 };
 
 // ======================================================
@@ -183,11 +220,11 @@ const cancelarFinanzas = async (
     ]
   );
 
-  return result.affectedRows;
+  return Number(result.affectedRows || 0);
 };
 
 // ======================================================
-// ANULAR PAGOS POR CANCELACIÓN DE RENTA
+// ANULAR PAGOS POR CANCELACIÓN
 // ======================================================
 
 const anularPagos = async (
@@ -205,11 +242,8 @@ const anularPagos = async (
 
     SET
       estado_pago = 'anulado',
-
       motivo_anulacion = ?,
-
       anulado_por = ?,
-
       fecha_anulacion = NOW(),
 
       observaciones = CONCAT(
@@ -236,7 +270,7 @@ const anularPagos = async (
     ]
   );
 
-  return result.affectedRows;
+  return Number(result.affectedRows || 0);
 };
 
 // ======================================================
@@ -263,9 +297,9 @@ const actualizarFechaRetiro = async (
 
     WHERE id_renta = ?
       AND id_empresa = ?
-      AND estado NOT IN (
-        'finalizado',
-        'cancelado'
+      AND estado IN (
+        'programada',
+        'en_uso'
       )
     `,
     [
@@ -276,7 +310,7 @@ const actualizarFechaRetiro = async (
     ]
   );
 
-  return result.affectedRows;
+  return Number(result.affectedRows || 0);
 };
 
 // ======================================================
@@ -285,6 +319,7 @@ const actualizarFechaRetiro = async (
 
 module.exports = {
   bloquearRenta,
+  obtenerEntregaRegistrada,
   finalizar,
   cancelar,
   liberarDumpster,

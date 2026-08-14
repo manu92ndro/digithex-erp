@@ -41,7 +41,6 @@ import {
   createRenta,
   getRentaDetalle,
   addExtraRenta,
-  finalizarRenta,
   cancelarRenta,
   registrarPagoRenta,
   actualizarFechaRetiro,
@@ -69,7 +68,15 @@ const formatFecha = (fecha) => {
 
   if (Number.isNaN(date.getTime())) return "-";
 
-  return date.toLocaleDateString("en-US", {
+  const idioma = String(
+    localStorage.getItem("language") || "es"
+  ).toLowerCase();
+
+  const locale = idioma.startsWith("es")
+    ? "es-EC"
+    : "en-US";
+
+  return date.toLocaleDateString(locale, {
     day: "2-digit",
     month: "short",
     year: "numeric",
@@ -107,124 +114,271 @@ const getDiasDiferencia = (fechaA, fechaB) => {
   return Math.ceil((fechaA - fechaB) / (1000 * 60 * 60 * 24));
 };
 
-const getEstadoVisual = (renta) => {
+const getEstadoVisual = (renta, t) => {
+  const estado = String(renta.estado || "")
+    .trim()
+    .toLowerCase();
+
+  switch (estado) {
+    case "programada":
+      return {
+        label: t("rentals.status_scheduled"),
+        border: "border-sky-300",
+        header: "bg-sky-50",
+        badge: "bg-sky-100 text-sky-700",
+        progress: "bg-sky-500",
+        button: "bg-sky-600 hover:bg-sky-700",
+        dateStart: "bg-sky-500",
+        dateEnd: "bg-sky-500",
+      };
+
+    case "en_uso":
+      return {
+        label: t("rentals.status_in_use"),
+        border: "border-green-300",
+        header: "bg-green-50",
+        badge: "bg-green-100 text-green-700",
+        progress: "bg-green-500",
+        button: "bg-green-600 hover:bg-green-700",
+        dateStart: "bg-green-600",
+        dateEnd: "bg-red-600",
+      };
+
+    case "finalizado":
+      return {
+        label: t("rentals.status_finished"),
+        border: "border-slate-300",
+        header: "bg-slate-100",
+        badge: "bg-slate-700 text-white",
+        progress: "bg-slate-700",
+        button: "bg-slate-700 hover:bg-slate-800",
+        dateStart: "bg-slate-600",
+        dateEnd: "bg-slate-600",
+      };
+
+    case "cancelado":
+      return {
+        label: t("rentals.status_cancelled"),
+        border: "border-red-300",
+        header: "bg-red-50",
+        badge: "bg-red-100 text-red-700",
+        progress: "bg-red-500",
+        button: "bg-red-600 hover:bg-red-700",
+        dateStart: "bg-red-500",
+        dateEnd: "bg-red-500",
+      };
+
+    default:
+      return {
+        label: estado || "-",
+        border: "border-slate-300",
+        header: "bg-slate-50",
+        badge: "bg-slate-100 text-slate-700",
+        progress: "bg-slate-400",
+        button: "bg-slate-600 hover:bg-slate-700",
+        dateStart: "bg-slate-500",
+        dateEnd: "bg-slate-500",
+      };
+  }
+};
+
+const getAlertaOperacion = (renta, t) => {
+  const estado = String(renta.estado || "")
+    .trim()
+    .toLowerCase();
+
   const hoy = getFechaBase(new Date());
-  const inicio = getFechaBase(renta.fecha_inicio);
-  const retiro = getFechaBase(renta.fecha_estimada_devolucion);
 
-  const diasParaInicio = Math.ceil((inicio - hoy) / 86400000);
-  const diasParaRetiro = Math.ceil((retiro - hoy) / 86400000);
+  if (!hoy) return null;
 
-  if (diasParaRetiro < 0) {
+  // =========================================
+  // ENTREGA
+  // =========================================
+
+  if (estado === "programada") {
+    const fechaEntrega =
+      getFechaBase(renta.fecha_inicio);
+
+    if (!fechaEntrega) {
+      return null;
+    }
+
+    const dias = Math.floor(
+      (
+        hoy.getTime() -
+        fechaEntrega.getTime()
+      ) / 86400000
+    );
+
+    if (dias < 0) {
+      if (dias === -1) {
+        return {
+          tipo: "proxima",
+          texto: t(
+            "rentals.alert_delivery_tomorrow"
+          ),
+        };
+      }
+
+      return {
+        tipo: "proxima",
+        texto: t(
+          "rentals.alert_delivery_in_days",
+          {
+            count: Math.abs(dias),
+          }
+        ),
+      };
+    }
+
+    if (dias === 0) {
+      return {
+        tipo: "hoy",
+        texto: t(
+          "rentals.alert_delivery_today"
+        ),
+      };
+    }
+
     return {
-      label: "Retirar",
-      subtitle: "Fecha de retiro vencida",
-      border: "border-slate-300",
-      header: "bg-slate-100",
-      badge: "bg-slate-700 text-white",
-      progress: "bg-slate-500",
-      button: "bg-slate-700 hover:bg-slate-800",
-      dateStart: "bg-slate-700",
-      dateEnd: "bg-slate-700",
+      tipo: "retraso",
+      texto:
+        dias === 1
+          ? t(
+              "rentals.alert_delivery_late_one_day"
+            )
+          : t(
+              "rentals.alert_delivery_late_days",
+              {
+                count: dias,
+              }
+            ),
     };
   }
 
-  if (diasParaRetiro === 0) {
+  // =========================================
+  // RETIRO
+  // =========================================
+
+  if (estado === "en_uso") {
+    const fechaRetiro =
+      getFechaBase(
+        renta.fecha_estimada_devolucion
+      );
+
+    if (!fechaRetiro) {
+      return null;
+    }
+
+    const dias = Math.floor(
+      (
+        hoy.getTime() -
+        fechaRetiro.getTime()
+      ) / 86400000
+    );
+
+    if (dias < 0) {
+      if (dias === -1) {
+        return {
+          tipo: "proxima",
+          texto: t(
+            "rentals.alert_pickup_tomorrow"
+          ),
+        };
+      }
+
+      return null;
+    }
+
+    if (dias === 0) {
+      return {
+        tipo: "hoy",
+        texto: t(
+          "rentals.alert_pickup_today"
+        ),
+      };
+    }
+
     return {
-      label: "Retirar hoy",
-      subtitle: "Hoy debe retirarse",
-      border: "border-red-300",
-      header: "bg-red-50",
-      badge: "bg-red-100 text-red-700",
-      progress: "bg-red-500",
-      button: "bg-red-600 hover:bg-red-700",
-      dateStart: "bg-red-600",
-      dateEnd: "bg-red-600",
+      tipo: "retraso",
+      texto:
+        dias === 1
+          ? t(
+              "rentals.alert_pickup_late_one_day"
+            )
+          : t(
+              "rentals.alert_pickup_late_days",
+              {
+                count: dias,
+              }
+            ),
     };
   }
 
-  if (diasParaRetiro === 1) {
-    return {
-      label: "Próximo retiro",
-      subtitle: "Retiro mañana",
-      border: "border-orange-300",
-      header: "bg-orange-50",
-      badge: "bg-orange-100 text-orange-700",
-      progress: "bg-orange-500",
-      button: "bg-orange-500 hover:bg-orange-600",
-      dateStart: "bg-orange-500",
-      dateEnd: "bg-orange-500",
-    };
-  }
-
-  if (diasParaInicio === 1) {
-    return {
-      label: "Entrega mañana",
-      subtitle: "Preparar entrega",
-      border: "border-yellow-300",
-      header: "bg-yellow-50",
-      badge: "bg-yellow-100 text-yellow-700",
-      progress: "bg-yellow-500",
-      button: "bg-yellow-500 hover:bg-yellow-600",
-      dateStart: "bg-yellow-500",
-      dateEnd: "bg-yellow-500",
-    };
-  }
-
-  if (diasParaInicio === 0) {
-    return {
-      label: "En entrega",
-      subtitle: "Entrega hoy",
-      border: "border-indigo-300",
-      header: "bg-indigo-50",
-      badge: "bg-indigo-100 text-indigo-700",
-      progress: "bg-indigo-500",
-      button: "bg-indigo-600 hover:bg-indigo-700",
-      dateStart: "bg-indigo-500",
-      dateEnd: "bg-indigo-500",
-    };
-  }
-
-  if (diasParaInicio < 0) {
-    return {
-      label: "En uso",
-      subtitle: "Dumpster con cliente",
-      border: "border-green-300",
-      header: "bg-green-50",
-      badge: "bg-green-100 text-green-700",
-      progress: "bg-green-500",
-      button: "bg-green-600 hover:bg-green-700",
-      dateStart: "bg-green-600",
-      dateEnd: "bg-red-600",
-    };
-  }
-
-  return {
-    label: "Programada",
-    subtitle: "Pendiente de entrega",
-    border: "border-sky-300",
-    header: "bg-sky-50",
-    badge: "bg-sky-100 text-sky-700",
-    progress: "bg-sky-500",
-    button: "bg-sky-600 hover:bg-sky-700",
-    dateStart: "bg-sky-500",
-    dateEnd: "bg-sky-500",
-  };
+  return null;
 };
 
 const getProgresoRenta = (renta) => {
+  const estado = String(renta.estado || "")
+    .trim()
+    .toLowerCase();
+
+  if (estado === "programada") {
+    return 0;
+  }
+
+  if (estado === "cancelado") {
+    return 0;
+  }
+
+  if (estado === "finalizado") {
+    return 100;
+  }
+
+  if (estado !== "en_uso") {
+    return 0;
+  }
+
+  // La renta REAL comienza cuando terminó
+  // la entrega.
+  const inicio = getFechaBase(
+    renta.entrega_hora_fin ||
+      renta.fecha_inicio
+  );
+
+  const retiro = getFechaBase(
+    renta.fecha_estimada_devolucion
+  );
+
   const hoy = getFechaBase(new Date());
-  const inicio = getFechaBase(renta.fecha_inicio);
-  const retiro = getFechaBase(renta.fecha_estimada_devolucion);
 
-  const total = retiro - inicio;
-  const avance = hoy - inicio;
+  if (!inicio || !retiro || !hoy) {
+    return 0;
+  }
 
-  if (!total || total <= 0) return 100;
-  if (avance <= 0) return 5;
-  if (avance >= total) return 100;
+  const total =
+    retiro.getTime() -
+    inicio.getTime();
 
-  return Math.round((avance / total) * 100);
+  const avance =
+    hoy.getTime() -
+    inicio.getTime();
+
+  if (total <= 0) {
+    return 100;
+  }
+
+  if (avance <= 0) {
+    return 0;
+  }
+
+  if (avance >= total) {
+    return 100;
+  }
+
+  return Math.round(
+    (avance / total) * 100
+  );
 };
 
 const initialForm = {
@@ -277,14 +431,266 @@ const initialCostoRetiro = {
   observaciones: "",
 };
 
+
+const OperationTimeSelector = ({
+  value,
+  onChange,
+  disabled = false,
+  t,
+  accent = "blue",
+}) => {
+  const parseValue = (timeValue) => {
+    const match = String(timeValue || "").match(/^(\d{2}):(\d{2})$/);
+
+    if (!match) {
+      return {
+        hour: "",
+        minute: "",
+        period: "AM",
+      };
+    }
+
+    const hour24 = Number(match[1]);
+    const minute = match[2];
+    const period = hour24 >= 12 ? "PM" : "AM";
+
+    let hour12 = hour24 % 12;
+    if (hour12 === 0) hour12 = 12;
+
+    return {
+      hour: String(hour12),
+      minute,
+      period,
+    };
+  };
+
+  const initial = parseValue(value);
+
+  const [hour, setHour] = useState(initial.hour);
+  const [minute, setMinute] = useState(initial.minute);
+  const [period, setPeriod] = useState(initial.period);
+
+  useEffect(() => {
+    const parsed = parseValue(value);
+
+    setHour(parsed.hour);
+    setMinute(parsed.minute);
+    setPeriod(parsed.period);
+  }, [value]);
+
+  const hours =
+    period === "AM"
+      ? ["7", "8", "9", "10", "11"]
+      : ["12", "1", "2", "3", "4", "5", "6"];
+
+  const minutes =
+    period === "PM" && hour === "6"
+      ? ["00"]
+      : ["00", "15", "30", "45"];
+
+  const buildValue = (
+    nextHour,
+    nextMinute,
+    nextPeriod
+  ) => {
+    if (!nextHour || !nextMinute) {
+      onChange("");
+      return;
+    }
+
+    let hour24 = Number(nextHour);
+
+    if (nextPeriod === "AM") {
+      if (hour24 === 12) hour24 = 0;
+    } else if (hour24 !== 12) {
+      hour24 += 12;
+    }
+
+    const minuteNumber = Number(nextMinute);
+
+    // Horario permitido: 07:00 a 18:00.
+    const totalMinutes =
+      hour24 * 60 + minuteNumber;
+
+    const minAllowed = 7 * 60;
+    const maxAllowed = 18 * 60;
+
+    if (
+      totalMinutes < minAllowed ||
+      totalMinutes > maxAllowed
+    ) {
+      onChange("");
+      return;
+    }
+
+    onChange(
+      `${String(hour24).padStart(2, "0")}:${String(
+        minuteNumber
+      ).padStart(2, "0")}`
+    );
+  };
+
+  const changePeriod = (nextPeriod) => {
+    setPeriod(nextPeriod);
+
+    const allowedHours =
+      nextPeriod === "AM"
+        ? ["7", "8", "9", "10", "11"]
+        : ["12", "1", "2", "3", "4", "5", "6"];
+
+    let nextHour = hour;
+    let nextMinute = minute;
+
+    if (
+      nextHour &&
+      !allowedHours.includes(nextHour)
+    ) {
+      nextHour = "";
+      setHour("");
+    }
+
+    if (
+      nextPeriod === "PM" &&
+      nextHour === "6" &&
+      nextMinute &&
+      nextMinute !== "00"
+    ) {
+      nextMinute = "00";
+      setMinute("00");
+    }
+
+    buildValue(
+      nextHour,
+      nextMinute,
+      nextPeriod
+    );
+  };
+
+  const changeHour = (nextHour) => {
+    setHour(nextHour);
+
+    let nextMinute = minute;
+
+    if (
+      period === "PM" &&
+      nextHour === "6" &&
+      nextMinute &&
+      nextMinute !== "00"
+    ) {
+      nextMinute = "00";
+      setMinute("00");
+    }
+
+    buildValue(
+      nextHour,
+      nextMinute,
+      period
+    );
+  };
+
+  const changeMinute = (nextMinute) => {
+    setMinute(nextMinute);
+
+    buildValue(
+      hour,
+      nextMinute,
+      period
+    );
+  };
+
+  const focusClasses =
+    accent === "orange"
+      ? "focus:border-orange-500 focus:ring-orange-100"
+      : "focus:border-blue-500 focus:ring-blue-100";
+
+  const baseClass = `
+    w-full
+    rounded-lg
+    border
+    border-slate-300
+    bg-white
+    px-2
+    py-2
+    text-sm
+    outline-none
+    focus:ring-2
+    disabled:cursor-not-allowed
+    disabled:bg-slate-100
+    disabled:text-slate-400
+    ${focusClasses}
+  `;
+
+  return (
+    <div className="grid grid-cols-[1fr_0.9fr_0.9fr] gap-2">
+      <select
+        value={hour}
+        onChange={(e) =>
+          changeHour(e.target.value)
+        }
+        disabled={disabled}
+        className={baseClass}
+        aria-label={t("rentals.time_hour")}
+      >
+        <option value="">
+          {t("rentals.time_hour")}
+        </option>
+
+        {hours.map((item) => (
+          <option
+            key={item}
+            value={item}
+          >
+            {item}
+          </option>
+        ))}
+      </select>
+
+      <select
+        value={minute}
+        onChange={(e) =>
+          changeMinute(e.target.value)
+        }
+        disabled={disabled || !hour}
+        className={baseClass}
+        aria-label={t("rentals.time_minute")}
+      >
+        <option value="">
+          {t("rentals.time_minute")}
+        </option>
+
+        {minutes.map((item) => (
+          <option
+            key={item}
+            value={item}
+          >
+            {item}
+          </option>
+        ))}
+      </select>
+
+      <select
+        value={period}
+        onChange={(e) =>
+          changePeriod(e.target.value)
+        }
+        disabled={disabled}
+        className={baseClass}
+        aria-label={t("rentals.time_period")}
+      >
+        <option value="AM">AM</option>
+        <option value="PM">PM</option>
+      </select>
+    </div>
+  );
+};
+
 function Rentas() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { hasPermission } = usePermission();
 
   const canCreateRenta = hasPermission("rentas.crear");
   const canEditRenta = hasPermission("rentas.editar");
   const canCancelRenta = hasPermission("rentas.eliminar");
-  const canFinishRenta = hasPermission("rentas.finalizar");
   const canCreateCliente = hasPermission("clientes.crear");
 
   const [tabActiva, setTabActiva] = useState("operacion");
@@ -311,8 +717,6 @@ function Rentas() {
   const [modalCancelarRenta, setModalCancelarRenta] =
   useState(false);
 
-  const [modalFinalizarRenta, setModalFinalizarRenta] =
-    useState(false);
 
   const [motivoCancelacion, setMotivoCancelacion] =
     useState("");
@@ -582,32 +986,61 @@ function Rentas() {
   );
 
   const rentasOperacionFiltradas = useMemo(() => {
-    if (filtroOperacion === "todos") return rentasOperacion;
+    if (filtroOperacion === "todos") {
+      return rentasOperacion;
+    }
 
-    return rentasOperacion.filter((renta) => {
-      const estado = getEstadoVisual(renta).label;
+    return rentasOperacion.filter(
+      (renta) => {
+        const estado = String(
+          renta.estado || ""
+        )
+          .trim()
+          .toLowerCase();
 
-      if (filtroOperacion === "uso") return estado === "En uso";
+        if (filtroOperacion === "uso") {
+          return estado === "en_uso";
+        }
 
-      if (filtroOperacion === "retirar") {
-        return estado === "Retirar" || estado === "Retirar hoy";
+        if (
+          filtroOperacion === "retirar"
+        ) {
+          if (estado !== "en_uso") {
+            return false;
+          }
+
+          const alerta =
+            getAlertaOperacion(renta, t);
+
+          return (
+            alerta?.tipo === "hoy" ||
+            alerta?.tipo === "retraso"
+          );
+        }
+
+        if (
+          filtroOperacion === "entregar"
+        ) {
+          return estado === "programada";
+        }
+
+        if (
+          filtroOperacion === "pagos"
+        ) {
+          return (
+            Number(
+              renta.saldo_pendiente || 0
+            ) > 0
+          );
+        }
+
+        return true;
       }
-
-      if (filtroOperacion === "entregar") {
-        return (
-          estado === "Programada" ||
-          estado === "Entrega mañana" ||
-          estado === "En entrega"
-        );
-      }
-
-      if (filtroOperacion === "pagos") {
-        return Number(renta.saldo_pendiente || 0) > 0;
-      }
-
-      return true;
-    });
-  }, [rentasOperacion, filtroOperacion]);
+    );
+  }, [
+    rentasOperacion,
+    filtroOperacion,
+  ]);
 
   const rentasPagosPendientes = useMemo(
     () =>
@@ -658,23 +1091,41 @@ function Rentas() {
 
   const rentasPorTamano = useMemo(() => {
     return rentasOperacionFiltradas.reduce((acc, renta) => {
-      const tamano = renta.tamano_yardas || "Sin tamaño";
+      const tamano = renta.tamano_yardas || t("rentals.no_size");
       if (!acc[tamano]) acc[tamano] = [];
       acc[tamano].push(renta);
       return acc;
     }, {});
   }, [rentasOperacionFiltradas]);
 
-  const totalRetiroHoy = rentasOperacion.filter((r) => {
-    const hoy = new Date();
-    hoy.setHours(0, 0, 0, 0);
-    const retiro = getFechaBase(r.fecha_estimada_devolucion);
-    return retiro && retiro <= hoy;
-  }).length;
+  const totalEnUso =
+    rentasOperacion.filter(
+      (renta) =>
+        String(
+          renta.estado || ""
+        ).toLowerCase() === "en_uso"
+    ).length;
 
-  const totalEnUso = rentasOperacion.filter(
-    (r) => getEstadoVisual(r).label === "En uso"
-  ).length;
+  const totalRetiroHoy =
+    rentasOperacion.filter(
+      (renta) => {
+        if (
+          String(
+            renta.estado || ""
+          ).toLowerCase() !== "en_uso"
+        ) {
+          return false;
+        }
+
+        const alerta =
+          getAlertaOperacion(renta, t);
+
+        return (
+          alerta?.tipo === "hoy" ||
+          alerta?.tipo === "retraso"
+        );
+      }
+    ).length;  
  
   const fechaOriginalInicio =
     rentaDetalle?.fecha_inicio?.split("T")[0] || "";
@@ -913,12 +1364,12 @@ function Rentas() {
 
         setCostoEntregaForm({
           hora_inicio:
-            formatFechaHoraInput(
+            extraerHora(
               entrega?.hora_inicio
             ),
 
           hora_fin:
-            formatFechaHoraInput(
+            extraerHora(
               entrega?.hora_fin
             ),
 
@@ -929,12 +1380,12 @@ function Rentas() {
 
         setCostoRetiroForm({
           hora_inicio:
-            formatFechaHoraInput(
+            extraerHora(
               retiro?.hora_inicio
             ),
 
           hora_fin:
-            formatFechaHoraInput(
+            extraerHora(
               retiro?.hora_fin
             ),
 
@@ -966,7 +1417,7 @@ function Rentas() {
 
         showError(
           error.response?.data?.msg ||
-            "No se pudieron cargar los costos"
+            t("rentals.costs_load_error")
         );
       } finally {
         setCargandoCostos(false);
@@ -1055,9 +1506,7 @@ function Rentas() {
       !Number.isInteger(idRenta) ||
       idRenta <= 0
     ) {
-      showError(
-        "No se pudo identificar la renta"
-      );
+      showError(t("rentals.rental_not_identified"));
       return;
     }
 
@@ -1074,9 +1523,7 @@ function Rentas() {
     );
 
     if (!tipoExtra) {
-      showError(
-        "Seleccione el tipo de cargo"
-      );
+      showError(t("rentals.extra_type_required"));
       return;
     }
 
@@ -1084,9 +1531,7 @@ function Rentas() {
       !Number.isFinite(monto) ||
       monto <= 0
     ) {
-      showError(
-        "El monto del cargo debe ser mayor que cero"
-      );
+      showError(t("rentals.extra_amount_positive"));
       return;
     }
 
@@ -1116,7 +1561,7 @@ function Rentas() {
 
       showSuccess(
         respuesta?.msg ||
-          "Cargo extra agregado correctamente"
+          t("rentals.extra_added_success")
       );
 
       // Limpiar formulario inmediatamente
@@ -1167,9 +1612,7 @@ function Rentas() {
         * No mostramos “Error al guardar”.
         * El registro ya existe.
         */
-        showError(
-          "El cargo fue agregado, pero no se pudo actualizar la vista. Cierre y vuelva a abrir la renta."
-        );
+        showError(t("rentals.extra_refresh_error"));
       }
     } catch (error) {
       console.error(
@@ -1180,7 +1623,7 @@ function Rentas() {
       showError(
         error.response?.data?.msg ||
           error.response?.data?.message ||
-          "No se pudo agregar el cargo extra"
+          t("rentals.extra_add_error")
       );
     } finally {
       setGuardandoExtra(false);
@@ -1323,12 +1766,12 @@ function Rentas() {
     }
 
     if (!rentaDetalle?.id_renta) {
-      showError("No se pudo identificar la renta");
+      showError(t("rentals.rental_not_identified"));
       return;
     }
 
     if (rentaBloqueada) {
-      showError("Esta renta ya está cerrada");
+      showError(t("rentals.rental_already_closed"));
       return;
     }
 
@@ -1347,9 +1790,7 @@ function Rentas() {
     }
 
     if (motivo.length < 3) {
-      showError(
-        "El motivo debe tener al menos 3 caracteres"
-      );
+      showError(t("rentals.cancellation_reason_min"));
       return;
     }
 
@@ -1390,58 +1831,6 @@ function Rentas() {
     }
   };
 
-  const abrirModalFinalizarRenta = () => {
-  if (!canFinishRenta) {
-    showError(t("rentals.no_permission_finish"));
-    return;
-  }
-
-  if (!rentaDetalle?.id_renta) {
-    showError("No se pudo identificar la renta");
-    return;
-  }
-
-  if (rentaBloqueada) {
-    showError("Esta renta ya está cerrada");
-    return;
-  }
-
-  setModalFinalizarRenta(true);
-};
-
-const confirmarFinalizacionRenta = async () => {
-  try {
-    setProcesandoOperacion(true);
-
-    const data = await finalizarRenta(
-      rentaDetalle.id_renta
-    );
-
-    showSuccess(
-      data?.msg ||
-        t("rentals.rental_finished")
-    );
-
-    setModalFinalizarRenta(false);
-    setModalDetalle(false);
-
-    await cargarDatos();
-  } catch (error) {
-    console.error(
-      "ERROR FINALIZANDO RENTA:",
-      error
-    );
-
-    showError(
-      error.response?.data?.msg ||
-        error.response?.data?.message ||
-        error.message ||
-        t("rentals.error_finish_rental")
-    );
-  } finally {
-    setProcesandoOperacion(false);
-  }
-};
 
   const enviarChoferWhatsapp = () => {
     if (!rentaDetalle) return;
@@ -1454,18 +1843,18 @@ const confirmarFinalizacionRenta = async () => {
           )}`;
 
     const mensaje = `
-  Renta Dumpster
+${t("rentals.whatsapp_title")}
 
-  Dumpster: ${rentaDetalle.dumpster_codigo || "-"}
-  Tamaño: ${rentaDetalle.tamano_yardas || "-"} Yard
-  Cliente: ${rentaDetalle.cliente || "-"}
-  Celular: ${rentaDetalle.celular || "-"}
-  Dirección: ${rentaDetalle.direccion_entrega || "-"}
-  Mapa: ${mapUrl}
-  Ubicación: ${rentaDetalle.ubicacion || "-"}
-  Camión: ${rentaDetalle.nombre_camion || "-"}
-  Inicio: ${formatFecha(rentaDetalle.fecha_inicio)}
-  Retiro: ${formatFecha(rentaDetalle.fecha_estimada_devolucion)}
+Dumpster: ${rentaDetalle.dumpster_codigo || "-"}
+${t("rentals.whatsapp_size")}: ${rentaDetalle.tamano_yardas || "-"} ${t("yard")}
+${t("rentals.whatsapp_client")}: ${rentaDetalle.cliente || "-"}
+${t("rentals.whatsapp_phone")}: ${rentaDetalle.celular || "-"}
+${t("rentals.whatsapp_address")}: ${rentaDetalle.direccion_entrega || "-"}
+${t("rentals.whatsapp_map")}: ${mapUrl}
+${t("rentals.whatsapp_location")}: ${rentaDetalle.ubicacion || "-"}
+${t("rentals.whatsapp_truck")}: ${rentaDetalle.nombre_camion || "-"}
+${t("rentals.whatsapp_start")}: ${formatFecha(rentaDetalle.fecha_inicio)}
+${t("rentals.whatsapp_pickup")}: ${formatFecha(rentaDetalle.fecha_estimada_devolucion)}
   `;
 
     window.open(
@@ -1507,8 +1896,8 @@ const confirmarFinalizacionRenta = async () => {
                 {
                   id: `renta-${rentaDetalle?.id_renta}`,
                   tipo: "renta",
-                  descripcion: "Saldo pendiente de renta",
-                  detalle: "Pago parcial o saldo pendiente",
+                  descripcion: t("rentals.balance_due_description"),
+                  detalle: t("rentals.partial_or_balance_detail"),
                   total: saldoRentaPendiente,
                 },
               ]
@@ -1519,8 +1908,8 @@ const confirmarFinalizacionRenta = async () => {
             id_extra: extra.id_extra,
             estado_pago: extra.estado_pago,
             numero_extra: index + 1,
-            descripcion: extra.descripcion || extra.tipo_extra || "Cargo extra",
-            detalle: `Extra #${index + 1} pendiente`,
+            descripcion: extra.descripcion || extra.tipo_extra || t("rentals.extra_charge_default"),
+            detalle: t("rentals.extra_pending_detail", { number: index + 1 }),
             total: Number(extra.monto || 0),
           })),
         ].filter((item) => Number(item.total || 0) > 0);
@@ -1543,7 +1932,7 @@ const confirmarFinalizacionRenta = async () => {
       0
     );
 
-  const estadoVisualDetalle = rentaDetalle ? getEstadoVisual(rentaDetalle) : null;
+  const estadoVisualDetalle = rentaDetalle ? getEstadoVisual(rentaDetalle, t) : null;
 
   const fechaInicioDetalle = getFechaBase(
     rentaDetalle?.fecha_inicio || fechasRentaForm.fecha_inicio
@@ -1551,15 +1940,23 @@ const confirmarFinalizacionRenta = async () => {
 
   const hoyDetalle = getFechaBase(new Date());
 
+  const estadoDetalle = String(
+    rentaDetalle?.estado || ""
+  )
+    .trim()
+    .toLowerCase();
+
   const bloquearFechaInicio =
-    Boolean(fechaInicioDetalle && hoyDetalle && fechaInicioDetalle <= hoyDetalle) ||
+    Boolean(
+      fechaInicioDetalle &&
+        hoyDetalle &&
+        fechaInicioDetalle <= hoyDetalle
+    ) ||
     [
-      "En entrega",
-      "En uso",
-      "Retirar",
-      "Retirar hoy",
-      "Próximo retiro",
-    ].includes(estadoVisualDetalle?.label);
+      "en_uso",
+      "finalizado",
+      "cancelado",
+    ].includes(estadoDetalle);
 
   const mostrarPagoInicial = form.estado_pago !== "pending";
 
@@ -1637,7 +2034,7 @@ const confirmarFinalizacionRenta = async () => {
   const enviarReciboEmail = async (renta) => {
     try {
       const correo = window.prompt(
-        "Correo para enviar el recibo:",
+        t("rentals.email_receipt_prompt"),
         renta.correo || ""
       );
 
@@ -1653,7 +2050,7 @@ const confirmarFinalizacionRenta = async () => {
       showError(
         error.response?.data?.msg ||
         error.message ||
-        "Error enviando correo"
+        t("rentals.email_send_error")
       );
     }
   };
@@ -1701,14 +2098,14 @@ const confirmarFinalizacionRenta = async () => {
           esExtra
             ? detalle.tipo_extra
               ? `Cargo extra · ${detalle.tipo_extra}`
-              : "Cargo extra"
-            : "Pago de renta",
+              : t("rentals.extra_charge_default")
+            : t("rentals.payment_rental"),
 
         descripcion:
           detalle.descripcion ||
           (esExtra
-            ? "Cargo adicional"
-            : "Pago aplicado al saldo de la renta"),
+            ? t("rentals.additional_charge")
+            : t("rentals.payment_applied_balance")),
 
         estado: "pagado",
 
@@ -1820,7 +2217,7 @@ const confirmarFinalizacionRenta = async () => {
   ) => {
     if (!extra?.id_extra) {
       showError(
-        "No se pudo identificar el cargo extra"
+        t("rentals.extra_not_identified")
       );
       return;
     }
@@ -1831,14 +2228,14 @@ const confirmarFinalizacionRenta = async () => {
 
     if (estadoExtra === "pagado") {
       showError(
-        "No se puede anular un cargo extra pagado"
+        t("rentals.extra_paid_cannot_void")
       );
       return;
     }
 
     if (estadoExtra === "anulado") {
       showError(
-        "Este cargo extra ya está anulado"
+        t("rentals.extra_already_voided")
       );
       return;
     }
@@ -1880,7 +2277,7 @@ const confirmarFinalizacionRenta = async () => {
         idExtra <= 0
       ) {
         showError(
-          "No se pudo identificar el cargo extra"
+          t("rentals.extra_not_identified")
         );
         return;
       }
@@ -1897,14 +2294,14 @@ const confirmarFinalizacionRenta = async () => {
 
       if (motivo.length < 3) {
         showError(
-          "Ingrese el motivo de la anulación"
+          t("rentals.void_reason_required")
         );
         return;
       }
 
       if (motivo.length > 500) {
         showError(
-          "El motivo no puede superar los 500 caracteres"
+          t("rentals.void_reason_max")
         );
         return;
       }
@@ -1928,7 +2325,7 @@ const confirmarFinalizacionRenta = async () => {
 
         showSuccess(
           respuesta?.msg ||
-            "Cargo extra anulado correctamente"
+            t("rentals.extra_voided_success")
         );
 
         /*
@@ -1945,7 +2342,7 @@ const confirmarFinalizacionRenta = async () => {
           );
 
           showError(
-            "El cargo fue anulado, pero no se pudo actualizar la vista. Cierre y vuelva a abrir la renta."
+            t("rentals.extra_void_refresh_error")
           );
         }
 
@@ -1971,92 +2368,63 @@ const confirmarFinalizacionRenta = async () => {
         showError(
           error.response?.data?.msg ||
             error.response?.data?.message ||
-            "No se pudo anular el cargo extra"
+            t("rentals.extra_void_error")
         );
       } finally {
         setAnulandoExtra(false);
       }
     };
   
-  const formatFechaHoraInput = (
-    valor
-  ) => {
-    if (!valor) {
-      return "";
+  // ======================================================
+  // HORAS DE OPERACIÓN
+  // El formulario usa HH:mm y el backend recibe DATETIME.
+  // ======================================================
+
+  const extraerHora = (valor) => {
+    if (!valor) return "";
+
+    const texto = String(valor).trim();
+    const matchHora = texto.match(/(?:T|\\s|^)(\\d{2}):(\\d{2})(?::\\d{2})?/);
+
+    if (matchHora) {
+      return `${matchHora[1]}:${matchHora[2]}`;
     }
 
     const fecha = new Date(valor);
 
-    if (
-      Number.isNaN(
-        fecha.getTime()
-      )
-    ) {
+    if (Number.isNaN(fecha.getTime())) {
       return "";
     }
 
-    const year =
-      fecha.getFullYear();
+    const horas = String(fecha.getHours()).padStart(2, "0");
+    const minutos = String(fecha.getMinutes()).padStart(2, "0");
 
-    const month = String(
-      fecha.getMonth() + 1
-    ).padStart(2, "0");
+    return `${horas}:${minutos}`;
+  };
 
-    const day = String(
-      fecha.getDate()
-    ).padStart(2, "0");
+  const calcularHorasFormulario = (inicio, fin) => {
+    if (!inicio || !fin) return 0;
 
-    const hours = String(
-      fecha.getHours()
-    ).padStart(2, "0");
+    const [horaInicio, minutoInicio] = String(inicio).split(":").map(Number);
+    const [horaFin, minutoFin] = String(fin).split(":").map(Number);
 
-    const minutes = String(
-      fecha.getMinutes()
-    ).padStart(2, "0");
+    if (
+      !Number.isFinite(horaInicio) ||
+      !Number.isFinite(minutoInicio) ||
+      !Number.isFinite(horaFin) ||
+      !Number.isFinite(minutoFin)
+    ) {
+      return 0;
+    }
 
-    return `${year}-${month}-${day}T${hours}:${minutes}`;
-  };  
+    const minutosInicio = horaInicio * 60 + minutoInicio;
+    const minutosFin = horaFin * 60 + minutoFin;
+    const diferencia = minutosFin - minutosInicio;
 
-  const calcularHorasFormulario = (
-  inicio,
-  fin
-) => {
-  if (!inicio || !fin) {
-    return 0;
-  }
+    if (diferencia <= 0) return 0;
 
-  const fechaInicio =
-    new Date(inicio);
-
-  const fechaFin =
-    new Date(fin);
-
-  if (
-    Number.isNaN(
-      fechaInicio.getTime()
-    ) ||
-    Number.isNaN(
-      fechaFin.getTime()
-    )
-  ) {
-    return 0;
-  }
-
-  const diferencia =
-    fechaFin.getTime() -
-    fechaInicio.getTime();
-
-  if (diferencia <= 0) {
-    return 0;
-  }
-
-  return Number(
-    (
-      diferencia /
-      (1000 * 60 * 60)
-    ).toFixed(2)
-  );
-};
+    return Number((diferencia / 60).toFixed(2));
+  };
 
 const horasEntregaVista =
   calcularHorasFormulario(
@@ -2100,188 +2468,125 @@ const costoRetiroTotalVista =
     ).toFixed(2)
   ); 
 
-  const guardarCostoEntrega =
-  async (e) => {
+  const guardarCostoEntrega = async (e) => {
     e.preventDefault();
 
     if (!canEditRenta) {
-      showError(
-        "No tiene permiso para registrar costos"
-      );
+      showError(t("rentals.no_permission_register_delivery"));
       return;
     }
 
-    if (
-      !rentaDetalle?.id_renta
-    ) {
-      showError(
-        "No se pudo identificar la renta"
-      );
+    if (!rentaDetalle?.id_renta) {
+      showError(t("rentals.rental_not_identified"));
       return;
     }
 
-    if (
-      !costoEntregaForm.hora_inicio ||
-      !costoEntregaForm.hora_fin
-    ) {
-      showError(
-        "Ingrese la hora de inicio y finalización"
-      );
+    if (String(rentaDetalle.estado || "").toLowerCase() !== "programada") {
+      showError(t("rentals.delivery_only_scheduled"));
+      return;
+    }
+
+    if (!costoEntregaForm.hora_inicio || !costoEntregaForm.hora_fin) {
+      showError(t("rentals.select_delivery_start_end"));
       return;
     }
 
     if (horasEntregaVista <= 0) {
-      showError(
-        "La hora final debe ser posterior a la hora inicial"
-      );
+      showError(t("rentals.end_time_after_start"));
       return;
     }
 
     try {
-      setGuardandoCosto(
-        "entrega"
-      );
+      setGuardandoCosto("entrega");
 
-      const respuesta =
-        await guardarCostoRenta(
-          rentaDetalle.id_renta,
-          {
-            tipo_operacion:
-              "entrega",
-
-            hora_inicio:
-              costoEntregaForm
-                .hora_inicio,
-
-            hora_fin:
-              costoEntregaForm
-                .hora_fin,
-
-            observaciones:
-              costoEntregaForm
-                .observaciones,
-          }
-        );
+      const respuesta = await guardarCostoRenta(rentaDetalle.id_renta, {
+        tipo_operacion: "entrega",
+        hora_inicio: combinarFechaHoraHoy(costoEntregaForm.hora_inicio),
+        hora_fin: combinarFechaHoraHoy(costoEntregaForm.hora_fin),
+        observaciones: costoEntregaForm.observaciones?.trim() || null,
+      });
 
       showSuccess(
-        respuesta?.msg ||
-          "Costo de entrega guardado"
+        respuesta?.msg || t("rentals.delivery_registered_success")
       );
 
-      await cargarCostosRenta(
-        rentaDetalle.id_renta
-      );
+      await refrescarDetalleRenta(rentaDetalle.id_renta);
+      await cargarCostosRenta(rentaDetalle.id_renta);
+      await cargarDatos();
     } catch (error) {
+      console.error("Error registrando entrega:", error);
+
       showError(
         error.response?.data?.msg ||
-          "No se pudo guardar el costo de entrega"
+          error.response?.data?.message ||
+          t("rentals.delivery_register_error")
       );
     } finally {
       setGuardandoCosto(null);
     }
   };
-const guardarCostoRetiro =
-  async (e) => {
+
+  const guardarCostoRetiro = async (e) => {
     e.preventDefault();
 
     if (!canEditRenta) {
-      showError(
-        "No tiene permiso para registrar costos"
-      );
+      showError(t("rentals.no_permission_register_pickup"));
       return;
     }
 
-    if (
-      !rentaDetalle?.id_renta
-    ) {
-      showError(
-        "No se pudo identificar la renta"
-      );
+    if (!rentaDetalle?.id_renta) {
+      showError(t("rentals.rental_not_identified"));
       return;
     }
 
-    if (
-      !costoRetiroForm.hora_inicio ||
-      !costoRetiroForm.hora_fin
-    ) {
-      showError(
-        "Ingrese la hora de inicio y finalización"
-      );
+    if (String(rentaDetalle.estado || "").toLowerCase() !== "en_uso") {
+      showError(t("rentals.pickup_only_in_use"));
+      return;
+    }
+
+    if (!costoRetiroForm.hora_inicio || !costoRetiroForm.hora_fin) {
+      showError(t("rentals.select_pickup_start_end"));
       return;
     }
 
     if (horasRetiroVista <= 0) {
-      showError(
-        "La hora final debe ser posterior a la hora inicial"
-      );
+      showError(t("rentals.end_time_after_start"));
       return;
     }
 
-    if (
-      Number(
-        costoRetiroForm
-          .costo_disposicion || 0
-      ) < 0
-    ) {
-      showError(
-        "El costo de disposición no puede ser negativo"
-      );
+    const costoDisposicion = Number(costoRetiroForm.costo_disposicion || 0);
+
+    if (!Number.isFinite(costoDisposicion) || costoDisposicion < 0) {
+      showError(t("rentals.disposal_cost_non_negative"));
       return;
     }
 
     try {
-      setGuardandoCosto(
-        "retiro"
-      );
+      setGuardandoCosto("retiro");
 
-      const respuesta =
-        await guardarCostoRenta(
-          rentaDetalle.id_renta,
-          {
-            tipo_operacion:
-              "retiro",
-
-            hora_inicio:
-              costoRetiroForm
-                .hora_inicio,
-
-            hora_fin:
-              costoRetiroForm
-                .hora_fin,
-
-            lugar_disposicion:
-              costoRetiroForm
-                .lugar_disposicion,
-
-            numero_ticket:
-              costoRetiroForm
-                .numero_ticket,
-
-            costo_disposicion:
-              Number(
-                costoRetiroForm
-                  .costo_disposicion ||
-                  0
-              ),
-
-            observaciones:
-              costoRetiroForm
-                .observaciones,
-          }
-        );
+      const respuesta = await guardarCostoRenta(rentaDetalle.id_renta, {
+        tipo_operacion: "retiro",
+        hora_inicio: combinarFechaHoraHoy(costoRetiroForm.hora_inicio),
+        hora_fin: combinarFechaHoraHoy(costoRetiroForm.hora_fin),
+        lugar_disposicion: costoRetiroForm.lugar_disposicion?.trim() || null,
+        numero_ticket: costoRetiroForm.numero_ticket?.trim() || null,
+        costo_disposicion: costoDisposicion,
+        observaciones: costoRetiroForm.observaciones?.trim() || null,
+      });
 
       showSuccess(
-        respuesta?.msg ||
-          "Costo de retiro guardado"
+        respuesta?.msg || t("rentals.pickup_registered_success")
       );
 
-      await cargarCostosRenta(
-        rentaDetalle.id_renta
-      );
+      await cargarDatos();
+      setModalDetalle(false);
     } catch (error) {
+      console.error("Error registrando retiro:", error);
+
       showError(
         error.response?.data?.msg ||
-          "No se pudo guardar el costo de retiro"
+          error.response?.data?.message ||
+          t("rentals.pickup_register_error")
       );
     } finally {
       setGuardandoCosto(null);
@@ -2304,6 +2609,17 @@ const costoRetiroRegistrado =
       ).toLowerCase() === "retiro"
   ) || null;
 
+
+  const combinarFechaHoraHoy = (hora) => {
+    if (!hora) return "";
+
+    const ahora = new Date();
+    const year = ahora.getFullYear();
+    const month = String(ahora.getMonth() + 1).padStart(2, "0");
+    const day = String(ahora.getDate()).padStart(2, "0");
+
+    return `${year}-${month}-${day}T${hora}:00`;
+  };
 
   return (
     <DashboardLayout>
@@ -2924,124 +3240,399 @@ const costoRetiroRegistrado =
                         {abierto && (
                           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5 gap-3 p-3">
                             {items.map((renta) => {
-                              const estadoVisual = getEstadoVisual(renta);
-                              const saldo = Number(renta.saldo_pendiente || 0);
-                              const progreso = getProgresoRenta(renta);
+                              const estadoVisual =
+                                getEstadoVisual(renta, t);
+
+                              const alertaOperacion =
+                                getAlertaOperacion(renta, t);
+
+                              const saldo =
+                                Number(
+                                  renta.saldo_pendiente || 0
+                                );
+
+                              const progreso =
+                                getProgresoRenta(renta);
+
+                              const estado = String(
+                                renta.estado || ""
+                              )
+                                .trim()
+                                .toLowerCase();
 
                               return (
                                 <div
                                   key={renta.id_renta}
-                                  className={`border ${estadoVisual.border} rounded-xl shadow-sm overflow-hidden bg-white hover:shadow-md transition`}
+                                  className={`
+                                    overflow-hidden
+                                    rounded-2xl
+                                    border
+                                    ${estadoVisual.border}
+                                    bg-white
+                                    shadow-sm
+                                    transition
+                                    hover:-translate-y-0.5
+                                    hover:shadow-md
+                                  `}
                                 >
+
+                                  {/* ========================================= */}
+                                  {/* CABECERA */}
+                                  {/* ========================================= */}
+
                                   <div
-                                    className={`${estadoVisual.header} border-b px-3 py-2 flex justify-between items-center`}
+                                    className={`
+                                      ${estadoVisual.header}
+                                      border-b
+                                      px-3.5
+                                      py-3
+                                    `}
                                   >
-                                    <div>
-                                      <strong className="text-sm truncate text-slate-800">
-                                        {renta.dumpster_codigo}
-                                      </strong>
-                                      <p className="text-[10px] text-slate-500">
-                                        {estadoVisual.subtitle}
-                                      </p>
+
+                                    <div className="flex items-start justify-between gap-2">
+
+                                      <div className="min-w-0">
+
+                                        <strong className="block truncate text-sm font-bold text-slate-800">
+                                          {renta.dumpster_codigo}
+                                        </strong>
+
+                                      </div>
+
+
+                                      <span
+                                        className={`
+                                          shrink-0
+                                          rounded-full
+                                          px-2.5
+                                          py-1
+                                          text-[10px]
+                                          font-semibold
+                                          ${estadoVisual.badge}
+                                        `}
+                                      >
+                                        {estadoVisual.label}
+                                      </span>
+
                                     </div>
 
-                                    <span
-                                      className={`text-[10px] px-2 py-1 rounded-full font-semibold ${estadoVisual.badge}`}
-                                    >
-                                      {estadoVisual.label}
-                                    </span>
+
+                                    
+
                                   </div>
 
-                                  <div className="p-3 text-xs space-y-2">
-                                    <div className="grid grid-cols-2 gap-2">
-                                      <div>
-                                        <p className="text-slate-500">{t("dumpster_size")}</p>
-                                        <span className="inline-block bg-slate-700 text-white px-2 py-1 rounded text-[10px]">
-                                          {renta.tamano_yardas} {t("yard")}
+
+                                  {/* ========================================= */}
+                                  {/* CONTENIDO */}
+                                  {/* ========================================= */}
+
+                                  <div className="space-y-2.5 p-3 text-xs">
+
+                                    {/* ========================================= */}
+                                    {/* CLIENTE + TAMAÑO + PAGO */}
+                                    {/* ========================================= */}
+
+                                    <div className="grid grid-cols-[1fr_auto] items-center gap-3">
+
+                                      {/* CLIENTE + TAMAÑO */}
+                                      <div className="min-w-0">
+
+                                        <p className="truncate text-xs font-semibold text-slate-800">
+                                          {renta.cliente || "-"}
+                                        </p>
+
+                                        <span className="mt-1 inline-flex rounded-md bg-slate-700 px-2 py-1 text-[9px] font-medium text-white">
+                                          {renta.tamano_yardas}{" "}
+                                          {t("yard")}
                                         </span>
+
                                       </div>
 
-                                      <div>
-                                        <p className="text-slate-500">{t("payment")}</p>
+
+                                      {/* PAGO */}
+                                      <div className="text-right">
+
+                                        <p className="mb-1 text-[9px] text-slate-400">
+                                          {t("payment")}
+                                        </p>
+
                                         <span
-                                          className={`inline-block px-2 py-1 rounded text-[10px] text-white ${
-                                            saldo > 0
-                                              ? "bg-red-600"
-                                              : "bg-green-600"
-                                          }`}
+                                          className={`
+                                            inline-flex
+                                            rounded-md
+                                            px-2.5
+                                            py-1
+                                            text-[9px]
+                                            font-medium
+                                            text-white
+                                            ${
+                                              saldo > 0
+                                                ? "bg-red-600"
+                                                : "bg-green-600"
+                                            }
+                                          `}
                                         >
-                                          {saldo > 0 ? t("pending") : t("paid")}
+                                          {saldo > 0
+                                            ? t("pending")
+                                            : t("paid")}
                                         </span>
+
                                       </div>
+
                                     </div>
 
-                                    <div>
-                                      <p className="text-slate-500">{t("client")}</p>
-                                      <p className="font-semibold truncate">
-                                        {renta.cliente}
-                                      </p>
-                                    </div>
 
-                                    <div>
-                                      <p className="text-slate-500">
-                                        {t("address")}
-                                      </p>
-                                      <p className="truncate">
-                                        {renta.direccion_entrega || "-"}
-                                      </p>
-                                    </div>
+                                    {/* ========================================= */}
+                                    {/* FECHAS DE LA OPERACIÓN */}
+                                    {/* ========================================= */}
 
-                                    {estadoVisual.label === t("rentals.to_pick_up") || estadoVisual.label === "Retirar hoy" ? (
-                                      <div className="bg-slate-100 border border-slate-200 rounded-lg p-2 text-center">
-                                        <p className="text-[10px] text-slate-500">{t("pickup_date")}</p>
-                                        <strong className="text-xs text-slate-800">
-                                          {formatFecha(renta.fecha_estimada_devolucion)}
+                                    <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+
+                                      {/* ENTREGA */}
+                                      <div
+                                        className={`
+                                          rounded-lg
+                                          px-2
+                                          py-2
+                                          text-center
+                                          ${
+                                            renta.entrega_hora_fin
+                                              ? "bg-green-600 text-white"
+                                              : "border border-green-200 bg-green-50 text-green-700"
+                                          }
+                                        `}
+                                      >
+
+                                        <p className="text-[8px] uppercase opacity-70">
+                                          {renta.entrega_hora_fin
+                                            ? t("rentals.actual_delivery")
+                                            : t("rentals.delivery")}
+                                        </p>
+
+                                        <strong className="block text-[10px]">
+                                          {renta.entrega_hora_fin
+                                            ? formatFecha(
+                                                renta.entrega_hora_fin
+                                              )
+                                            : formatFecha(
+                                                renta.fecha_inicio
+                                              )}
                                         </strong>
-                                      </div>
-                                      ) : (
-                                        <div className="grid grid-cols-3 items-center gap-1">
-                                          <span
-                                            className={`${estadoVisual.dateStart} text-white rounded px-2 py-1 text-[10px] text-center`}
-                                          >
-                                            {formatFecha(renta.fecha_inicio)}
-                                          </span>
 
-                                          <span className="text-center text-slate-500 text-[10px]">
-                                            {renta.dias_renta} {t("days")}
-                                          </span>
-
-                                          <span
-                                            className={`${estadoVisual.dateEnd} text-white rounded px-2 py-1 text-[10px] text-center`}
-                                          >
-                                            {formatFecha(renta.fecha_estimada_devolucion)}
-                                          </span>
-                                        </div>
-                                      )}
-
-                                    <div>
-                                      <div className="flex justify-between text-[10px] text-slate-500 mb-1">
-                                        <span>{t("progress")}</span>
-                                        <span>{progreso}%</span>
                                       </div>
 
-                                      <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
-                                        <div
-                                          className={`h-full rounded-full ${estadoVisual.progress}`}
-                                          style={{ width: `${progreso}%` }}
-                                        />
+
+                                      {/* DÍAS */}
+                                      <div className="text-center">
+
+                                        <strong className="block text-[11px] text-slate-700">
+                                          {renta.dias_renta}
+                                        </strong>
+
+                                        <span className="text-[8px] text-slate-400">
+                                          {t("days")}
+                                        </span>
+
                                       </div>
+
+
+                                      {/* RETIRO */}
+                                      <div
+                                        className={`
+                                          rounded-lg
+                                          px-2
+                                          py-2
+                                          text-center
+                                          ${
+                                            renta.retiro_hora_fin
+                                              ? "bg-green-600 text-white"
+                                              : "border border-red-200 bg-red-50 text-red-700"
+                                          }
+                                        `}
+                                      >
+
+                                        <p className="text-[8px] uppercase opacity-70">
+                                          {renta.retiro_hora_fin
+                                            ? t("rentals.actual_pickup")
+                                            : t("rentals.pickup")}
+                                        </p>
+
+                                        <strong className="block text-[10px]">
+                                          {renta.retiro_hora_fin
+                                            ? formatFecha(
+                                                renta.retiro_hora_fin
+                                              )
+                                            : formatFecha(
+                                                renta.fecha_estimada_devolucion
+                                              )}
+                                        </strong>
+
+                                      </div>
+
                                     </div>
+
+
+                                    {/* ========================================= */}
+                                    {/* ESTADO OPERATIVO / PROGRESO */}
+                                    {/* ========================================= */}
+
+                                    {renta.estado === "programada" ? (
+
+                                      /* ======================================= */
+                                      /* TODAVÍA NO EMPEZÓ LA RENTA */
+                                      /* ======================================= */
+
+                                      alertaOperacion && (
+                                        <div
+                                          className={`
+                                            flex
+                                            items-center
+                                            gap-1.5
+                                            rounded-lg
+                                            border
+                                            px-2.5
+                                            py-2
+                                            text-[10px]
+                                            font-semibold
+
+                                            ${
+                                              alertaOperacion.tipo === "retraso"
+                                                ? "border-red-200 bg-red-50 text-red-700"
+                                                : alertaOperacion.tipo === "hoy"
+                                                  ? "border-orange-200 bg-orange-50 text-orange-700"
+                                                  : "border-blue-200 bg-blue-50 text-blue-700"
+                                            }
+                                          `}
+                                        >
+
+                                          <AlertTriangle
+                                            size={12}
+                                            className="shrink-0"
+                                          />
+
+                                          <span>
+                                            {alertaOperacion.texto}
+                                          </span>
+
+                                        </div>
+                                      )
+
+                                    ) : renta.estado === "en_uso" ? (
+
+                                      /* ======================================= */
+                                      /* RENTA EN USO */
+                                      /* ======================================= */
+
+                                      <div>
+
+                                        {/* ALERTA DE RETIRO */}
+
+                                        {alertaOperacion &&
+                                          (
+                                            alertaOperacion.tipo === "hoy" ||
+                                            alertaOperacion.tipo === "retraso"
+                                          ) && (
+
+                                          <div
+                                            className={`
+                                              mb-2
+                                              flex
+                                              items-center
+                                              gap-1.5
+                                              rounded-lg
+                                              border
+                                              px-2.5
+                                              py-2
+                                              text-[10px]
+                                              font-semibold
+
+                                              ${
+                                                alertaOperacion.tipo === "retraso"
+                                                  ? "border-red-200 bg-red-50 text-red-700"
+                                                  : "border-orange-200 bg-orange-50 text-orange-700"
+                                              }
+                                            `}
+                                          >
+
+                                            <AlertTriangle
+                                              size={12}
+                                              className="shrink-0"
+                                            />
+
+                                            <span>
+                                              {alertaOperacion.texto}
+                                            </span>
+
+                                          </div>
+
+                                        )}
+
+
+                                        {/* PROGRESO */}
+
+                                        <div className="mb-1.5 flex items-center justify-between">
+
+                                          <span className="text-[10px] text-slate-500">
+                                            {t("progress")}
+                                          </span>
+
+                                          <span className="text-[10px] font-semibold text-slate-600">
+                                            {progreso}%
+                                          </span>
+
+                                        </div>
+
+
+                                        <div className="h-2 overflow-hidden rounded-full bg-slate-200">
+
+                                          <div
+                                            className={`
+                                              h-full
+                                              rounded-full
+                                              transition-all
+                                              ${estadoVisual.progress}
+                                            `}
+                                            style={{
+                                              width: `${progreso}%`,
+                                            }}
+                                          />
+
+                                        </div>
+
+                                      </div>
+
+                                    ) : null}
+
+
+                                    {/* ========================================= */}
+                                    {/* BOTÓN */}
+                                    {/* ========================================= */}
 
                                     <button
                                       type="button"
                                       onClick={() =>
-                                        abrirDetalleRenta(renta.id_renta)
+                                        abrirDetalleRenta(
+                                          renta.id_renta
+                                        )
                                       }
-                                      className={`w-full text-white py-2 rounded-lg mt-2 text-xs font-semibold ${estadoVisual.button}`}
+                                      className={`
+                                        mt-1
+                                        w-full
+                                        rounded-lg
+                                        py-2
+                                        text-[11px]
+                                        font-semibold
+                                        text-white
+                                        transition
+                                        ${estadoVisual.button}
+                                      `}
                                     >
-                                      {t("view_detail")} #{renta.id_renta}
+                                      {t("view_detail")} #
+                                      {renta.id_renta}
                                     </button>
+
                                   </div>
+
                                 </div>
                               );
                             })}
@@ -3756,7 +4347,7 @@ const costoRetiroRegistrado =
                                           {esExtra && (
                                             <span className="rounded-full bg-orange-100 px-2 py-0.5 text-[11px] font-semibold text-orange-700">
                                               {extraCompleto?.tipo_extra ||
-                                                "Cargo extra"}
+                                                t("rentals.extra_charge_default")}
                                             </span>
                                           )}
                                         </div>
@@ -3797,7 +4388,7 @@ const costoRetiroRegistrado =
 
                                             if (!extraCompleto) {
                                               showError(
-                                                "No se pudo identificar el cargo extra"
+                                                t("rentals.extra_not_identified")
                                               );
                                               return;
                                             }
@@ -4195,29 +4786,23 @@ const costoRetiroRegistrado =
                                       )}
                                     </label>
 
-                                    <input
-                                      type="datetime-local"
-                                      value={
-                                        costoEntregaForm.hora_inicio
-                                      }
-                                      onChange={(e) =>
-                                        setCostoEntregaForm(
-                                          (prev) => ({
-                                            ...prev,
-                                            hora_inicio:
-                                              e.target.value,
-                                          })
-                                        )
+                                    <OperationTimeSelector
+                                      value={costoEntregaForm.hora_inicio}
+                                      onChange={(value) =>
+                                        setCostoEntregaForm((prev) => ({
+                                          ...prev,
+                                          hora_inicio: value,
+                                        }))
                                       }
                                       disabled={
                                         !canEditRenta ||
-                                        rentaDetalle?.estado ===
-                                          "cancelado" ||
+                                        rentaDetalle?.estado !==
+                                          "programada" ||
                                         guardandoCosto ===
                                           "entrega"
                                       }
-                                      className="w-full rounded-lg border border-slate-300 px-3 py-2 disabled:bg-slate-100"
-                                      required
+                                      t={t}
+                                      accent="blue"
                                     />
                                   </div>
 
@@ -4228,29 +4813,23 @@ const costoRetiroRegistrado =
                                       )}
                                     </label>
 
-                                    <input
-                                      type="datetime-local"
-                                      value={
-                                        costoEntregaForm.hora_fin
-                                      }
-                                      onChange={(e) =>
-                                        setCostoEntregaForm(
-                                          (prev) => ({
-                                            ...prev,
-                                            hora_fin:
-                                              e.target.value,
-                                          })
-                                        )
+                                    <OperationTimeSelector
+                                      value={costoEntregaForm.hora_fin}
+                                      onChange={(value) =>
+                                        setCostoEntregaForm((prev) => ({
+                                          ...prev,
+                                          hora_fin: value,
+                                        }))
                                       }
                                       disabled={
                                         !canEditRenta ||
-                                        rentaDetalle?.estado ===
-                                          "cancelado" ||
+                                        rentaDetalle?.estado !==
+                                          "programada" ||
                                         guardandoCosto ===
                                           "entrega"
                                       }
-                                      className="w-full rounded-lg border border-slate-300 px-3 py-2 disabled:bg-slate-100"
-                                      required
+                                      t={t}
+                                      accent="blue"
                                     />
                                   </div>
                                 </div>
@@ -4310,27 +4889,20 @@ const costoRetiroRegistrado =
                                 </div>
 
                                 {canEditRenta &&
-                                  rentaDetalle?.estado !==
-                                    "cancelado" && (
+                                  rentaDetalle?.estado === "programada" && (
                                     <button
                                       type="submit"
                                       disabled={
-                                        guardandoCosto ===
-                                          "entrega" ||
+                                        guardandoCosto === "entrega" ||
                                         horasEntregaVista <= 0
                                       }
                                       className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
                                     >
                                       <Save size={17} />
 
-                                      {guardandoCosto ===
-                                      "entrega"
-                                        ? t(
-                                            "rentals.operation_saving"
-                                          )
-                                        : t(
-                                            "rentals.delivery_register_button"
-                                          )}
+                                      {guardandoCosto === "entrega"
+                                        ? t("rentals.operation_saving")
+                                        : t("rentals.delivery_register_button")}
                                     </button>
                                   )}
                               </form>
@@ -4518,71 +5090,60 @@ const costoRetiroRegistrado =
                                 className="space-y-4 p-4"
                               >
                                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+
+                                  {/* INICIO DEL RETIRO */}
                                   <div>
                                     <label className="mb-1 block text-sm font-semibold text-slate-700">
-                                      {t(
-                                        "rentals.pickup_start"
-                                      )}
+                                      {t("rentals.pickup_start")}
                                     </label>
 
-                                    <input
-                                      type="datetime-local"
-                                      value={
-                                        costoRetiroForm.hora_inicio
-                                      }
-                                      onChange={(e) =>
-                                        setCostoRetiroForm(
-                                          (prev) => ({
-                                            ...prev,
-                                            hora_inicio:
-                                              e.target.value,
-                                          })
-                                        )
+                                    <OperationTimeSelector
+                                      value={costoRetiroForm.hora_inicio}
+                                      onChange={(value) =>
+                                        setCostoRetiroForm((prev) => ({
+                                          ...prev,
+                                          hora_inicio: value,
+                                        }))
                                       }
                                       disabled={
                                         !canEditRenta ||
-                                        rentaDetalle?.estado ===
-                                          "cancelado" ||
+                                        rentaDetalle?.estado !==
+                                          "en_uso" ||
                                         guardandoCosto ===
                                           "retiro"
                                       }
-                                      className="w-full rounded-lg border border-slate-300 px-3 py-2 disabled:bg-slate-100"
-                                      required
+                                      t={t}
+                                      accent="orange"
                                     />
                                   </div>
 
+
+                                  {/* FIN DEL RETIRO */}
                                   <div>
                                     <label className="mb-1 block text-sm font-semibold text-slate-700">
-                                      {t(
-                                        "rentals.pickup_end"
-                                      )}
+                                      {t("rentals.pickup_end")}
                                     </label>
 
-                                    <input
-                                      type="datetime-local"
-                                      value={
-                                        costoRetiroForm.hora_fin
-                                      }
-                                      onChange={(e) =>
-                                        setCostoRetiroForm(
-                                          (prev) => ({
-                                            ...prev,
-                                            hora_fin:
-                                              e.target.value,
-                                          })
-                                        )
+                                    <OperationTimeSelector
+                                      value={costoRetiroForm.hora_fin}
+                                      onChange={(value) =>
+                                        setCostoRetiroForm((prev) => ({
+                                          ...prev,
+                                          hora_fin: value,
+                                        }))
                                       }
                                       disabled={
                                         !canEditRenta ||
-                                        rentaDetalle?.estado ===
-                                          "cancelado" ||
+                                        rentaDetalle?.estado !==
+                                          "en_uso" ||
                                         guardandoCosto ===
                                           "retiro"
                                       }
-                                      className="w-full rounded-lg border border-slate-300 px-3 py-2 disabled:bg-slate-100"
-                                      required
+                                      t={t}
+                                      accent="orange"
                                     />
                                   </div>
+
                                 </div>
 
                                 {horasRetiroVista >
@@ -4614,29 +5175,31 @@ const costoRetiroRegistrado =
                                     <input
                                       type="text"
                                       maxLength={150}
-                                      value={
-                                        costoRetiroForm.lugar_disposicion
-                                      }
+                                      value={costoRetiroForm.lugar_disposicion}
                                       onChange={(e) =>
-                                        setCostoRetiroForm(
-                                          (prev) => ({
-                                            ...prev,
-                                            lugar_disposicion:
-                                              e.target.value,
-                                          })
-                                        )
+                                        setCostoRetiroForm((prev) => ({
+                                          ...prev,
+                                          lugar_disposicion: e.target.value,
+                                        }))
                                       }
                                       placeholder={t(
                                         "rentals.disposal_location_placeholder"
                                       )}
                                       disabled={
                                         !canEditRenta ||
-                                        rentaDetalle?.estado ===
-                                          "cancelado" ||
-                                        guardandoCosto ===
-                                          "retiro"
+                                        rentaDetalle?.estado !== "en_uso" ||
+                                        guardandoCosto === "retiro"
                                       }
-                                      className="w-full rounded-lg border border-slate-300 px-3 py-2 disabled:bg-slate-100"
+                                      className="
+                                        w-full
+                                        rounded-lg
+                                        border
+                                        border-slate-300
+                                        px-3
+                                        py-2
+                                        disabled:cursor-not-allowed
+                                        disabled:bg-slate-100
+                                      "
                                     />
                                   </div>
 
@@ -4650,29 +5213,31 @@ const costoRetiroRegistrado =
                                     <input
                                       type="text"
                                       maxLength={100}
-                                      value={
-                                        costoRetiroForm.numero_ticket
-                                      }
+                                      value={costoRetiroForm.numero_ticket}
                                       onChange={(e) =>
-                                        setCostoRetiroForm(
-                                          (prev) => ({
-                                            ...prev,
-                                            numero_ticket:
-                                              e.target.value,
-                                          })
-                                        )
+                                        setCostoRetiroForm((prev) => ({
+                                          ...prev,
+                                          numero_ticket: e.target.value,
+                                        }))
                                       }
                                       placeholder={t(
                                         "rentals.ticket_number_placeholder"
                                       )}
                                       disabled={
                                         !canEditRenta ||
-                                        rentaDetalle?.estado ===
-                                          "cancelado" ||
-                                        guardandoCosto ===
-                                          "retiro"
+                                        rentaDetalle?.estado !== "en_uso" ||
+                                        guardandoCosto === "retiro"
                                       }
-                                      className="w-full rounded-lg border border-slate-300 px-3 py-2 disabled:bg-slate-100"
+                                      className="
+                                        w-full
+                                        rounded-lg
+                                        border
+                                        border-slate-300
+                                        px-3
+                                        py-2
+                                        disabled:cursor-not-allowed
+                                        disabled:bg-slate-100
+                                      "
                                     />
                                   </div>
                                 </div>
@@ -4688,27 +5253,29 @@ const costoRetiroRegistrado =
                                     type="number"
                                     min="0"
                                     step="0.01"
-                                    value={
-                                      costoRetiroForm.costo_disposicion
-                                    }
+                                    value={costoRetiroForm.costo_disposicion}
                                     onChange={(e) =>
-                                      setCostoRetiroForm(
-                                        (prev) => ({
-                                          ...prev,
-                                          costo_disposicion:
-                                            e.target.value,
-                                        })
-                                      )
+                                      setCostoRetiroForm((prev) => ({
+                                        ...prev,
+                                        costo_disposicion: e.target.value,
+                                      }))
                                     }
                                     placeholder="0.00"
                                     disabled={
                                       !canEditRenta ||
-                                      rentaDetalle?.estado ===
-                                        "cancelado" ||
-                                      guardandoCosto ===
-                                        "retiro"
+                                      rentaDetalle?.estado !== "en_uso" ||
+                                      guardandoCosto === "retiro"
                                     }
-                                    className="w-full rounded-lg border border-slate-300 px-3 py-2 disabled:bg-slate-100"
+                                    className="
+                                      w-full
+                                      rounded-lg
+                                      border
+                                      border-slate-300
+                                      px-3
+                                      py-2
+                                      disabled:cursor-not-allowed
+                                      disabled:bg-slate-100
+                                    "
                                   />
                                 </div>
 
@@ -4749,27 +5316,35 @@ const costoRetiroRegistrado =
                                 </div>
 
                                 {canEditRenta &&
-                                  rentaDetalle?.estado !==
-                                    "cancelado" && (
+                                  rentaDetalle?.estado === "en_uso" && (
                                     <button
                                       type="submit"
                                       disabled={
-                                        guardandoCosto ===
-                                          "retiro" ||
+                                        guardandoCosto === "retiro" ||
                                         horasRetiroVista <= 0
                                       }
-                                      className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-orange-600 px-4 py-2.5 font-semibold text-white hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                      className="
+                                        inline-flex
+                                        w-full
+                                        items-center
+                                        justify-center
+                                        gap-2
+                                        rounded-lg
+                                        bg-orange-600
+                                        px-4
+                                        py-2.5
+                                        font-semibold
+                                        text-white
+                                        hover:bg-orange-700
+                                        disabled:cursor-not-allowed
+                                        disabled:opacity-50
+                                      "
                                     >
                                       <Save size={17} />
 
-                                      {guardandoCosto ===
-                                      "retiro"
-                                        ? t(
-                                            "rentals.operation_saving"
-                                          )
-                                        : t(
-                                            "rentals.pickup_register_button"
-                                          )}
+                                      {guardandoCosto === "retiro"
+                                        ? t("rentals.operation_saving")
+                                        : t("rentals.pickup_register_button")}
                                     </button>
                                   )}
                               </form>
@@ -4948,7 +5523,7 @@ const costoRetiroRegistrado =
                         </div>
 
                         <p className="mt-1 text-xs text-slate-500">
-                          Pagos y cargos ordenados del más reciente al más antiguo.
+                          {t("rentals.movements_description")}
                         </p>
                       </div>
 
@@ -4965,7 +5540,7 @@ const costoRetiroRegistrado =
                           </p>
 
                           <p className="mt-1 text-xs text-slate-400">
-                            Los pagos y cargos adicionales aparecerán aquí.
+                            {t("rentals.movements_empty")}
                           </p>
                         </div>
                       ) : (
@@ -5052,8 +5627,8 @@ const costoRetiroRegistrado =
                                             `}
                                           >
                                             {estaPagado
-                                              ? "Pago realizado"
-                                              : "Pago pendiente"}
+                                              ? t("rentals.payment_completed")
+                                              : t("rentals.payment_pending")}
                                           </span>
                                         </div>
 
@@ -5203,25 +5778,7 @@ const costoRetiroRegistrado =
                         {t("rentals.send_to_driver")}
                       </button>
 
-                      {canFinishRenta && (
-                        <button
-                          type="button"
-                          onClick={abrirModalFinalizarRenta}
-                          disabled={procesandoOperacion}
-                          className="
-                            inline-flex items-center gap-2
-                            px-4 py-2
-                            bg-green-600 text-white
-                            rounded-lg
-                            hover:bg-green-700
-                            disabled:opacity-50
-                            disabled:cursor-not-allowed
-                          "
-                        >
-                          <CheckCircle size={16} />
-                          {t("rentals.finish_rental")}
-                        </button>
-                      )}
+                      
                     </>
                   )}
 
@@ -5258,10 +5815,10 @@ const costoRetiroRegistrado =
               <div>
                 <h3 className="flex items-center gap-2 text-lg font-bold text-slate-800">
                   <Ban size={20} className="text-red-600" />
-                  Cancelar renta
+                  {t("rentals.cancel_modal_title")}
                 </h3>
                 <p className="mt-1 text-sm text-slate-500">
-                  Renta #{rentaDetalle?.id_renta || "-"}
+                  {t("rentals.rental_number", { id: rentaDetalle?.id_renta || "-" })}
                 </p>
               </div>
 
@@ -5274,7 +5831,7 @@ const costoRetiroRegistrado =
                 }}
                 disabled={procesandoOperacion}
                 className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 disabled:opacity-50"
-                aria-label="Cerrar"
+                aria-label={t("close")}
               >
                 <X size={20} />
               </button>
@@ -5289,11 +5846,10 @@ const costoRetiroRegistrado =
                   />
                   <div>
                     <p className="font-semibold text-red-800">
-                      Esta acción cancelará la renta
+                      {t("rentals.cancel_warning_title")}
                     </p>
                     <p className="mt-1 text-sm text-red-700">
-                      El dumpster volverá a estar disponible y los pagos
-                      asociados serán anulados.
+                      {t("rentals.cancel_warning_text")}
                     </p>
                   </div>
                 </div>
@@ -5304,7 +5860,7 @@ const costoRetiroRegistrado =
                   htmlFor="motivo_cancelacion"
                   className="mb-1 block text-sm font-semibold text-slate-700"
                 >
-                  Motivo de cancelación
+                  {t("rentals.cancellation_reason")}
                   <span className="text-red-600"> *</span>
                 </label>
 
@@ -5315,14 +5871,14 @@ const costoRetiroRegistrado =
                   rows={4}
                   maxLength={500}
                   autoFocus
-                  placeholder="Ejemplo: El cliente canceló el servicio..."
+                  placeholder={t("rentals.cancellation_placeholder")}
                   disabled={procesandoOperacion}
                   className="w-full resize-none rounded-xl border border-slate-300 px-3 py-2 outline-none focus:border-red-500 focus:ring-2 focus:ring-red-100 disabled:bg-slate-100"
                 />
 
                 <div className="mt-1 flex justify-between text-xs">
                   <span className="text-slate-500">
-                    Mínimo 3 caracteres
+                    {t("rentals.minimum_three_chars")}
                   </span>
                   <span className="text-slate-400">
                     {motivoCancelacion.length}/500
@@ -5361,7 +5917,7 @@ const costoRetiroRegistrado =
                 ) : (
                   <>
                     <Ban size={16} />
-                    Confirmar cancelación
+                    {t("rentals.confirm_cancellation")}
                   </>
                 )}
               </button>
@@ -5370,101 +5926,7 @@ const costoRetiroRegistrado =
         </div>
       )}
 
-      {modalFinalizarRenta && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b px-5 py-4">
-              <h3 className="flex items-center gap-2 text-lg font-bold text-slate-800">
-                <CheckCircle size={21} className="text-green-600" />
-                Finalizar renta
-              </h3>
-
-              <button
-                type="button"
-                onClick={() => {
-                  if (!procesandoOperacion) {
-                    setModalFinalizarRenta(false);
-                  }
-                }}
-                disabled={procesandoOperacion}
-                className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 disabled:opacity-50"
-                aria-label="Cerrar"
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            <div className="p-5">
-              <div className="rounded-xl border border-green-100 bg-green-50 p-4">
-                <p className="font-semibold text-green-800">
-                  ¿Confirmas que el servicio fue completado?
-                </p>
-                <p className="mt-2 text-sm text-green-700">
-                  Se finalizará la renta #{rentaDetalle?.id_renta || "-"} y el
-                  dumpster{" "}
-                  <strong>{rentaDetalle?.dumpster_codigo || "-"}</strong>{" "}
-                  volverá a estar disponible.
-                </p>
-              </div>
-
-              {Number(rentaDetalle?.saldo_pendiente || 0) > 0 && (
-                <div className="mt-4 rounded-xl border border-orange-200 bg-orange-50 p-4">
-                  <div className="flex gap-3">
-                    <AlertTriangle
-                      size={20}
-                      className="shrink-0 text-orange-600"
-                    />
-                    <div>
-                      <p className="font-semibold text-orange-800">
-                        Existe saldo pendiente
-                      </p>
-                      <p className="mt-1 text-sm text-orange-700">
-                        Saldo actual:{" "}
-                        <strong>
-                          $
-                          {Number(
-                            rentaDetalle?.saldo_pendiente || 0
-                          ).toFixed(2)}
-                        </strong>
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="flex justify-end gap-3 border-t bg-slate-50 px-5 py-4">
-              <button
-                type="button"
-                onClick={() => setModalFinalizarRenta(false)}
-                disabled={procesandoOperacion}
-                className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-slate-700 hover:bg-slate-100 disabled:opacity-50"
-              >
-                Volver
-              </button>
-
-              <button
-                type="button"
-                onClick={confirmarFinalizacionRenta}
-                disabled={procesandoOperacion}
-                className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {procesandoOperacion ? (
-                  <>
-                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                    Finalizando...
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle size={16} />
-                    Finalizar renta
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      
 
       {modalAnularExtra &&
         extraParaAnular && (
@@ -5496,7 +5958,7 @@ const costoRetiroRegistrado =
                     </h3>
 
                     <p className="mt-1 text-sm text-slate-500">
-                      El cargo permanecerá en el historial como anulado.
+                      {t("rentals.void_extra_history_note")}
                     </p>
                   </div>
 
@@ -5526,12 +5988,12 @@ const costoRetiroRegistrado =
                     <div>
                       <p className="font-semibold text-red-900">
                         {extraParaAnular.tipo_extra ||
-                          "Cargo extra"}
+                          t("rentals.extra_charge_default")}
                       </p>
 
                       <p className="mt-1 text-sm text-red-700">
                         {extraParaAnular.descripcion ||
-                          "Sin descripción"}
+                          t("rentals.no_description")}
                       </p>
                     </div>
 
@@ -5550,7 +6012,7 @@ const costoRetiroRegistrado =
                     htmlFor="motivo-anulacion-extra"
                     className="mb-1.5 block text-sm font-semibold text-slate-700"
                   >
-                    Motivo de la anulación
+                    {t("rentals.void_reason")}
                   </label>
 
                   <textarea
@@ -5583,7 +6045,7 @@ const costoRetiroRegistrado =
 
                   <div className="mt-1 flex items-center justify-between">
                     <p className="text-xs text-slate-400">
-                      Mínimo 3 caracteres
+                      {t("rentals.minimum_three_chars")}
                     </p>
 
                     <p className="text-xs text-slate-400">
@@ -5596,7 +6058,7 @@ const costoRetiroRegistrado =
                 </div>
 
                 <div className="rounded-lg bg-amber-50 px-3 py-2.5 text-xs text-amber-800">
-                  El monto será retirado del total y del saldo pendiente de la renta.
+                  {t("rentals.void_amount_notice")}
                 </div>
               </div>
 
@@ -5618,7 +6080,7 @@ const costoRetiroRegistrado =
                     disabled:opacity-50
                   "
                 >
-                  Volver
+                  {t("rentals.back")}
                 </button>
 
                 <button
@@ -5645,8 +6107,8 @@ const costoRetiroRegistrado =
                   <Ban size={16} />
 
                   {anulandoExtra
-                    ? "Anulando..."
-                    : "Confirmar anulación"}
+                    ? t("rentals.voiding")
+                    : t("rentals.confirm_void")}
                 </button>
               </div>
             </div>

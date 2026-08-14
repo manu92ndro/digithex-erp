@@ -1,10 +1,9 @@
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 
-// ======================================================
+// ==============================
 // ESPAÑOL
-// ======================================================
-
+// ==============================
 import esCommon from "./locales/es/common.json";
 import esAuth from "./locales/es/auth.json";
 import esMenu from "./locales/es/menu.json";
@@ -16,11 +15,11 @@ import esClients from "./locales/es/clients.json";
 import esDumpsters from "./locales/es/dumpsters.json";
 import esTrucks from "./locales/es/trucks.json";
 import esRentals from "./locales/es/rentals.json";
+import esConstruction from "./locales/es/construction.json";
 
-// ======================================================
+// ==============================
 // ENGLISH
-// ======================================================
-
+// ==============================
 import enCommon from "./locales/en/common.json";
 import enAuth from "./locales/en/auth.json";
 import enMenu from "./locales/en/menu.json";
@@ -32,10 +31,7 @@ import enClients from "./locales/en/clients.json";
 import enDumpsters from "./locales/en/dumpsters.json";
 import enTrucks from "./locales/en/trucks.json";
 import enRentals from "./locales/en/rentals.json";
-
-// ======================================================
-// UNIR TRADUCCIONES
-// ======================================================
+import enConstruction from "./locales/en/construction.json";
 
 const esTranslation = {
   ...esCommon,
@@ -49,6 +45,7 @@ const esTranslation = {
   ...esDumpsters,
   ...esTrucks,
   ...esRentals,
+  ...esConstruction,
 };
 
 const enTranslation = {
@@ -63,11 +60,8 @@ const enTranslation = {
   ...enDumpsters,
   ...enTrucks,
   ...enRentals,
+  ...enConstruction,
 };
-
-// ======================================================
-// CONFIGURACIÓN I18NEXT
-// ======================================================
 
 i18n
   .use(initReactI18next)
@@ -76,16 +70,12 @@ i18n
       es: {
         translation: esTranslation,
       },
-
       en: {
         translation: enTranslation,
       },
     },
 
-    lng:
-      localStorage.getItem("language") ||
-      "es",
-
+    lng: localStorage.getItem("language") || "es",
     fallbackLng: "es",
 
     interpolation: {
