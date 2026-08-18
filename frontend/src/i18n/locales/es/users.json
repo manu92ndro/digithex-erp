@@ -41,5 +41,28 @@
   "user_deactivated": "Usuario desactivado correctamente",
   "cannot_deactivate_own_user": "No puedes inactivar tu propio usuario",
   "cannot_deactivate_super_admin": "No se puede inactivar un usuario SUPER ADMIN",
-  "cannot_deactivate_last_admin": "No puedes inactivar el último administrador activo de la empresa"
+  "cannot_deactivate_last_admin": "No puedes inactivar el último administrador activo de la empresa",
+
+  
+  "users_company_access": "Acceso a empresas",
+  "users_company_access_description": "Asigne las empresas y el rol que tendrá el usuario en cada una.",
+  "users_add_company": "Agregar empresa",
+  "users_add_another_company": "Agregar otra empresa",
+  "users_remove_company": "Eliminar empresa",
+  "users_main_company": "Empresa principal",
+  "users_set_main_company": "Establecer como principal",
+  "users_company_assignment": "Empresa {{number}}",
+  "users_company_required": "Debe asignar al menos una empresa.",
+  "users_company_role_required": "Seleccione una empresa y un rol para cada asignación.",
+  "users_company_duplicate": "No puede asignar la misma empresa dos veces.",
+  "users_main_company_required": "Debe existir exactamente una empresa principal.",
+  "users_more_companies": "empresa(s) adicional(es)",
+  "user_created_success": "Usuario creado correctamente",
+  "user_updated_success": "Usuario actualizado correctamente",
+    "users_remove_access": "Quitar acceso",
+  "users_remove_access_confirm": "¿Desea quitar el acceso de este usuario a esta empresa?",
+  "users_cannot_remove_only_company": "El usuario debe conservar al menos una empresa activa."
+
+  
+
 }

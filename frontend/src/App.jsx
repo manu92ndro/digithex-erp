@@ -128,7 +128,14 @@ function App() {
           }
           />
 
-        <Route path="/company-settings" element={<CompanySettings />} />  
+        <Route
+          path="/company-settings"
+          element={
+            <PermissionRoute permission="company_settings.ver">
+              <CompanySettings />
+            </PermissionRoute>
+          }
+        />
 
 
 

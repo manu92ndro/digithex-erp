@@ -1,15 +1,32 @@
 const express = require("express");
+
 const router = express.Router();
 
 const {
   login,
   me,
-  logout
+  logout,
+  cambiarEmpresa,
 } = require("../controllers/auth.controller");
 
-const { validarJWT } = require("../middlewares/auth.middleware");
+const {
+  validarJWT,
+} = require("../middlewares/auth.middleware");
 
-router.post("/login", login);
+
+// ======================================================
+// LOGIN
+// ======================================================
+
+router.post(
+  "/login",
+  login
+);
+
+
+// ======================================================
+// SESIÓN ACTUAL
+// ======================================================
 
 router.get(
   "/me",
@@ -17,10 +34,27 @@ router.get(
   me
 );
 
+
+// ======================================================
+// CAMBIAR EMPRESA ACTIVA
+// ======================================================
+
+router.post(
+  "/cambiar-empresa",
+  validarJWT,
+  cambiarEmpresa
+);
+
+
+// ======================================================
+// LOGOUT
+// ======================================================
+
 router.post(
   "/logout",
   validarJWT,
   logout
 );
+
 
 module.exports = router;

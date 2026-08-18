@@ -41,5 +41,27 @@
   "user_deactivated": "User deactivated successfully",
   "cannot_deactivate_own_user": "You cannot deactivate your own user",
   "cannot_deactivate_super_admin": "A SUPER ADMIN user cannot be deactivated",
-  "cannot_deactivate_last_admin": "You cannot deactivate the company's last active administrator"
+  "cannot_deactivate_last_admin": "You cannot deactivate the company's last active administrator",
+
+  
+  "users_company_access": "Company access",
+  "users_company_access_description": "Assign the companies and the role the user will have in each one.",
+  "users_add_company": "Add company",
+  "users_add_another_company": "Add another company",
+  "users_remove_company": "Remove company",
+  "users_main_company": "Main company",
+  "users_set_main_company": "Set as main",
+  "users_company_assignment": "Company {{number}}",
+  "users_company_required": "At least one company must be assigned.",
+  "users_company_role_required": "Select a company and role for each assignment.",
+  "users_company_duplicate": "The same company cannot be assigned twice.",
+  "users_main_company_required": "Exactly one main company is required.",
+  "users_more_companies": "additional company(ies)",
+  "user_created_success": "User created successfully",
+  "user_updated_success": "User updated successfully",
+  "users_remove_access": "Remove access",
+  "users_remove_access_confirm": "Do you want to remove this user's access to this company?",
+  "users_cannot_remove_only_company": "The user must keep at least one active company."
+
+
 }
