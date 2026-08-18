@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import DashboardLayout from "../layouts/DashboardLayout";
 import Pagination from "../components/Pagination";
 import usePermission from "../hooks/usePermission";
+import { useAuth } from "../context/AuthContext";
 
 import {
   showSuccess,
@@ -25,7 +26,9 @@ import {
   Save,
   UserRound,
   Eye,
-  UserX,
+  Plus,
+  Star,
+  Trash2,
 } from "lucide-react";
 
 import {
@@ -41,6 +44,23 @@ import { getEmpresas } from "../api/empresas";
 export default function Usuarios() {
   const { t } = useTranslation();
   const { hasPermission } = usePermission();
+  const { user } = useAuth();
+
+  const esSuperAdmin =
+    String(user?.rol || "")
+      .trim()
+      .toUpperCase() === "SUPER ADMIN";
+
+  const crearAsignacionInicial = () => ({
+    id_empresa:
+      esSuperAdmin
+        ? ""
+        : Number(user?.id_empresa) || "",
+    id_rol: "",
+    es_principal: 1,
+    estado: 1,
+  });
+
   const [usuarios, setUsuarios] = useState([]);
   const [roles, setRoles] = useState([]);
   const [empresas, setEmpresas] = useState([]);
@@ -57,13 +77,12 @@ export default function Usuarios() {
   const itemsPerPage = 5;
 
   const [form, setForm] = useState({
-    id_empresa: "",
-    id_rol: "",
     nombres: "",
     email: "",
     celular: "",
     password_user: "",
-    estado: 1
+    estado: 1,
+    empresas: [crearAsignacionInicial()],
   });
 
   const normalize = (res, key) => {
@@ -142,14 +161,14 @@ export default function Usuarios() {
 
   const limpiarForm = () => {
     setIdUsuario(null);
+
     setForm({
-      id_empresa: "",
-      id_rol: "",
       nombres: "",
       email: "",
       celular: "",
       password_user: "",
-      estado: 1
+      estado: 1,
+      empresas: [crearAsignacionInicial()],
     });
   };
 
@@ -166,31 +185,225 @@ export default function Usuarios() {
   const handleChange = (e) => {
     const { name, value } = e.target;
 
-    setForm({
-      ...form,
-      [name]: ["id_empresa", "id_rol", "estado"].includes(name)
-        ? value === "" ? "" : Number(value)
-        : value
+    setForm((prev) => ({
+      ...prev,
+      [name]:
+        name === "estado"
+          ? Number(value)
+          : value,
+    }));
+  };
+
+  // ======================================================
+  // ASIGNACIONES EMPRESA / ROL
+  // ======================================================
+
+  const agregarEmpresa = () => {
+    if (!esSuperAdmin) return;
+
+    setForm((prev) => ({
+      ...prev,
+      empresas: [
+        ...prev.empresas,
+        {
+          id_empresa: "",
+          id_rol: "",
+          es_principal: 0,
+          estado: 1,
+        },
+      ],
+    }));
+  };
+
+  const eliminarEmpresa = (index) => {
+    setForm((prev) => {
+      if (prev.empresas.length <= 1) {
+        return prev;
+      }
+
+      const nuevas = prev.empresas.filter(
+        (_, i) => i !== index
+      );
+
+      const existePrincipal = nuevas.some(
+        (item) =>
+          Number(item.es_principal) === 1
+      );
+
+      if (!existePrincipal && nuevas.length > 0) {
+        nuevas[0] = {
+          ...nuevas[0],
+          es_principal: 1,
+        };
+      }
+
+      return {
+        ...prev,
+        empresas: nuevas,
+      };
     });
+  };
+
+  const quitarAccesoEmpresa = async (asignacion, index) => {
+    // En "Nuevo usuario" la asignación todavía no existe en BD.
+    // Simplemente se elimina de la lista del formulario.
+    if (!idUsuario) {
+      eliminarEmpresa(index);
+      return;
+    }
+
+    // La gestión multiempresa queda reservada al SUPER ADMIN.
+    // Un administrador normal crea/edita usuarios solo dentro
+    // de su empresa activa.
+    if (!esSuperAdmin) {
+      showError(
+        t("users_remove_access_superadmin_only")
+      );
+      return;
+    }
+
+    // Un usuario que ya existe debe conservar al menos
+    // una empresa activa. Para bloquear la cuenta completa
+    // se usa el Estado del usuario.
+    if (form.empresas.length <= 1) {
+      showError(
+        t("users_cannot_remove_only_company")
+      );
+      return;
+    }
+
+    const confirmado = await showConfirm(
+      t("users_remove_access_confirm", {
+        company:
+          empresas.find(
+            (empresa) =>
+              Number(empresa.id_empresa) ===
+              Number(asignacion.id_empresa)
+          )?.nombre_empresa || "",
+      })
+    );
+
+    if (!confirmado) return;
+
+    // Al guardar, el backend sincroniza empresas[] y deja
+    // inactiva la asignación que ya no venga en el payload.
+    eliminarEmpresa(index);
+  };
+
+  const actualizarEmpresaUsuario = (
+    index,
+    campo,
+    valor
+  ) => {
+    setForm((prev) => ({
+      ...prev,
+      empresas: prev.empresas.map(
+        (item, i) => {
+          if (i !== index) {
+            return item;
+          }
+
+          if (campo === "id_empresa") {
+            return {
+              ...item,
+              id_empresa:
+                valor === ""
+                  ? ""
+                  : Number(valor),
+              id_rol: "",
+            };
+          }
+
+          if (
+            campo === "id_rol" ||
+            campo === "estado"
+          ) {
+            return {
+              ...item,
+              [campo]:
+                valor === ""
+                  ? ""
+                  : Number(valor),
+            };
+          }
+
+          return {
+            ...item,
+            [campo]: valor,
+          };
+        }
+      ),
+    }));
+  };
+
+  const marcarEmpresaPrincipal = (index) => {
+    setForm((prev) => ({
+      ...prev,
+      empresas: prev.empresas.map(
+        (item, i) => ({
+          ...item,
+          es_principal:
+            i === index ? 1 : 0,
+        })
+      ),
+    }));
   };
 
   const editarUsuario = (u) => {
     setIdUsuario(u.id_usuario);
 
+    let empresasUsuario =
+      Array.isArray(u.empresas)
+        ? u.empresas.map((empresa) => ({
+            id_empresa:
+              Number(empresa.id_empresa),
+            id_rol:
+              Number(empresa.id_rol),
+            es_principal:
+              Number(empresa.es_principal) === 1
+                ? 1
+                : 0,
+            estado:
+              Number(empresa.estado) === 1
+                ? 1
+                : 0,
+          }))
+        : [];
+
+    // Compatibilidad temporal con respuestas antiguas.
+    if (
+      empresasUsuario.length === 0 &&
+      u.id_empresa &&
+      u.id_rol
+    ) {
+      empresasUsuario = [
+        {
+          id_empresa: Number(u.id_empresa),
+          id_rol: Number(u.id_rol),
+          es_principal: 1,
+          estado: 1,
+        },
+      ];
+    }
+
+    if (empresasUsuario.length === 0) {
+      empresasUsuario = [
+        crearAsignacionInicial(),
+      ];
+    }
+
     setForm({
-      id_empresa: Number(u.id_empresa),
-      id_rol: Number(u.id_rol),
       nombres: u.nombres || "",
       email: u.email || "",
       celular: u.celular || "",
       password_user: "",
-      estado: Number(u.estado) === 1 ? 1 : 0
+      estado:
+        Number(u.estado) === 1 ? 1 : 0,
+      empresas: empresasUsuario,
     });
 
     setOpenModal(true);
   };
-
-
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -198,18 +411,109 @@ export default function Usuarios() {
     try {
       setLoading(true);
 
-      if (idUsuario) {
-        await updateUsuario(idUsuario, form);
-      } else {
-        await createUsuario(form);
+      if (
+        !Array.isArray(form.empresas) ||
+        form.empresas.length === 0
+      ) {
+        showError(
+          t("users_company_required")
+        );
+        return;
       }
+
+      const incompleta = form.empresas.some(
+        (item) =>
+          !item.id_empresa ||
+          !item.id_rol
+      );
+
+      if (incompleta) {
+        showError(
+          t("users_company_role_required")
+        );
+        return;
+      }
+
+      const idsEmpresas = form.empresas.map(
+        (item) =>
+          Number(item.id_empresa)
+      );
+
+      if (
+        new Set(idsEmpresas).size !==
+        idsEmpresas.length
+      ) {
+        showError(
+          t("users_company_duplicate")
+        );
+        return;
+      }
+
+      const totalPrincipales =
+        form.empresas.filter(
+          (item) =>
+            Number(item.es_principal) === 1
+        ).length;
+
+      if (totalPrincipales !== 1) {
+        showError(
+          t("users_main_company_required")
+        );
+        return;
+      }
+
+      const payload = {
+        nombres: form.nombres.trim(),
+        email: form.email
+          .trim()
+          .toLowerCase(),
+        celular:
+          form.celular?.trim() || "",
+        password_user:
+          form.password_user,
+        estado: Number(form.estado),
+        empresas: form.empresas.map(
+          (item) => ({
+            id_empresa:
+              Number(item.id_empresa),
+            id_rol:
+              Number(item.id_rol),
+            es_principal:
+              Number(item.es_principal) === 1
+                ? 1
+                : 0,
+            estado:
+              Number(item.estado) === 1
+                ? 1
+                : 0,
+          })
+        ),
+      };
+
+      if (idUsuario) {
+        await updateUsuario(
+          idUsuario,
+          payload
+        );
+      } else {
+        await createUsuario(payload);
+      }
+
+      showSuccess(
+        idUsuario
+          ? t("user_updated_success")
+          : t("user_created_success")
+      );
 
       await cargarUsuarios();
       setCurrentPage(1);
       cerrarModal();
 
     } catch (error) {
-      console.error("ERROR AL GUARDAR:", error);
+      console.error(
+        "ERROR AL GUARDAR:",
+        error
+      );
 
       showError(
         error?.response?.data?.message ||
@@ -221,15 +525,28 @@ export default function Usuarios() {
   };
 
   const usuariosFiltrados = usuarios.filter((u) => {
+    const empresasTexto =
+      Array.isArray(u.empresas)
+        ? u.empresas
+            .map(
+              (item) =>
+                `${item.nombre_empresa || ""} ${item.rol || ""}`
+            )
+            .join(" ")
+        : "";
+
     const texto = `
       ${u.nombres || ""}
       ${u.email || ""}
       ${u.nombre_empresa || ""}
       ${u.rol || ""}
       ${u.celular || ""}
+      ${empresasTexto}
     `.toLowerCase();
 
-    return texto.includes(busqueda.toLowerCase());
+    return texto.includes(
+      busqueda.toLowerCase()
+    );
   });
   const totalItems = usuariosFiltrados.length;
 
@@ -348,13 +665,25 @@ export default function Usuarios() {
                     </td>
 
                     <td className="p-4">
-                      <div className="flex items-center gap-2 text-slate-700">
-                        <Building2 size={16} className="text-slate-400" />
-                        {u.nombre_empresa || (
-                          <span className="text-slate-400">
-                            {t("no_company")}
-                          </span>
-                        )}
+                      <div className="flex items-start gap-2 text-slate-700">
+                        <Building2
+                          size={16}
+                          className="mt-0.5 shrink-0 text-slate-400"
+                        />
+
+                        <div className="min-w-0">
+                          <p className="max-w-44 truncate font-medium">
+                            {u.nombre_empresa ||
+                              t("no_company")}
+                          </p>
+
+                          {Number(u.total_empresas) > 1 && (
+                            <p className="mt-0.5 text-[11px] text-blue-600">
+                              + {Number(u.total_empresas) - 1}{" "}
+                              {t("users_more_companies")}
+                            </p>
+                          )}
+                        </div>
                       </div>
                     </td>
 
@@ -459,7 +788,7 @@ export default function Usuarios() {
 
         {openModal && (
           <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-white w-full max-w-2xl rounded-2xl shadow-xl overflow-hidden">
+            <div className="bg-white w-full max-w-3xl max-h-[90vh] rounded-2xl shadow-xl overflow-hidden flex flex-col">
 
               <div className="flex justify-between items-center px-6 py-5 border-b border-slate-100">
                 <div>
@@ -482,166 +811,8 @@ export default function Usuarios() {
 
               <form
                 onSubmit={handleSubmit}
-                className="grid grid-cols-1 md:grid-cols-2 gap-4 p-6"
+                className="grid grid-cols-1 md:grid-cols-2 gap-4 p-6 overflow-y-auto"
               >
-
-                {/* ================================================= */}
-                {/* EMPRESA */}
-                {/* ================================================= */}
-
-                <div>
-                  <label className="text-sm font-medium text-slate-600">
-                    {t("company")}
-                  </label>
-
-                  <select
-                    name="id_empresa"
-                    value={form.id_empresa}
-                    onChange={(e) => {
-
-                      const value = e.target.value;
-
-                      setForm((prev) => ({
-                        ...prev,
-
-                        id_empresa:
-                          value === ""
-                            ? ""
-                            : Number(value),
-
-                        // MUY IMPORTANTE
-                        // Si cambia empresa, limpiamos el rol anterior
-                        id_rol: ""
-                      }));
-                    }}
-                    className="
-                      mt-1
-                      w-full
-                      border
-                      border-slate-200
-                      p-2.5
-                      rounded-xl
-                      outline-none
-                      focus:ring-2
-                      focus:ring-blue-100
-                      focus:border-blue-500
-                    "
-                    required
-                  >
-
-                    <option value="">
-                      {t("select_company")}
-                    </option>
-
-                    {empresas.map((empresa) => (
-
-                      <option
-                        key={empresa.id_empresa}
-                        value={empresa.id_empresa}
-                      >
-                        {empresa.nombre_empresa || empresa.nombre}
-                      </option>
-
-                    ))}
-
-                  </select>
-                </div>
-
-
-                {/* ================================================= */}
-                {/* ROL */}
-                {/* ================================================= */}
-
-                <div>
-
-                  <label className="text-sm font-medium text-slate-600">
-                    {t("role")}
-                  </label>
-
-                  <select
-                    name="id_rol"
-                    value={form.id_rol}
-                    disabled={!form.id_empresa}
-                    onChange={(e) => {
-
-                      const value = e.target.value;
-
-                      setForm((prev) => ({
-                        ...prev,
-
-                        id_rol:
-                          value === ""
-                            ? ""
-                            : Number(value)
-                      }));
-                    }}
-                    className="
-                      mt-1
-                      w-full
-                      border
-                      border-slate-200
-                      p-2.5
-                      rounded-xl
-                      outline-none
-                      focus:ring-2
-                      focus:ring-blue-100
-                      focus:border-blue-500
-                      disabled:bg-slate-100
-                      disabled:text-slate-400
-                      disabled:cursor-not-allowed
-                    "
-                    required
-                  >
-
-                    <option value="">
-
-                      {!form.id_empresa
-                        ? t("select_company_first")
-                        : t("select_role")}
-
-                    </option>
-
-
-                    {roles
-                      .filter((rol) => {
-
-                        const perteneceEmpresa =
-                          Number(rol.id_empresa) ===
-                          Number(form.id_empresa);
-
-
-                        const estaActivo =
-                          Number(rol.estado) === 1;
-
-
-                        const esRolActual =
-                          Number(rol.id_rol) ===
-                          Number(form.id_rol);
-
-
-                        return (
-                          perteneceEmpresa &&
-                          (estaActivo || esRolActual)
-                        );
-
-                      })
-                      .map((rol) => (
-
-                        <option
-                          key={rol.id_rol}
-                          value={rol.id_rol}
-                        >
-
-                          {rol.rol || rol.nombre}
-
-                        </option>
-
-                      ))}
-
-                  </select>
-
-                </div>
-
 
                 {/* ================================================= */}
                 {/* NOMBRE */}
@@ -873,6 +1044,344 @@ export default function Usuarios() {
 
 
                 {/* ================================================= */}
+                {/* ACCESO A EMPRESAS */}
+                {/* ================================================= */}
+
+                <div className="md:col-span-2 mt-2">
+                  <div className="mb-3 flex items-start justify-between gap-3">
+                    <div>
+                      <h3 className="font-semibold text-slate-800">
+                        {t("users_company_access")}
+                      </h3>
+
+                      <p className="mt-0.5 text-xs text-slate-500">
+                        {t(
+                          "users_company_access_description"
+                        )}
+                      </p>
+                    </div>
+
+                    {esSuperAdmin && (
+                      <button
+                        type="button"
+                        onClick={agregarEmpresa}
+                        className="inline-flex shrink-0 items-center gap-2 rounded-lg bg-blue-50 px-3 py-2 text-xs font-medium text-blue-700 transition hover:bg-blue-100"
+                      >
+                        <Plus size={15} />
+                        {t("users_add_company")}
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="space-y-3">
+                    {form.empresas.map(
+                      (asignacion, index) => {
+                        // ==================================================
+                        // ROLES DE LA EMPRESA SELECCIONADA
+                        // ==================================================
+
+                        const rolesEmpresa = roles.filter(
+                          (rol) => {
+                            const pertenece =
+                              Number(rol.id_empresa) ===
+                              Number(asignacion.id_empresa);
+
+                            const activo =
+                              Number(rol.estado) === 1;
+
+                            const actual =
+                              Number(rol.id_rol) ===
+                              Number(asignacion.id_rol);
+
+                            return (
+                              pertenece &&
+                              (activo || actual)
+                            );
+                          }
+                        );
+
+                        // ==================================================
+                        // EMPRESA SELECCIONADA
+                        // ==================================================
+
+                        const empresaSeleccionada =
+                          empresas.find(
+                            (empresa) =>
+                              Number(empresa.id_empresa) ===
+                              Number(asignacion.id_empresa)
+                          );
+
+                        // Solo el SUPER ADMIN administra altas/bajas
+                        // de asignaciones multiempresa.
+                        const puedeQuitarAcceso =
+                          esSuperAdmin &&
+                          Boolean(idUsuario) &&
+                          form.empresas.length > 1;
+
+                        return (
+                          <div
+                            key={`${asignacion.id_empresa || "new"}-${index}`}
+                            className="rounded-xl border border-slate-200 bg-slate-50 p-4"
+                          >
+                            {/* CABECERA DE LA ASIGNACIÓN */}
+                            <div className="mb-3 flex items-center justify-between gap-3">
+                              <div className="flex min-w-0 items-center gap-2">
+                                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white">
+                                  <Building2
+                                    size={16}
+                                    className="text-blue-600"
+                                  />
+                                </div>
+
+                                <div className="min-w-0">
+                                  <p className="truncate text-sm font-semibold text-slate-700">
+                                    {empresaSeleccionada?.nombre_empresa ||
+                                      t(
+                                        "users_company_assignment",
+                                        {
+                                          number: index + 1,
+                                        }
+                                      )}
+                                  </p>
+
+                                  {Number(
+                                    asignacion.es_principal
+                                  ) === 1 && (
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-medium text-amber-600">
+                                      <Star
+                                        size={11}
+                                        fill="currentColor"
+                                      />
+                                      {t(
+                                        "users_main_company"
+                                      )}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* NUEVO: si todavía no se guardó, se elimina del form */}
+                              {esSuperAdmin &&
+                                !idUsuario &&
+                                form.empresas.length > 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      eliminarEmpresa(index)
+                                    }
+                                    className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-500 transition hover:bg-slate-200 hover:text-slate-700"
+                                    title={t(
+                                      "users_remove_company"
+                                    )}
+                                  >
+                                    <Trash2 size={14} />
+                                    {t(
+                                      "users_remove_company"
+                                    )}
+                                  </button>
+                                )}
+
+                              {/* EDITAR: quitar acceso existente */}
+                              {puedeQuitarAcceso && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    quitarAccesoEmpresa(
+                                      asignacion,
+                                      index
+                                    )
+                                  }
+                                  className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-rose-600 transition hover:bg-rose-50"
+                                  title={t(
+                                    "users_remove_access"
+                                  )}
+                                >
+                                  <Trash2 size={14} />
+                                  {t(
+                                    "users_remove_access"
+                                  )}
+                                </button>
+                              )}
+                            </div>
+
+                            {/* EMPRESA + ROL */}
+                            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                              <div>
+                                <label className="text-xs font-medium text-slate-600">
+                                  {t("company")}
+                                </label>
+
+                                <select
+                                  value={asignacion.id_empresa}
+                                  disabled={!esSuperAdmin}
+                                  onChange={(e) =>
+                                    actualizarEmpresaUsuario(
+                                      index,
+                                      "id_empresa",
+                                      e.target.value
+                                    )
+                                  }
+                                  className="mt-1 w-full rounded-xl border border-slate-200 bg-white p-2.5 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
+                                  required
+                                >
+                                  <option value="">
+                                    {t("select_company")}
+                                  </option>
+
+                                  {empresas.map(
+                                    (empresa) => {
+                                      const yaUsada =
+                                        form.empresas.some(
+                                          (item, i) =>
+                                            i !== index &&
+                                            Number(
+                                              item.id_empresa
+                                            ) ===
+                                              Number(
+                                                empresa.id_empresa
+                                              )
+                                        );
+
+                                      return (
+                                        <option
+                                          key={
+                                            empresa.id_empresa
+                                          }
+                                          value={
+                                            empresa.id_empresa
+                                          }
+                                          disabled={yaUsada}
+                                        >
+                                          {empresa.nombre_empresa ||
+                                            empresa.nombre}
+                                        </option>
+                                      );
+                                    }
+                                  )}
+                                </select>
+                              </div>
+
+                              <div>
+                                <label className="text-xs font-medium text-slate-600">
+                                  {t("role")}
+                                </label>
+
+                                <select
+                                  value={asignacion.id_rol}
+                                  disabled={
+                                    !asignacion.id_empresa
+                                  }
+                                  onChange={(e) =>
+                                    actualizarEmpresaUsuario(
+                                      index,
+                                      "id_rol",
+                                      e.target.value
+                                    )
+                                  }
+                                  className="mt-1 w-full rounded-xl border border-slate-200 bg-white p-2.5 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+                                  required
+                                >
+                                  <option value="">
+                                    {!asignacion.id_empresa
+                                      ? t(
+                                          "select_company_first"
+                                        )
+                                      : t(
+                                          "select_role"
+                                        )}
+                                  </option>
+
+                                  {rolesEmpresa.map(
+                                    (rol) => (
+                                      <option
+                                        key={rol.id_rol}
+                                        value={rol.id_rol}
+                                      >
+                                        {rol.rol ||
+                                          rol.nombre}
+                                      </option>
+                                    )
+                                  )}
+                                </select>
+                              </div>
+                            </div>
+
+                            {/* EMPRESA PRINCIPAL: SOLO SUPER ADMIN */}
+                            {esSuperAdmin && (
+                              <div className="mt-3">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    marcarEmpresaPrincipal(
+                                      index
+                                    )
+                                  }
+                                  className={`
+                                    inline-flex
+                                    items-center
+                                    gap-2
+                                    rounded-lg
+                                    px-3
+                                    py-2
+                                    text-xs
+                                    font-medium
+                                    transition
+                                    ${
+                                      Number(
+                                        asignacion.es_principal
+                                      ) === 1
+                                        ? "bg-amber-100 text-amber-700"
+                                        : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-100"
+                                    }
+                                  `}
+                                >
+                                  <Star
+                                    size={14}
+                                    fill={
+                                      Number(
+                                        asignacion.es_principal
+                                      ) === 1
+                                        ? "currentColor"
+                                        : "none"
+                                    }
+                                  />
+
+                                  {Number(
+                                    asignacion.es_principal
+                                  ) === 1
+                                    ? t(
+                                        "users_main_company"
+                                      )
+                                    : t(
+                                        "users_set_main_company"
+                                      )}
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      }
+                    )}
+                  </div>
+
+                  {/* SOLO SUPER ADMIN PUEDE AGREGAR OTRA EMPRESA */}
+                  {esSuperAdmin && (
+                    <button
+                      type="button"
+                      onClick={agregarEmpresa}
+                      className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 py-3 text-sm font-medium text-slate-500 transition hover:border-blue-400 hover:bg-blue-50/50 hover:text-blue-600"
+                    >
+                      <Plus size={17} />
+                      {t(
+                        "users_add_another_company"
+                      )}
+                    </button>
+                  )}
+
+                </div>
+
+
+                {/* ================================================= */}
                 {/* BOTONES */}
                 {/* ================================================= */}
 
@@ -993,18 +1502,63 @@ export default function Usuarios() {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <p className="text-slate-400">{t("company")}</p>
-                    <p className="font-medium text-slate-700">
-                      {usuarioSeleccionado.nombre_empresa || t("no_company")}
+                  <div className="sm:col-span-2">
+                    <p className="mb-2 text-slate-400">
+                      {t("users_company_access")}
                     </p>
-                  </div>
 
-                  <div>
-                    <p className="text-slate-400">{t("role")}</p>
-                    <p className="font-medium text-slate-700">
-                      {usuarioSeleccionado.rol || t("no_role")}
-                    </p>
+                    <div className="space-y-2">
+                      {Array.isArray(
+                        usuarioSeleccionado.empresas
+                      ) &&
+                      usuarioSeleccionado.empresas.length >
+                        0 ? (
+                        usuarioSeleccionado.empresas.map(
+                          (empresa) => (
+                            <div
+                              key={
+                                empresa.id_usuario_empresa ||
+                                `${empresa.id_empresa}-${empresa.id_rol}`
+                              }
+                              className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2"
+                            >
+                              <div className="min-w-0">
+                                <p className="truncate font-medium text-slate-700">
+                                  {empresa.nombre_empresa}
+                                </p>
+
+                                <p className="text-xs text-slate-500">
+                                  {empresa.rol ||
+                                    t("no_role")}
+                                </p>
+                              </div>
+
+                              {Number(
+                                empresa.es_principal
+                              ) === 1 && (
+                                <span className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-amber-100 px-2 py-1 text-[10px] font-medium text-amber-700">
+                                  <Star
+                                    size={11}
+                                    fill="currentColor"
+                                  />
+                                  {t(
+                                    "users_main_company"
+                                  )}
+                                </span>
+                              )}
+                            </div>
+                          )
+                        )
+                      ) : (
+                        <p className="font-medium text-slate-700">
+                          {usuarioSeleccionado.nombre_empresa ||
+                            t("no_company")}
+                          {usuarioSeleccionado.rol
+                            ? ` · ${usuarioSeleccionado.rol}`
+                            : ""}
+                        </p>
+                      )}
+                    </div>
                   </div>
 
                   <div>
