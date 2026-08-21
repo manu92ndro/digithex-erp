@@ -222,6 +222,13 @@ app.use(
   "/api/recibos-pdf",
   require("./src/modules/dumpsters/receipts/recibosPDF.routes")
 );
+
+app.use(
+  "/api/agenda",
+  require(
+    "./src/modules/agenda/agenda.routes"
+  )
+);
 // ===============================
 // Ruta no encontrada
 // ===============================
@@ -258,5 +265,7 @@ app.use((err, req, res, next) => {
       "Error interno del servidor",
   });
 });
+
+
 
 module.exports = app;

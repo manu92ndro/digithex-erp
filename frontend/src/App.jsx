@@ -20,6 +20,7 @@ import Camiones from "./pages/Camiones";
 import Rentas from "./pages/Rentas";
 
 import CompanySettings from "./pages/CompanySettings";
+import Agenda from "./pages/Agenda";
 
 
 function App() {
@@ -133,6 +134,15 @@ function App() {
           element={
             <PermissionRoute permission="company_settings.ver">
               <CompanySettings />
+            </PermissionRoute>
+          }
+        />
+
+        <Route
+          path="/agenda"
+          element={
+            <PermissionRoute permission="agenda.ver">
+              <Agenda />
             </PermissionRoute>
           }
         />
