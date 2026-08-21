@@ -1,0 +1,63 @@
+{
+  "agenda": {
+    "title": "Agenda",
+    "subtitle": "Organiza citas, reuniones y visitas.",
+    "calendar": "Calendario",
+    "today": "Hoy",
+    "loading": "Cargando agenda...",
+    "load_error": "No se pudo cargar la agenda.",
+    "new_appointment": "Nueva cita",
+    "day_schedule": "Horario del día",
+    "schedule_this_day": "Agendar este día",
+    "available": "Disponible",
+    "unavailable": "No disponible",
+    "past": "Pasado",
+    "past_date": "Fecha pasada",
+    "double_click": "Doble clic para crear una cita",
+    "no_appointments": "No hay citas programadas.",
+    "one_appointment": "1 cita programada.",
+    "appointments_count": "{{count}} citas programadas.",
+    "more": "+{{count}} más",
+    "appointment": "Cita",
+    "saved_title": "Cita agendada",
+    "saved_message": "La cita fue registrada correctamente.",
+    "save_error_title": "No se pudo guardar",
+    "save_error": "Ocurrió un error al registrar la cita.",
+
+    "days": {
+      "mon": "Lun",
+      "tue": "Mar",
+      "wed": "Mié",
+      "thu": "Jue",
+      "fri": "Vie",
+      "sat": "Sáb",
+      "sun": "Dom"
+    },
+
+    "new": {
+      "title": "Nueva cita",
+      "subtitle": "Registra los datos y agenda la cita.",
+      "name": "Nombre",
+      "full_name": "Nombre completo",
+      "phone": "Celular",
+      "phone_placeholder": "Teléfono",
+      "email": "Correo",
+      "address": "Dirección",
+      "address_placeholder": "Dirección de la cita",
+      "contact_method": "Medio de contacto",
+      "appointment_type": "Tipo de cita",
+      "select": "Seleccionar",
+      "date_time": "Fecha y hora",
+      "date": "Fecha",
+      "time": "Hora",
+      "duration": "Duración",
+      "assign_to": "Asignar a",
+      "select_responsible": "Seleccionar responsable",
+      "description": "Descripción",
+      "description_placeholder": "Motivo de la cita...",
+      "cancel": "Cancelar",
+      "save": "Guardar cita",
+      "saving": "Guardando..."
+    }
+  }
+}

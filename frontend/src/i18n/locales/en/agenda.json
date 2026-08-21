@@ -1,0 +1,63 @@
+{
+  "agenda": {
+    "title": "Agenda",
+    "subtitle": "Organize appointments, meetings and visits.",
+    "calendar": "Calendar",
+    "today": "Today",
+    "loading": "Loading agenda...",
+    "load_error": "The agenda could not be loaded.",
+    "new_appointment": "New appointment",
+    "day_schedule": "Day schedule",
+    "schedule_this_day": "Schedule this day",
+    "available": "Available",
+    "unavailable": "Unavailable",
+    "past": "Past",
+    "past_date": "Past date",
+    "double_click": "Double-click to create an appointment",
+    "no_appointments": "No appointments scheduled.",
+    "one_appointment": "1 appointment scheduled.",
+    "appointments_count": "{{count}} appointments scheduled.",
+    "more": "+{{count}} more",
+    "appointment": "Appointment",
+    "saved_title": "Appointment scheduled",
+    "saved_message": "The appointment was successfully scheduled.",
+    "save_error_title": "Could not save",
+    "save_error": "An error occurred while scheduling the appointment.",
+
+    "days": {
+      "mon": "Mon",
+      "tue": "Tue",
+      "wed": "Wed",
+      "thu": "Thu",
+      "fri": "Fri",
+      "sat": "Sat",
+      "sun": "Sun"
+    },
+
+    "new": {
+      "title": "New appointment",
+      "subtitle": "Enter the information and schedule the appointment.",
+      "name": "Name",
+      "full_name": "Full name",
+      "phone": "Phone",
+      "phone_placeholder": "Phone number",
+      "email": "Email",
+      "address": "Address",
+      "address_placeholder": "Appointment address",
+      "contact_method": "Contact method",
+      "appointment_type": "Appointment type",
+      "select": "Select",
+      "date_time": "Date and time",
+      "date": "Date",
+      "time": "Time",
+      "duration": "Duration",
+      "assign_to": "Assign to",
+      "select_responsible": "Select responsible person",
+      "description": "Description",
+      "description_placeholder": "Reason for the appointment...",
+      "cancel": "Cancel",
+      "save": "Save appointment",
+      "saving": "Saving..."
+    }
+  }
+}
