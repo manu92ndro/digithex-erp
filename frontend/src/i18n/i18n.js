@@ -16,6 +16,7 @@ import esDumpsters from "./locales/es/dumpsters.json";
 import esTrucks from "./locales/es/trucks.json";
 import esRentals from "./locales/es/rentals.json";
 import esConstruction from "./locales/es/construction.json";
+import esAgenda from "./locales/es/agenda.json";
 
 // ==============================
 // ENGLISH
@@ -32,6 +33,7 @@ import enDumpsters from "./locales/en/dumpsters.json";
 import enTrucks from "./locales/en/trucks.json";
 import enRentals from "./locales/en/rentals.json";
 import enConstruction from "./locales/en/construction.json";
+import enAgenda from "./locales/en/agenda.json";
 
 const esTranslation = {
   ...esCommon,
@@ -46,6 +48,8 @@ const esTranslation = {
   ...esTrucks,
   ...esRentals,
   ...esConstruction,
+  ...esAgenda,
+  
 };
 
 const enTranslation = {
@@ -61,6 +65,7 @@ const enTranslation = {
   ...enTrucks,
   ...enRentals,
   ...enConstruction,
+  ...enAgenda,
 };
 
 i18n

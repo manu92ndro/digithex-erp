@@ -940,6 +940,36 @@ export default function Agenda() {
     ),
   ];
 
+  const estilosDiasSemana = [
+    {
+      header: "bg-blue-50 text-blue-800 border-blue-100",
+      cell: "hover:bg-blue-50/70",
+    },
+    {
+      header: "bg-indigo-50 text-indigo-800 border-indigo-100",
+      cell: "hover:bg-indigo-50/70",
+    },
+    {
+      header: "bg-violet-50 text-violet-800 border-violet-100",
+      cell: "hover:bg-violet-50/70",
+    },
+    {
+      header: "bg-cyan-50 text-cyan-800 border-cyan-100",
+      cell: "hover:bg-cyan-50/70",
+    },
+    {
+      header: "bg-emerald-50 text-emerald-800 border-emerald-100",
+      cell: "hover:bg-emerald-50/70",
+    },
+    {
+      header: "bg-amber-50 text-amber-800 border-amber-100",
+      cell: "hover:bg-amber-50/70",
+    },
+    {
+      header: "bg-rose-50 text-rose-800 border-rose-100",
+      cell: "hover:bg-rose-50/70",
+    },
+  ];
 
   // ====================================================
   // RETURN
@@ -1280,33 +1310,26 @@ export default function Agenda() {
                 grid-cols-7
                 border-b
                 border-slate-200
-                bg-slate-50
               "
             >
-              {diasSemana.map(
-                (
-                  dia,
-                  index
-                ) => (
-                  <div
-                    key={
-                      `${dia}-${index}`
-                    }
-
-                    className="
-                      py-2.5
-                      text-center
-                      text-[11px]
-                      font-semibold
-                      uppercase
-                      tracking-wide
-                      text-slate-700
-                    "
-                  >
-                    {dia}
-                  </div>
-                )
-              )}
+              {diasSemana.map((dia, index) => (
+                <div
+                  key={`${dia}-${index}`}
+                  className={`
+                    border-r
+                    py-2.5
+                    text-center
+                    text-[11px]
+                    font-extrabold
+                    uppercase
+                    tracking-wide
+                    last:border-r-0
+                    ${estilosDiasSemana[index].header}
+                  `}
+                >
+                  {dia}
+                </div>
+              ))}
             </div>
 
 
@@ -1337,264 +1360,209 @@ export default function Agenda() {
                 "
               >
 
-                {diasCalendario.map(
-                  (
-                    fecha
-                  ) => {
+                {diasCalendario.map((fecha) => {
+                  const key =
+                    fechaLocalISO(fecha);
 
-                    const key =
-                      fechaLocalISO(
-                        fecha
-                      );
+                  const citasDiaCalendario =
+                    citasPorDia[key] || [];
 
+                  const perteneceMes =
+                    fecha.getMonth() ===
+                      mesActual.getMonth() &&
+                    fecha.getFullYear() ===
+                      mesActual.getFullYear();
 
-                    const citasDiaCalendario =
-                      citasPorDia[
-                        key
-                      ] || [];
+                  const seleccionado =
+                    esMismoDia(
+                      fecha,
+                      fechaSeleccionada
+                    );
 
+                  const esHoy =
+                    esMismoDia(
+                      fecha,
+                      hoy
+                    );
 
-                    const perteneceMes =
-                      fecha.getMonth() ===
-                        mesActual.getMonth() &&
-                      fecha.getFullYear() ===
-                        mesActual.getFullYear();
-
-
-                    const seleccionado =
-                      esMismoDia(
-                        fecha,
-                        fechaSeleccionada
-                      );
+                  const fechaPasada =
+                    esFechaPasada(fecha);
 
 
-                    const esHoy =
-                      esMismoDia(
-                        fecha,
-                        hoy
-                      );
+                  // ==========================================
+                  // COLOR SEGÚN DÍA DE LA SEMANA
+                  // ==========================================
+
+                  const indiceDiaSemana =
+                    (fecha.getDay() + 6) % 7;
+
+                  const estiloDia =
+                    estilosDiasSemana[indiceDiaSemana];
 
 
-                    const fechaPasada =
-                      esFechaPasada(
-                        fecha
-                      );
+                  return (
+                    <button
+                      type="button"
+                      key={key}
 
+                      onClick={() =>
+                        seleccionarDia(fecha)
+                      }
 
-                    return (
-                      <button
-                        type="button"
+                      onDoubleClick={() =>
+                        abrirCitaDesdeDia(fecha)
+                      }
 
-                        key={key}
+                      title={
+                        fechaPasada
+                          ? t("agenda.past_date")
+                          : t("agenda.double_click")
+                      }
 
-                        onClick={() =>
-                          seleccionarDia(
-                            fecha
-                          )
+                      className={`
+                        relative
+                        min-h-[58px]
+                        border-b
+                        border-r
+                        border-slate-200/80
+                        p-1.5
+                        text-center
+                        transition
+
+                        ${
+                          seleccionado
+                            ? "bg-sky-100 ring-2 ring-inset ring-blue-500"
+                            : perteneceMes
+                              ? `bg-white ${estiloDia.cell}`
+                              : "bg-slate-50"
                         }
 
-                        onDoubleClick={() =>
-                          abrirCitaDesdeDia(
-                            fecha
-                          )
-                        }
-
-                        title={
+                        ${
                           fechaPasada
-                            ? t(
-                                "agenda.past_date",
-                                "Fecha pasada"
-                              )
-                            : t(
-                                "agenda.double_click",
-                                "Doble clic para crear una cita"
-                              )
+                            ? "cursor-default"
+                            : "cursor-pointer"
                         }
+                      `}
+                    >
 
-                        className={`
-                          relative
-                          min-h-[58px]
-                          border-b
-                          border-r
-                          border-slate-200/80
-                          p-1.5
-                          text-center
-                          transition
-
-                          ${
-                            seleccionado
-                              ? "bg-sky-100 ring-2 ring-inset ring-blue-500"
-                              : perteneceMes
-                                ? "bg-white hover:bg-sky-50"
-                                : "bg-slate-50"
-                          }
-
-                          ${
-                            fechaPasada
-                              ? "cursor-default"
-                              : "cursor-pointer"
-                          }
-                        `}
+                      <div
+                        className="
+                          flex
+                          items-center
+                          justify-center
+                        "
                       >
-
-                        <div
-                          className="
+                        <span
+                          className={`
                             flex
+                            h-7
+                            min-w-7
                             items-center
                             justify-center
-                            gap-1
-                          "
-                        >
+                            rounded-full
+                            px-1
+                            text-xs
+                            font-bold
 
+                            ${
+                              esHoy
+                                ? "bg-blue-600 text-white shadow-sm"
+                                : seleccionado
+                                  ? "bg-blue-100 text-blue-700"
+                                  : !perteneceMes
+                                    ? "text-slate-300"
+                                    : fechaPasada
+                                      ? "text-slate-400"
+                                      : "text-slate-700"
+                            }
+                          `}
+                        >
+                          {fecha.getDate()}
+                        </span>
+
+                        {citasDiaCalendario.length > 0 && (
                           <span
-                            className={`
-                              flex
-                              h-7
-                              min-w-7
-                              items-center
-                              justify-center
+                            className="
+                              ml-1
                               rounded-full
-                              px-1
-                              text-xs
+                              bg-blue-100
+                              px-1.5
+                              py-0.5
+                              text-[9px]
                               font-bold
-
-                              ${
-                                esHoy
-                                  ? "bg-blue-600 text-white"
-                                  : seleccionado
-                                    ? "bg-blue-100 text-blue-700"
-                                    : !perteneceMes
-                                      ? "text-slate-300"
-                                      : fechaPasada
-                                        ? "text-slate-400"
-                                        : "text-slate-700"
-                              }
-                            `}
+                              text-blue-700
+                            "
                           >
-                            {fecha.getDate()}
+                            {citasDiaCalendario.length}
                           </span>
+                        )}
+                      </div>
 
 
-                          {citasDiaCalendario.length >
-                            0 && (
-                            <span
-                              className="
-                                rounded-full
-                                bg-blue-100
-                                px-1.5
-                                py-0.5
-                                text-[9px]
-                                font-bold
-                                text-blue-700
-                              "
-                            >
-                              {
-                                citasDiaCalendario.length
-                              }
-                            </span>
-                          )}
+                      <div className="mt-1 space-y-0.5">
+                        {citasDiaCalendario
+                          .slice(0, 1)
+                          .map((cita) => {
+                            const fechaInicio =
+                              new Date(
+                                cita.fecha_inicio
+                              );
 
-                        </div>
-
-
-                        <div
-                          className="
-                            mt-1
-                            space-y-0.5
-                          "
-                        >
-
-                          {citasDiaCalendario
-                            .slice(
-                              0,
-                              1
-                            )
-                            .map(
-                              (
-                                cita
-                              ) => {
-
-                                const fechaInicio =
-                                  new Date(
-                                    cita.fecha_inicio
-                                  );
-
-
-                                const hora =
-                                  fechaInicio
-                                    .toLocaleTimeString(
-                                      locale,
-                                      {
-                                        hour: "numeric",
-                                        minute: "2-digit",
-                                        hour12: true,
-                                      }
-                                    );
-
-
-                                return (
-                                  <div
-                                    key={
-                                      cita.id_cita
-                                    }
-
-                                    className="
-                                      truncate
-                                      rounded-md
-                                      bg-blue-50
-                                      px-1.5
-                                      py-0.5
-                                      text-[9px]
-                                      font-medium
-                                      text-blue-700
-                                    "
-                                  >
-                                    {hora}
-                                    {" "}
-                                    {
-                                      cita.contacto ||
-                                      cita.nombres ||
-                                      ""
-                                    }
-                                  </div>
-                                );
-                              }
-                            )}
-
-
-                          {citasDiaCalendario.length >
-                            1 && (
-                            <p
-                              className="
-                                px-1
-                                text-[9px]
-                                font-medium
-                                text-blue-600
-                              "
-                            >
-                              {t(
-                                "agenda.more",
+                            const hora =
+                              fechaInicio.toLocaleTimeString(
+                                locale,
                                 {
-                                  count:
-                                    citasDiaCalendario.length -
-                                    1,
-
-                                  defaultValue:
-                                    `+${
-                                      citasDiaCalendario.length -
-                                      1
-                                    } más`,
+                                  hour: "numeric",
+                                  minute: "2-digit",
+                                  hour12: true,
                                 }
-                              )}
-                            </p>
-                          )}
+                              );
 
-                        </div>
+                            return (
+                              <div
+                                key={cita.id_cita}
+                                className="
+                                  truncate
+                                  rounded-md
+                                  bg-blue-50
+                                  px-1.5
+                                  py-0.5
+                                  text-center
+                                  text-[9px]
+                                  font-medium
+                                  text-blue-700
+                                "
+                              >
+                                {hora}{" "}
+                                {cita.contacto ||
+                                  cita.nombres ||
+                                  ""}
+                              </div>
+                            );
+                          })}
 
-                      </button>
-                    );
-                  }
-                )}
+                        {citasDiaCalendario.length > 1 && (
+                          <p
+                            className="
+                              px-1
+                              text-center
+                              text-[9px]
+                              font-medium
+                              text-blue-600
+                            "
+                          >
+                            {t("agenda.more", {
+                              count:
+                                citasDiaCalendario.length -
+                                1,
+                            })}
+                          </p>
+                        )}
+                      </div>
+
+                    </button>
+                  );
+                })}
 
               </div>
             )}

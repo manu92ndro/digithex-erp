@@ -36,10 +36,6 @@ const responderError = (res, error) => {
 
 const getFormData = async (req, res) => {
   try {
-    // ==================================================
-    // EMPRESA ACTIVA
-    // ==================================================
-
     const id_empresa = Number(
       req.usuario.id_empresa
     );
@@ -53,10 +49,9 @@ const getFormData = async (req, res) => {
       });
     }
 
-
-    // ==================================================
+    // ==========================================
     // MEDIOS DE CONTACTO
-    // ==================================================
+    // ==========================================
 
     const [mediosContacto] =
       await pool.query(
@@ -75,9 +70,9 @@ const getFormData = async (req, res) => {
       );
 
 
-    // ==================================================
+    // ==========================================
     // TIPOS DE CITA
-    // ==================================================
+    // ==========================================
 
     const [tiposCita] =
       await pool.query(
@@ -97,9 +92,9 @@ const getFormData = async (req, res) => {
       );
 
 
-    // ==================================================
-    // USUARIOS DE LA EMPRESA
-    // ==================================================
+    // ==========================================
+    // USUARIOS ACTIVOS DE LA EMPRESA
+    // ==========================================
 
     const [usuarios] =
       await pool.query(
@@ -107,13 +102,18 @@ const getFormData = async (req, res) => {
         SELECT DISTINCT
           u.id_usuario,
           u.nombres,
-          r.id_rol,
+
+          ue.id_usuario_empresa,
+          ue.id_empresa,
+          ue.id_rol,
+          ue.es_principal,
+
           r.rol
 
-        FROM tb_usuarios u
+        FROM tb_usuario_empresas ue
 
-        INNER JOIN tb_usuarios_empresas ue
-          ON ue.id_usuario = u.id_usuario
+        INNER JOIN tb_usuarios u
+          ON u.id_usuario = ue.id_usuario
 
         INNER JOIN tb_roles r
           ON r.id_rol = ue.id_rol
@@ -129,9 +129,9 @@ const getFormData = async (req, res) => {
       );
 
 
-    // ==================================================
+    // ==========================================
     // RESPUESTA
-    // ==================================================
+    // ==========================================
 
     return res.json({
       ok: true,
@@ -159,7 +159,8 @@ const getFormData = async (req, res) => {
 
     return res.status(500).json({
       ok: false,
-      code: "AGENDA_FORM_DATA_ERROR",
+      code:
+        "AGENDA_FORM_DATA_ERROR",
       message:
         "Error cargando datos de la agenda",
     });
