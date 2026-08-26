@@ -570,21 +570,19 @@ export default function AgendaDayView({
                           flex
                           items-center
                           gap-1
+                          font-bold
+                          text-blue-700
                         "
                       >
                         <Clock3
                           size={12}
+                          className="
+                            text-blue-600
+                          "
                         />
 
                         {formatearHoraFecha(
                           cita.fecha_inicio,
-                          locale
-                        )}
-
-                        {" - "}
-
-                        {formatearHoraFecha(
-                          cita.fecha_fin,
                           locale
                         )}
                       </span>

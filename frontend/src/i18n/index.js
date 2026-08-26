@@ -1,6 +1,7 @@
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 
+
 // ======================================================
 // ESPAÑOL
 // ======================================================
@@ -16,9 +17,12 @@ import esClients from "./locales/es/clients.json";
 import esDumpsters from "./locales/es/dumpsters.json";
 import esTrucks from "./locales/es/trucks.json";
 import esRentals from "./locales/es/rentals.json";
+import esConstruction from "./locales/es/construction.json";
+import esAgenda from "./locales/es/agenda.json";
+
 
 // ======================================================
-// ENGLISH
+// INGLÉS
 // ======================================================
 
 import enCommon from "./locales/en/common.json";
@@ -32,6 +36,9 @@ import enClients from "./locales/en/clients.json";
 import enDumpsters from "./locales/en/dumpsters.json";
 import enTrucks from "./locales/en/trucks.json";
 import enRentals from "./locales/en/rentals.json";
+import enConstruction from "./locales/en/construction.json";
+import enAgenda from "./locales/en/agenda.json";
+
 
 // ======================================================
 // UNIR TRADUCCIONES
@@ -49,7 +56,10 @@ const esTranslation = {
   ...esDumpsters,
   ...esTrucks,
   ...esRentals,
+  ...esConstruction,
+  ...esAgenda,
 };
+
 
 const enTranslation = {
   ...enCommon,
@@ -63,34 +73,113 @@ const enTranslation = {
   ...enDumpsters,
   ...enTrucks,
   ...enRentals,
+  ...enConstruction,
+  ...enAgenda,
 };
 
+
 // ======================================================
-// CONFIGURACIÓN I18NEXT
+// IDIOMA GUARDADO
+// ======================================================
+
+const obtenerIdioma = () => {
+  const idioma =
+    localStorage.getItem("language") ||
+    "es";
+
+  const normalizado =
+    String(idioma)
+      .trim()
+      .toLowerCase();
+
+  if (
+    normalizado === "en" ||
+    normalizado.startsWith("en-")
+  ) {
+    return "en";
+  }
+
+  return "es";
+};
+
+
+// ======================================================
+// CONFIGURACIÓN
 // ======================================================
 
 i18n
   .use(initReactI18next)
   .init({
     resources: {
+
       es: {
-        translation: esTranslation,
+        translation:
+          esTranslation,
       },
 
       en: {
-        translation: enTranslation,
+        translation:
+          enTranslation,
       },
+
     },
 
     lng:
-      localStorage.getItem("language") ||
+      obtenerIdioma(),
+
+    fallbackLng:
       "es",
 
-    fallbackLng: "es",
+    defaultNS:
+      "translation",
 
     interpolation: {
-      escapeValue: false,
+      escapeValue:
+        false,
     },
+
+    react: {
+      useSuspense:
+        false,
+    },
+
+    keySeparator:
+      ".",
   });
+
+
+// ======================================================
+// DEBUG
+// ======================================================
+
+if (import.meta.env.DEV) {
+
+  console.log(
+    "I18N AGENDA TEST:"
+  );
+
+  console.log(
+    i18n.t(
+      "agenda.new.title"
+    )
+  );
+
+  console.log(
+    i18n.t(
+      "agenda.job_type"
+    )
+  );
+
+  console.log(
+    i18n.exists(
+      "agenda.new.title"
+    )
+  );
+}
+
+
+// ======================================================
+// EXPORT
+// ======================================================
 
 export default i18n;

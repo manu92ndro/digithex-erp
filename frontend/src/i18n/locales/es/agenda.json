@@ -2,6 +2,7 @@
   "agenda": {
     "title": "Agenda",
     "subtitle": "Organiza citas, reuniones y visitas.",
+
     "calendar": "Calendario",
     "today": "Hoy",
     "loading": "Cargando agenda...",
@@ -22,7 +23,6 @@
     "appointments_count": "{{count}} citas programadas.",
 
     "more": "+{{count}} más",
-
     "appointment": "Cita",
 
     "saved_title": "Cita agendada",
@@ -30,6 +30,27 @@
 
     "save_error_title": "No se pudo guardar",
     "save_error": "Ocurrió un error al registrar la cita.",
+
+    "job_type": "Tipo de trabajo",
+
+    "responsible_role": "Rol responsable",
+    "responsible": "Responsable",
+
+    "select_role": "Seleccionar rol",
+    "select_responsible": "Seleccionar responsable",
+
+    "appointment_details": "Detalle de la cita",
+
+    "job_description": "Descripción del trabajo",
+
+    "not_assigned": "Sin asignar",
+
+    "reschedule": "Reagendar",
+    "cancel_appointment": "Cancelar cita",
+    "complete": "Completar",
+
+    "send_whatsapp": "Enviar WhatsApp",
+    "send_email": "Enviar correo",
 
     "days": {
       "mon": "Lun",
@@ -41,8 +62,48 @@
       "sun": "Dom"
     },
 
+    "job_types": {
+      "asphalt": "Asfalto",
+      "block_work": "Trabajo en bloque",
+      "bluestone_patios": "Patios de piedra azul",
+      "brick_pavers": "Adoquines de ladrillo",
+      "concrete": "Concreto",
+      "driveways": "Entradas vehiculares",
+      "landscaping": "Paisajismo",
+      "other": "Otro",
+      "patios": "Patios",
+      "paving": "Pavimentación",
+      "sidewalk": "Acera",
+      "steps": "Escaleras",
+      "walkways": "Senderos"
+    },
+
+    "contact_methods": {
+      "phone_call": "Llamada telefónica",
+      "whatsapp": "WhatsApp",
+      "google": "Google",
+      "facebook": "Facebook",
+      "instagram": "Instagram",
+      "website": "Página web",
+      "email": "Correo electrónico",
+      "referral": "Referido",
+      "previous_customer": "Cliente anterior",
+      "other": "Otro"
+    },
+
+    "roles": {
+      "super_admin": "Superadministrador",
+      "administrator": "Administrador",
+      "secretary": "Secretaria",
+      "contractor": "Contratista",
+      "manager": "Gerente",
+      "driver": "Conductor",
+      "accountant": "Contador"
+    },
+
     "new": {
       "title": "Nueva cita",
+
       "subtitle": "Registra los datos y agenda la cita.",
 
       "name": "Nombre",
@@ -51,32 +112,28 @@
       "phone": "Celular",
       "phone_placeholder": "Número de teléfono",
 
-      "email": "Correo electrónico",
+      "email": "Correo",
+      "email_placeholder": "correo@ejemplo.com",
 
       "address": "Dirección",
       "address_placeholder": "Dirección de la cita",
 
       "contact_method": "Medio de contacto",
-      "appointment_type": "Tipo de cita",
 
       "select": "Seleccionar",
 
       "date_time": "Fecha y hora",
       "date": "Fecha",
       "time": "Hora",
-      "duration": "Duración",
-
-      "assign_to": "Asignar a",
-      "select_responsible": "Seleccionar responsable",
 
       "description": "Descripción",
-      "description_placeholder": "Motivo de la cita...",
 
-      "notes": "Observaciones",
-      "notes_placeholder": "Observaciones adicionales...",
+      "description_placeholder": "Describe el trabajo o motivo de la cita...",
 
       "cancel": "Cancelar",
+
       "save": "Guardar cita",
+
       "saving": "Guardando..."
     }
   }
