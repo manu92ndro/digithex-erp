@@ -4,7 +4,9 @@ import {
   UserRound,
 } from "lucide-react";
 
-import { useTranslation } from "react-i18next";
+import {
+  useTranslation,
+} from "react-i18next";
 
 
 // ======================================================
@@ -18,18 +20,12 @@ const generarHoras = (
 ) => {
   const resultado = [];
 
-  const [
-    inicioH,
-    inicioM,
-  ] =
+  const [inicioH, inicioM] =
     horaInicio
       .split(":")
       .map(Number);
 
-  const [
-    finH,
-    finM,
-  ] =
+  const [finH, finM] =
     horaFin
       .split(":")
       .map(Number);
@@ -42,9 +38,7 @@ const generarHoras = (
     finH * 60 +
     finM;
 
-  while (
-    actual <= final
-  ) {
+  while (actual <= final) {
     const h =
       Math.floor(
         actual / 60
@@ -84,10 +78,7 @@ const formatoHora12 = (
     return "";
   }
 
-  const [
-    hora,
-    minuto,
-  ] =
+  const [hora, minuto] =
     hora24
       .split(":")
       .map(Number);
@@ -116,8 +107,20 @@ const formatoHora12 = (
 const minutosFecha = (
   valor
 ) => {
+  if (!valor) {
+    return 0;
+  }
+
   const fecha =
     new Date(valor);
+
+  if (
+    Number.isNaN(
+      fecha.getTime()
+    )
+  ) {
+    return 0;
+  }
 
   return (
     fecha.getHours() * 60 +
@@ -127,7 +130,7 @@ const minutosFecha = (
 
 
 // ======================================================
-// HORA DE UNA FECHA
+// FORMATEAR HORA DE FECHA
 // ======================================================
 
 const formatearHoraFecha = (
@@ -186,6 +189,10 @@ export default function AgendaDayView({
   } = useTranslation();
 
 
+  // ====================================================
+  // HORAS
+  // ====================================================
+
   const horas =
     generarHoras(
       horaInicio,
@@ -194,12 +201,13 @@ export default function AgendaDayView({
     );
 
 
+  // ====================================================
+  // ORDENAR CITAS
+  // ====================================================
+
   const citasOrdenadas =
     [...citas].sort(
-      (
-        a,
-        b
-      ) =>
+      (a, b) =>
         new Date(
           a.fecha_inicio
         ) -
@@ -210,83 +218,81 @@ export default function AgendaDayView({
 
 
   // ====================================================
-  // CITA EN HORARIO
+  // BUSCAR CITA EN UNA HORA
   // ====================================================
 
-  const citaEnHora =
-    (
-      minutos
-    ) => {
-      return citasOrdenadas.find(
-        (
-          cita
-        ) => {
-          const inicio =
-            minutosFecha(
-              cita.fecha_inicio
-            );
-
-          const fin =
-            minutosFecha(
-              cita.fecha_fin
-            );
-
-          return (
-            minutos >= inicio &&
-            minutos < fin
+  const citaEnHora = (
+    minutos
+  ) => {
+    return citasOrdenadas.find(
+      (cita) => {
+        const inicio =
+          minutosFecha(
+            cita.fecha_inicio
           );
-        }
-      );
-    };
 
+        const fin =
+          cita.fecha_fin
+            ? minutosFecha(
+                cita.fecha_fin
+              )
+            : inicio + intervalo;
 
-  // ====================================================
-  // HORARIO PASADO
-  // ====================================================
-
-  const slotEsPasado =
-    (
-      hora
-    ) => {
-      if (
-        !fechaSeleccionada
-      ) {
-        return false;
+        return (
+          minutos >= inicio &&
+          minutos < fin
+        );
       }
+    );
+  };
 
-      const [
+
+  // ====================================================
+  // HORA PASADA
+  // ====================================================
+
+  const slotEsPasado = (
+    hora
+  ) => {
+    if (
+      !fechaSeleccionada
+    ) {
+      return false;
+    }
+
+    const [
+      year,
+      month,
+      day,
+    ] =
+      fechaSeleccionada
+        .split("-")
+        .map(Number);
+
+    const [
+      hour,
+      minute,
+    ] =
+      hora
+        .split(":")
+        .map(Number);
+
+    const slot =
+      new Date(
         year,
-        month,
+        month - 1,
         day,
-      ] =
-        fechaSeleccionada
-          .split("-")
-          .map(Number);
-
-      const [
         hour,
         minute,
-      ] =
-        hora
-          .split(":")
-          .map(Number);
-
-      const slot =
-        new Date(
-          year,
-          month - 1,
-          day,
-          hour,
-          minute,
-          0,
-          0
-        );
-
-      return (
-        slot.getTime() <
-        Date.now()
+        0,
+        0
       );
-    };
+
+    return (
+      slot.getTime() <
+      Date.now()
+    );
+  };
 
 
   // ====================================================
@@ -300,17 +306,13 @@ export default function AgendaDayView({
         bg-white
       "
     >
-
       {horas.map(
-        (
-          hora
-        ) => {
+        (hora) => {
 
           const cita =
             citaEnHora(
               hora.minutos
             );
-
 
           const esInicioCita =
             cita &&
@@ -318,7 +320,6 @@ export default function AgendaDayView({
               cita.fecha_inicio
             ) ===
               hora.minutos;
-
 
           const pasado =
             slotEsPasado(
@@ -331,10 +332,9 @@ export default function AgendaDayView({
               key={
                 hora.valor
               }
-
               className="
                 grid
-                min-h-[50px]
+                min-h-[52px]
                 grid-cols-[92px_1fr]
                 border-b
                 border-slate-100
@@ -342,7 +342,9 @@ export default function AgendaDayView({
               "
             >
 
-              {/* HORA */}
+              {/* ===================================== */}
+              {/* HORA IZQUIERDA */}
+              {/* ===================================== */}
 
               <div
                 className={`
@@ -353,34 +355,50 @@ export default function AgendaDayView({
                   border-slate-100
                   px-3
                   text-xs
-                  font-semibold
 
                   ${
-                    pasado
-                      ? "bg-slate-50 text-slate-400"
-                      : "bg-white text-slate-600"
+                    cita &&
+                    esInicioCita
+                      ? `
+                        bg-blue-50
+                        font-extrabold
+                        text-blue-700
+                      `
+                      : pasado
+                        ? `
+                          bg-slate-50
+                          font-medium
+                          text-slate-400
+                        `
+                        : `
+                          bg-white
+                          font-semibold
+                          text-slate-600
+                        `
                   }
                 `}
               >
-                {
-                  formatoHora12(
-                    hora.valor
-                  )
-                }
+                {formatoHora12(
+                  hora.valor
+                )}
               </div>
 
 
+              {/* ===================================== */}
               {/* CONTENIDO */}
+              {/* ===================================== */}
 
               <div
                 className="
                   relative
-                  min-h-[50px]
+                  min-h-[52px]
                   p-1.5
                 "
               >
 
+                {/* =================================== */}
                 {/* DISPONIBLE */}
+                {/* =================================== */}
 
                 {!cita &&
                   !pasado && (
@@ -397,7 +415,7 @@ export default function AgendaDayView({
                     className="
                       flex
                       h-full
-                      min-h-[38px]
+                      min-h-[39px]
                       w-full
                       items-center
                       rounded-lg
@@ -409,6 +427,7 @@ export default function AgendaDayView({
                       font-medium
                       text-slate-700
                       transition
+
                       hover:border-blue-300
                       hover:bg-blue-50
                       hover:text-blue-700
@@ -419,11 +438,12 @@ export default function AgendaDayView({
                       "Disponible"
                     )}
                   </button>
-
                 )}
 
 
-                {/* NO DISPONIBLE */}
+                {/* =================================== */}
+                {/* PASADO */}
+                {/* =================================== */}
 
                 {!cita &&
                   pasado && (
@@ -432,7 +452,7 @@ export default function AgendaDayView({
                     className="
                       flex
                       h-full
-                      min-h-[38px]
+                      min-h-[39px]
                       items-center
                       rounded-lg
                       bg-slate-50
@@ -447,11 +467,12 @@ export default function AgendaDayView({
                       "No disponible"
                     )}
                   </div>
-
                 )}
 
 
+                {/* =================================== */}
                 {/* CITA */}
+                {/* =================================== */}
 
                 {cita &&
                   esInicioCita && (
@@ -469,16 +490,22 @@ export default function AgendaDayView({
                       w-full
                       rounded-lg
                       border
-                      border-blue-200
+                      border-blue-300
                       bg-blue-50
                       px-3
                       py-2
                       text-left
+                      shadow-sm
                       transition
-                      hover:border-blue-300
+
+                      hover:border-blue-400
                       hover:bg-blue-100
                     "
                   >
+
+                    {/* =============================== */}
+                    {/* PARTE SUPERIOR */}
+                    {/* =============================== */}
 
                     <div
                       className="
@@ -494,13 +521,12 @@ export default function AgendaDayView({
                           min-w-0
                         "
                       >
-
                         <p
                           className="
                             truncate
                             text-sm
-                            font-semibold
-                            text-slate-800
+                            font-bold
+                            text-slate-900
                           "
                         >
                           {
@@ -518,8 +544,10 @@ export default function AgendaDayView({
                         {cita.tipo_cita && (
                           <p
                             className="
+                              mt-0.5
                               truncate
                               text-xs
+                              font-semibold
                               text-blue-600
                             "
                           >
@@ -528,9 +556,10 @@ export default function AgendaDayView({
                             }
                           </p>
                         )}
-
                       </div>
 
+
+                      {/* ESTADO */}
 
                       <span
                         className="
@@ -540,9 +569,11 @@ export default function AgendaDayView({
                           px-2
                           py-0.5
                           text-[9px]
-                          font-semibold
+                          font-bold
                           uppercase
+                          tracking-wide
                           text-slate-500
+                          shadow-sm
                         "
                       >
                         {
@@ -553,29 +584,35 @@ export default function AgendaDayView({
                     </div>
 
 
+                    {/* =============================== */}
+                    {/* INFORMACIÓN */}
+                    {/* =============================== */}
+
                     <div
                       className="
                         mt-1.5
                         flex
                         flex-wrap
+                        items-center
                         gap-x-4
                         gap-y-1
                         text-[11px]
-                        text-slate-500
                       "
                     >
+
+                      {/* HORA */}
 
                       <span
                         className="
                           flex
                           items-center
                           gap-1
-                          font-bold
+                          font-extrabold
                           text-blue-700
                         "
                       >
                         <Clock3
-                          size={12}
+                          size={13}
                           className="
                             text-blue-600
                           "
@@ -588,12 +625,16 @@ export default function AgendaDayView({
                       </span>
 
 
+                      {/* RESPONSABLE */}
+
                       {cita.asignado_nombre && (
                         <span
                           className="
                             flex
                             items-center
                             gap-1
+                            font-medium
+                            text-slate-600
                           "
                         >
                           <UserRound
@@ -607,6 +648,8 @@ export default function AgendaDayView({
                       )}
 
 
+                      {/* DIRECCIÓN */}
+
                       {cita.direccion && (
                         <span
                           className="
@@ -614,6 +657,7 @@ export default function AgendaDayView({
                             min-w-0
                             items-center
                             gap-1
+                            text-slate-500
                           "
                         >
                           <MapPin
@@ -622,6 +666,7 @@ export default function AgendaDayView({
 
                           <span
                             className="
+                              max-w-[520px]
                               truncate
                             "
                           >
@@ -635,16 +680,13 @@ export default function AgendaDayView({
                     </div>
 
                   </button>
-
                 )}
 
               </div>
-
             </div>
           );
         }
       )}
-
     </div>
   );
 }

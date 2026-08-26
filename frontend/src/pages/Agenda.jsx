@@ -1436,6 +1436,7 @@ export default function Agenda() {
                       }
 
                       className={`
+                        group
                         relative
                         min-h-[58px]
                         border-b
