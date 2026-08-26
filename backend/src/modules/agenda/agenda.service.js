@@ -1,16 +1,28 @@
 const pool =
   require("../../shared/database/db");
 
-
 const repository =
   require("./agenda.repository");
-
 
 const {
   ESTADOS_CITA,
 } = require(
   "./agenda.constants"
 );
+
+
+// ======================================================
+// CONFIGURACIÓN AGENDA
+// ======================================================
+
+const HORA_INICIO =
+  "08:00";
+
+const HORA_FIN =
+  "17:00";
+
+const INTERVALO_MINUTOS =
+  30;
 
 
 // ======================================================
@@ -29,9 +41,187 @@ const limpiarTexto = (
   }
 
   const texto =
-    String(valor).trim();
+    String(valor)
+      .trim();
 
-  return texto || null;
+  return (
+    texto ||
+    null
+  );
+};
+
+
+// ======================================================
+// CONVERTIR A NÚMERO O NULL
+// ======================================================
+
+const numeroONull = (
+  valor
+) => {
+
+  if (
+    valor === undefined ||
+    valor === null ||
+    valor === ""
+  ) {
+    return null;
+  }
+
+  const numero =
+    Number(valor);
+
+  if (
+    Number.isNaN(numero)
+  ) {
+    return null;
+  }
+
+  return numero;
+};
+
+
+// ======================================================
+// FORMATEAR FECHA PARA MYSQL
+// ======================================================
+
+const formatearFechaMysql = (
+  fecha
+) => {
+
+  const year =
+    fecha.getFullYear();
+
+  const month =
+    String(
+      fecha.getMonth() + 1
+    ).padStart(
+      2,
+      "0"
+    );
+
+  const day =
+    String(
+      fecha.getDate()
+    ).padStart(
+      2,
+      "0"
+    );
+
+  const hours =
+    String(
+      fecha.getHours()
+    ).padStart(
+      2,
+      "0"
+    );
+
+  const minutes =
+    String(
+      fecha.getMinutes()
+    ).padStart(
+      2,
+      "0"
+    );
+
+  const seconds =
+    String(
+      fecha.getSeconds()
+    ).padStart(
+      2,
+      "0"
+    );
+
+  return (
+    `${year}-${month}-${day} ` +
+    `${hours}:${minutes}:${seconds}`
+  );
+};
+
+
+// ======================================================
+// CREAR FECHA DESDE FECHA + HORA
+// ======================================================
+
+const construirFechaHora = (
+  fecha,
+  hora
+) => {
+
+  if (
+    !fecha ||
+    !hora
+  ) {
+    return null;
+  }
+
+  const fechaISO =
+    String(fecha)
+      .split("T")[0];
+
+  const horaNormalizada =
+    String(hora)
+      .trim()
+      .slice(
+        0,
+        5
+      );
+
+  const fechaDate =
+    new Date(
+      `${fechaISO}T${horaNormalizada}:00`
+    );
+
+  if (
+    Number.isNaN(
+      fechaDate.getTime()
+    )
+  ) {
+    return null;
+  }
+
+  return fechaDate;
+};
+
+
+// ======================================================
+// PARSEAR DATETIME MYSQL / ISO
+// ======================================================
+
+const convertirADate = (
+  valor
+) => {
+
+  if (!valor) {
+    return null;
+  }
+
+  if (
+    valor instanceof Date
+  ) {
+    return valor;
+  }
+
+  const normalizado =
+    String(valor)
+      .replace(
+        " ",
+        "T"
+      );
+
+  const fecha =
+    new Date(
+      normalizado
+    );
+
+  if (
+    Number.isNaN(
+      fecha.getTime()
+    )
+  ) {
+    return null;
+  }
+
+  return fecha;
 };
 
 
@@ -46,42 +236,37 @@ const validarRangoFecha =
   ) => {
 
     const inicio =
-      new Date(
+      convertirADate(
         fecha_inicio
       );
 
     const fin =
-      new Date(
+      convertirADate(
         fecha_fin
       );
 
-
     if (
-      Number.isNaN(
-        inicio.getTime()
-      ) ||
-      Number.isNaN(
-        fin.getTime()
-      )
+      !inicio ||
+      !fin
     ) {
       return {
         ok: false,
+
         message:
           "La fecha u hora de la cita no es válida",
       };
     }
-
 
     if (
       fin <= inicio
     ) {
       return {
         ok: false,
+
         message:
           "La hora de finalización debe ser posterior a la hora de inicio",
       };
     }
-
 
     return {
       ok: true,
@@ -102,7 +287,6 @@ const obtenerFormData =
       Number(
         usuario.id_empresa
       );
-
 
     const [
       medios_contacto,
@@ -132,7 +316,6 @@ const obtenerFormData =
           ),
       ]);
 
-
     return {
       medios_contacto,
 
@@ -142,13 +325,13 @@ const obtenerFormData =
 
       configuracion: {
         hora_inicio:
-          "08:00",
+          HORA_INICIO,
 
         hora_fin:
-          "17:00",
+          HORA_FIN,
 
         intervalo_minutos:
-          30,
+          INTERVALO_MINUTOS,
       },
     };
   };
@@ -165,14 +348,18 @@ const crearCita =
   ) => {
 
     const connection =
-      await pool.getConnection();
-
+      await pool
+        .getConnection();
 
     try {
 
       await connection
         .beginTransaction();
 
+
+      // ==================================================
+      // EMPRESA / USUARIO
+      // ==================================================
 
       const id_empresa =
         Number(
@@ -185,9 +372,25 @@ const crearCita =
         );
 
 
+      // ==================================================
+      // DATOS CLIENTE
+      // ==================================================
+      //
+      // Compatibilidad:
+      //
+      // Front actual:
+      // contacto
+      //
+      // Backend anterior:
+      // nombres
+      //
+      // ==================================================
+
       const nombres =
         limpiarTexto(
-          body.nombres
+          body.contacto ??
+          body.nombres ??
+          body.nombre
         );
 
       const celular =
@@ -200,75 +403,245 @@ const crearCita =
           body.correo
         );
 
+      const direccion =
+        limpiarTexto(
+          body.direccion
+        );
+
+
+      // ==================================================
+      // MEDIO CONTACTO
+      // ==================================================
+
+      const id_medio_contacto =
+        numeroONull(
+          body.id_medio ??
+          body.id_medio_contacto
+        );
+
+
+      // ==================================================
+      // TIPO DE TRABAJO
+      // ==================================================
 
       const id_tipo_cita =
-        Number(
+        numeroONull(
           body.id_tipo_cita
         );
 
 
+      // ==================================================
+      // RESPONSABLE
+      // ==================================================
+      //
+      // Front actual:
+      // id_usuario_asignado
+      //
+      // Backend anterior:
+      // asignado_a
+      //
+      // ==================================================
+
       let asignado_a =
-        Number(
+        numeroONull(
+          body.id_usuario_asignado ??
           body.asignado_a
         );
 
 
-      const fecha_inicio =
-        body.fecha_inicio;
+      // ==================================================
+      // FECHA / HORA
+      // ==================================================
+      //
+      // Front actual envía:
+      //
+      // fecha: 2026-08-26
+      // hora: 08:30
+      //
+      // No usamos "duración del trabajo".
+      //
+      // El intervalo de 30 minutos sirve SOLAMENTE
+      // para reservar un bloque dentro de la agenda.
+      //
+      // ==================================================
 
-      const fecha_fin =
-        body.fecha_fin;
+      let fecha_inicio =
+        body.fecha_inicio ||
+        null;
+
+      let fecha_fin =
+        body.fecha_fin ||
+        null;
 
 
-      // ===============================================
+      // ==================================================
+      // CONSTRUIR FECHA INICIO
+      // ==================================================
+
+      if (
+        !fecha_inicio &&
+        body.fecha &&
+        body.hora
+      ) {
+
+        const inicioDate =
+          construirFechaHora(
+            body.fecha,
+            body.hora
+          );
+
+        if (
+          inicioDate
+        ) {
+          fecha_inicio =
+            formatearFechaMysql(
+              inicioDate
+            );
+        }
+      }
+
+
+      // ==================================================
+      // CONSTRUIR FECHA FIN AUTOMÁTICAMENTE
+      // ==================================================
+      //
+      // IMPORTANTE:
+      //
+      // +30 minutos NO significa que el trabajo dura
+      // 30 minutos.
+      //
+      // Es solamente el bloque mínimo que se reserva
+      // dentro del calendario.
+      //
+      // ==================================================
+
+      if (
+        fecha_inicio &&
+        !fecha_fin
+      ) {
+
+        const inicioDate =
+          convertirADate(
+            fecha_inicio
+          );
+
+        if (
+          inicioDate
+        ) {
+
+          const finDate =
+            new Date(
+              inicioDate
+            );
+
+          finDate.setMinutes(
+            finDate.getMinutes() +
+            INTERVALO_MINUTOS
+          );
+
+          fecha_fin =
+            formatearFechaMysql(
+              finDate
+            );
+        }
+      }
+
+
+      // ==================================================
       // CAMPOS OBLIGATORIOS
-      // ===============================================
+      // ==================================================
 
-      if (!nombres) {
+      if (
+        !nombres
+      ) {
 
         const error =
           new Error(
             "El nombre es obligatorio"
           );
 
-        error.status = 400;
+        error.status =
+          400;
+
+        error.code =
+          "AGENDA_NOMBRE_REQUERIDO";
 
         throw error;
       }
 
 
-      if (!celular) {
+      if (
+        !celular
+      ) {
 
         const error =
           new Error(
             "El celular es obligatorio"
           );
 
-        error.status = 400;
+        error.status =
+          400;
+
+        error.code =
+          "AGENDA_CELULAR_REQUERIDO";
 
         throw error;
       }
 
 
-      if (!id_tipo_cita) {
+      if (
+        !id_tipo_cita
+      ) {
 
         const error =
           new Error(
-            "Debe seleccionar el tipo de cita"
+            "Debe seleccionar el tipo de trabajo"
           );
 
-        error.status = 400;
+        error.status =
+          400;
+
+        error.code =
+          "AGENDA_TIPO_REQUERIDO";
 
         throw error;
       }
 
 
-      // ===============================================
-      // SI HAY UN SOLO USUARIO
-      // ASIGNAR AUTOMÁTICAMENTE
-      // ===============================================
+      if (
+        !fecha_inicio
+      ) {
 
-      if (!asignado_a) {
+        const error =
+          new Error(
+            "Debe seleccionar la fecha y hora"
+          );
+
+        error.status =
+          400;
+
+        error.code =
+          "AGENDA_FECHA_REQUERIDA";
+
+        throw error;
+      }
+
+
+      // ==================================================
+      // SI NO ENVIARON RESPONSABLE
+      // ==================================================
+      //
+      // Si la empresa tiene una sola persona asignable,
+      // se selecciona automáticamente.
+      //
+      // Si tiene varias, debe seleccionarse desde
+      // el frontend.
+      //
+      // ==================================================
+
+      if (
+        !asignado_a
+      ) {
 
         const usuarios =
           await repository
@@ -276,7 +649,6 @@ const crearCita =
               connection,
               id_empresa
             );
-
 
         if (
           usuarios.length === 1
@@ -295,16 +667,20 @@ const crearCita =
               "Debe seleccionar la persona responsable de la cita"
             );
 
-          error.status = 400;
+          error.status =
+            400;
+
+          error.code =
+            "AGENDA_RESPONSABLE_REQUERIDO";
 
           throw error;
         }
       }
 
 
-      // ===============================================
-      // VALIDAR FECHAS
-      // ===============================================
+      // ==================================================
+      // VALIDAR FECHA
+      // ==================================================
 
       const rango =
         validarRangoFecha(
@@ -312,23 +688,28 @@ const crearCita =
           fecha_fin
         );
 
-
-      if (!rango.ok) {
+      if (
+        !rango.ok
+      ) {
 
         const error =
           new Error(
             rango.message
           );
 
-        error.status = 400;
+        error.status =
+          400;
+
+        error.code =
+          "AGENDA_FECHA_INVALIDA";
 
         throw error;
       }
 
 
-      // ===============================================
-      // VALIDAR TIPO CITA
-      // ===============================================
+      // ==================================================
+      // VALIDAR TIPO DE TRABAJO
+      // ==================================================
 
       const tipoCita =
         await repository
@@ -336,27 +717,33 @@ const crearCita =
             connection,
             {
               id_empresa,
+
               id_tipo_cita,
             }
           );
 
-
-      if (!tipoCita) {
+      if (
+        !tipoCita
+      ) {
 
         const error =
           new Error(
-            "El tipo de cita no pertenece a esta empresa"
+            "El tipo de trabajo no pertenece a esta empresa"
           );
 
-        error.status = 400;
+        error.status =
+          400;
+
+        error.code =
+          "AGENDA_TIPO_INVALIDO";
 
         throw error;
       }
 
 
-      // ===============================================
+      // ==================================================
       // VALIDAR RESPONSABLE
-      // ===============================================
+      // ==================================================
 
       const responsable =
         await repository
@@ -370,23 +757,40 @@ const crearCita =
             }
           );
 
-
-      if (!responsable) {
+      if (
+        !responsable
+      ) {
 
         const error =
           new Error(
             "La persona seleccionada no pertenece a esta empresa"
           );
 
-        error.status = 400;
+        error.status =
+          400;
+
+        error.code =
+          "AGENDA_RESPONSABLE_INVALIDO";
 
         throw error;
       }
 
 
-      // ===============================================
+      // ==================================================
       // VERIFICAR HORARIO OCUPADO
-      // ===============================================
+      // ==================================================
+      //
+      // El bloqueo es por RESPONSABLE.
+      //
+      // Eso significa:
+      //
+      // Hayley puede tener cita 8:30
+      // John puede tener cita 8:30
+      //
+      // Pero Hayley no puede tener DOS citas
+      // a las 8:30.
+      //
+      // ==================================================
 
       const ocupado =
         await repository
@@ -398,19 +802,22 @@ const crearCita =
               asignado_a,
 
               fecha_inicio,
+
               fecha_fin,
             }
           );
 
-
-      if (ocupado) {
+      if (
+        ocupado
+      ) {
 
         const error =
           new Error(
-            "El horario seleccionado ya está ocupado"
+            "El responsable ya tiene una cita en ese horario"
           );
 
-        error.status = 409;
+        error.status =
+          409;
 
         error.code =
           "AGENDA_HORARIO_OCUPADO";
@@ -419,9 +826,9 @@ const crearCita =
       }
 
 
-      // ===============================================
-      // BUSCAR CONTACTO
-      // ===============================================
+      // ==================================================
+      // BUSCAR CONTACTO EXISTENTE
+      // ==================================================
 
       let contacto =
         await repository
@@ -429,24 +836,24 @@ const crearCita =
             connection,
             {
               id_empresa,
+
               celular,
             }
           );
 
-
       let id_contacto;
 
 
-      // ===============================================
-      // SI EXISTE:
-      // ACTUALIZAMOS SUS DATOS
-      // ===============================================
+      // ==================================================
+      // CONTACTO EXISTENTE
+      // ==================================================
 
-      if (contacto) {
+      if (
+        contacto
+      ) {
 
         id_contacto =
           contacto.id_contacto;
-
 
         await repository
           .actualizarContacto(
@@ -457,26 +864,22 @@ const crearCita =
               id_contacto,
 
               nombres,
+
               celular,
+
               correo,
 
-              direccion:
-                limpiarTexto(
-                  body.direccion
-                ),
+              direccion,
 
               latitud:
-                body.latitud,
+                body.latitud ??
+                null,
 
               longitud:
-                body.longitud,
+                body.longitud ??
+                null,
 
-              id_medio_contacto:
-                body.id_medio_contacto
-                  ? Number(
-                      body.id_medio_contacto
-                    )
-                  : null,
+              id_medio_contacto,
 
               notas:
                 limpiarTexto(
@@ -485,11 +888,12 @@ const crearCita =
             }
           );
 
-      } else {
 
-        // =============================================
-        // CONTACTO NUEVO
-        // =============================================
+      // ==================================================
+      // CONTACTO NUEVO
+      // ==================================================
+
+      } else {
 
         id_contacto =
           await repository
@@ -499,26 +903,22 @@ const crearCita =
                 id_empresa,
 
                 nombres,
+
                 celular,
+
                 correo,
 
-                direccion:
-                  limpiarTexto(
-                    body.direccion
-                  ),
+                direccion,
 
                 latitud:
-                  body.latitud,
+                  body.latitud ??
+                  null,
 
                 longitud:
-                  body.longitud,
+                  body.longitud ??
+                  null,
 
-                id_medio_contacto:
-                  body.id_medio_contacto
-                    ? Number(
-                        body.id_medio_contacto
-                      )
-                    : null,
+                id_medio_contacto,
 
                 notas:
                   limpiarTexto(
@@ -531,9 +931,9 @@ const crearCita =
       }
 
 
-      // ===============================================
+      // ==================================================
       // CREAR CITA
-      // ===============================================
+      // ==================================================
 
       const id_cita =
         await repository
@@ -560,18 +960,18 @@ const crearCita =
                 ),
 
               fecha_inicio,
+
               fecha_fin,
 
-              direccion:
-                limpiarTexto(
-                  body.direccion
-                ),
+              direccion,
 
               latitud:
-                body.latitud,
+                body.latitud ??
+                null,
 
               longitud:
-                body.longitud,
+                body.longitud ??
+                null,
 
               observaciones:
                 limpiarTexto(
@@ -583,17 +983,29 @@ const crearCita =
           );
 
 
+      // ==================================================
+      // COMMIT
+      // ==================================================
+
       await connection
         .commit();
 
-
       return {
         id_cita,
+
         id_contacto,
+
+        asignado_a,
+
+        fecha_inicio,
+
+        fecha_fin,
       };
 
 
-    } catch (error) {
+    } catch (
+      error
+    ) {
 
       await connection
         .rollback();
@@ -603,13 +1015,14 @@ const crearCita =
 
     } finally {
 
-      connection.release();
+      connection
+        .release();
     }
   };
 
 
 // ======================================================
-// LISTAR
+// LISTAR CITAS
 // ======================================================
 
 const listarCitas =
@@ -623,13 +1036,11 @@ const listarCitas =
         usuario.id_empresa
       );
 
-
     const fecha_desde =
       query.fecha_desde;
 
     const fecha_hasta =
       query.fecha_hasta;
-
 
     if (
       !fecha_desde ||
@@ -641,17 +1052,21 @@ const listarCitas =
           "Debe indicar fecha_desde y fecha_hasta"
         );
 
-      error.status = 400;
+      error.status =
+        400;
+
+      error.code =
+        "AGENDA_RANGO_REQUERIDO";
 
       throw error;
     }
-
 
     return repository
       .listarCitas({
         id_empresa,
 
         fecha_desde,
+
         fecha_hasta,
 
         asignado_a:
@@ -665,7 +1080,7 @@ const listarCitas =
 
 
 // ======================================================
-// DETALLE
+// DETALLE CITA
 // ======================================================
 
 const obtenerDetalle =
@@ -688,19 +1103,23 @@ const obtenerDetalle =
             ),
         });
 
-
-    if (!cita) {
+    if (
+      !cita
+    ) {
 
       const error =
         new Error(
           "Cita no encontrada"
         );
 
-      error.status = 404;
+      error.status =
+        404;
+
+      error.code =
+        "AGENDA_CITA_NO_ENCONTRADA";
 
       throw error;
     }
-
 
     return cita;
   };
@@ -718,20 +1137,18 @@ const cambiarEstado =
   ) => {
 
     const connection =
-      await pool.getConnection();
-
+      await pool
+        .getConnection();
 
     try {
 
       await connection
         .beginTransaction();
 
-
       const id_empresa =
         Number(
           usuario.id_empresa
         );
-
 
       const cita =
         await repository
@@ -744,15 +1161,50 @@ const cambiarEstado =
               ),
           });
 
-
-      if (!cita) {
+      if (
+        !cita
+      ) {
 
         const error =
           new Error(
             "Cita no encontrada"
           );
 
-        error.status = 404;
+        error.status =
+          404;
+
+        error.code =
+          "AGENDA_CITA_NO_ENCONTRADA";
+
+        throw error;
+      }
+
+
+      // ==================================================
+      // VALIDAR ESTADO
+      // ==================================================
+
+      const estadosPermitidos =
+        Object.values(
+          ESTADOS_CITA
+        );
+
+      if (
+        !estadosPermitidos.includes(
+          estado
+        )
+      ) {
+
+        const error =
+          new Error(
+            "Estado de cita no válido"
+          );
+
+        error.status =
+          400;
+
+        error.code =
+          "AGENDA_ESTADO_INVALIDO";
 
         throw error;
       }
@@ -774,28 +1226,33 @@ const cambiarEstado =
             }
           );
 
-
-      if (!actualizado) {
+      if (
+        !actualizado
+      ) {
 
         const error =
           new Error(
             "No se pudo actualizar la cita"
           );
 
-        error.status = 400;
+        error.status =
+          400;
+
+        error.code =
+          "AGENDA_NO_ACTUALIZADA";
 
         throw error;
       }
 
-
       await connection
         .commit();
-
 
       return true;
 
 
-    } catch (error) {
+    } catch (
+      error
+    ) {
 
       await connection
         .rollback();
@@ -805,10 +1262,15 @@ const cambiarEstado =
 
     } finally {
 
-      connection.release();
+      connection
+        .release();
     }
   };
 
+
+// ======================================================
+// EXPORT
+// ======================================================
 
 module.exports = {
 

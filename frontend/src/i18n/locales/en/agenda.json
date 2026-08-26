@@ -2,6 +2,7 @@
   "agenda": {
     "title": "Schedule",
     "subtitle": "Organize appointments, meetings and visits.",
+
     "calendar": "Calendar",
     "today": "Today",
     "loading": "Loading schedule...",
@@ -22,7 +23,6 @@
     "appointments_count": "{{count}} appointments scheduled.",
 
     "more": "+{{count}} more",
-
     "appointment": "Appointment",
 
     "saved_title": "Appointment scheduled",
@@ -30,6 +30,27 @@
 
     "save_error_title": "Could not save",
     "save_error": "An error occurred while scheduling the appointment.",
+
+    "job_type": "Job type",
+
+    "responsible_role": "Responsible role",
+    "responsible": "Responsible person",
+
+    "select_role": "Select role",
+    "select_responsible": "Select responsible person",
+
+    "appointment_details": "Appointment details",
+
+    "job_description": "Job description",
+
+    "not_assigned": "Not assigned",
+
+    "reschedule": "Reschedule",
+    "cancel_appointment": "Cancel appointment",
+    "complete": "Complete",
+
+    "send_whatsapp": "Send WhatsApp",
+    "send_email": "Send email",
 
     "days": {
       "mon": "Mon",
@@ -41,8 +62,48 @@
       "sun": "Sun"
     },
 
+    "job_types": {
+      "asphalt": "Asphalt",
+      "block_work": "Block Work",
+      "bluestone_patios": "Bluestone Patios",
+      "brick_pavers": "Brick Pavers",
+      "concrete": "Concrete",
+      "driveways": "Driveways",
+      "landscaping": "Landscaping",
+      "other": "Other",
+      "patios": "Patios",
+      "paving": "Paving",
+      "sidewalk": "Sidewalk",
+      "steps": "Steps",
+      "walkways": "Walkways"
+    },
+
+    "contact_methods": {
+      "phone_call": "Phone call",
+      "whatsapp": "WhatsApp",
+      "google": "Google",
+      "facebook": "Facebook",
+      "instagram": "Instagram",
+      "website": "Website",
+      "email": "Email",
+      "referral": "Referral",
+      "previous_customer": "Previous customer",
+      "other": "Other"
+    },
+
+    "roles": {
+      "super_admin": "Super Admin",
+      "administrator": "Administrator",
+      "secretary": "Secretary",
+      "contractor": "Contractor",
+      "manager": "Manager",
+      "driver": "Driver",
+      "accountant": "Accountant"
+    },
+
     "new": {
       "title": "New appointment",
+
       "subtitle": "Enter the information and schedule the appointment.",
 
       "name": "Name",
@@ -52,31 +113,27 @@
       "phone_placeholder": "Phone number",
 
       "email": "Email",
+      "email_placeholder": "email@example.com",
 
       "address": "Address",
       "address_placeholder": "Appointment address",
 
       "contact_method": "Contact method",
-      "appointment_type": "Appointment type",
 
       "select": "Select",
 
       "date_time": "Date and time",
       "date": "Date",
       "time": "Time",
-      "duration": "Duration",
-
-      "assign_to": "Assign to",
-      "select_responsible": "Select responsible person",
 
       "description": "Description",
-      "description_placeholder": "Reason for the appointment...",
 
-      "notes": "Notes",
-      "notes_placeholder": "Additional notes...",
+      "description_placeholder": "Describe the work or reason for the appointment...",
 
       "cancel": "Cancel",
+
       "save": "Save appointment",
+
       "saving": "Saving..."
     }
   }

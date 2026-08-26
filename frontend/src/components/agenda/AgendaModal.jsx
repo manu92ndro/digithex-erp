@@ -5,12 +5,15 @@ import {
 } from "react";
 
 import {
+  BriefcaseBusiness,
   CalendarDays,
+  ChevronDown,
   Clock3,
-  MapPin,
   Mail,
+  MapPin,
   Phone,
   UserRound,
+  Users,
   X,
 } from "lucide-react";
 
@@ -20,62 +23,59 @@ import {
 
 
 // ======================================================
-// SUMAR MINUTOS
+// FECHA VISUAL
 // ======================================================
 
-const sumarMinutos = (
-  hora,
-  minutos
+const formatearFechaVisual = (
+  fechaISO,
+  locale
 ) => {
+  if (!fechaISO) {
+    return "";
+  }
+
   const [
-    h,
-    m,
-  ] =
-    hora
-      .split(":")
-      .map(Number);
+    year,
+    month,
+    day,
+  ] = fechaISO
+    .split("-")
+    .map(Number);
 
-  const total =
-    h * 60 +
-    m +
-    minutos;
+  const fecha = new Date(
+    year,
+    month - 1,
+    day
+  );
 
-  const nuevaHora =
-    Math.floor(
-      total / 60
-    );
-
-  const nuevosMinutos =
-    total % 60;
-
-  return `${String(
-    nuevaHora
-  ).padStart(
-    2,
-    "0"
-  )}:${String(
-    nuevosMinutos
-  ).padStart(
-    2,
-    "0"
-  )}`;
+  return new Intl.DateTimeFormat(
+    locale,
+    {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    }
+  ).format(fecha);
 };
 
 
 // ======================================================
-// HORA AM / PM
+// HORA 12H
 // ======================================================
 
 const formatoHora12 = (
   hora24
 ) => {
+  if (!hora24) {
+    return "";
+  }
+
   const [
     hora,
     minuto,
-  ] =
-    hora24
-      .split(":")
-      .map(Number);
+  ] = hora24
+    .split(":")
+    .map(Number);
 
   const periodo =
     hora >= 12
@@ -83,8 +83,7 @@ const formatoHora12 = (
       : "AM";
 
   const hora12 =
-    hora % 12 ||
-    12;
+    hora % 12 || 12;
 
   return `${hora12}:${String(
     minuto
@@ -97,76 +96,265 @@ const formatoHora12 = (
 
 // ======================================================
 // HORARIOS
+// 08:00 AM - 05:00 PM
+// intervalos de 30 minutos
 // ======================================================
 
-const generarOpcionesHora = (
-  inicio = "08:00",
-  fin = "17:00",
-  intervalo = 30
-) => {
-  const resultado = [];
+const generarHorarios = () => {
+  const horarios = [];
 
-  const [
-    inicioH,
-    inicioM,
-  ] =
-    inicio
-      .split(":")
-      .map(Number);
+  const inicioMinutos =
+    8 * 60;
 
-  const [
-    finH,
-    finM,
-  ] =
-    fin
-      .split(":")
-      .map(Number);
+  const finMinutos =
+    17 * 60;
 
-  let actual =
-    inicioH * 60 +
-    inicioM;
-
-  const final =
-    finH * 60 +
-    finM;
-
-  while (
-    actual <= final
+  for (
+    let minutos = inicioMinutos;
+    minutos <= finMinutos;
+    minutos += 30
   ) {
     const hora =
       Math.floor(
-        actual / 60
+        minutos / 60
       );
 
     const minuto =
-      actual % 60;
+      minutos % 60;
 
-    const valor =
-      `${String(
-        hora
-      ).padStart(
+    horarios.push(
+      `${String(hora).padStart(
         2,
         "0"
-      )}:${String(
-        minuto
-      ).padStart(
+      )}:${String(minuto).padStart(
         2,
         "0"
-      )}`;
-
-    resultado.push({
-      valor,
-
-      label:
-        formatoHora12(
-          valor
-        ),
-    });
-
-    actual += intervalo;
+      )}`
+    );
   }
 
-  return resultado;
+  return horarios;
+};
+
+
+// ======================================================
+// NORMALIZAR TEXTO
+// ======================================================
+
+const normalizarTexto = (
+  texto = ""
+) =>
+  String(texto)
+    .normalize("NFD")
+    .replace(
+      /[\u0300-\u036f]/g,
+      ""
+    )
+    .trim()
+    .toLowerCase();
+
+
+// ======================================================
+// CLAVE TRADUCCIÓN TIPO DE TRABAJO
+// ======================================================
+
+const obtenerClaveTrabajo = (
+  nombre
+) => {
+  const valor =
+    normalizarTexto(
+      nombre
+    );
+
+  const mapa = {
+    asphalt:
+      "asphalt",
+
+    "block work":
+      "block_work",
+
+    "bluestone patios":
+      "bluestone_patios",
+
+    "brick pavers":
+      "brick_pavers",
+
+    concrete:
+      "concrete",
+
+    driveways:
+      "driveways",
+
+    landscaping:
+      "landscaping",
+
+    landscape:
+      "landscaping",
+
+    other:
+      "other",
+
+    others:
+      "other",
+
+    patios:
+      "patios",
+
+    paving:
+      "paving",
+
+    sidewalk:
+      "sidewalk",
+
+    sidewalks:
+      "sidewalk",
+
+    steps:
+      "steps",
+
+    walkway:
+      "walkways",
+
+    walkways:
+      "walkways",
+  };
+
+  return (
+    mapa[valor] ||
+    null
+  );
+};
+
+
+// ======================================================
+// CLAVE TRADUCCIÓN MEDIO CONTACTO
+// ======================================================
+
+const obtenerClaveMedio = (
+  nombre
+) => {
+  const valor =
+    normalizarTexto(
+      nombre
+    );
+
+  const mapa = {
+    "llamada telefonica":
+      "phone_call",
+
+    "phone call":
+      "phone_call",
+
+    whatsapp:
+      "whatsapp",
+
+    google:
+      "google",
+
+    facebook:
+      "facebook",
+
+    instagram:
+      "instagram",
+
+    "pagina web":
+      "website",
+
+    website:
+      "website",
+
+    "correo electronico":
+      "email",
+
+    email:
+      "email",
+
+    referido:
+      "referral",
+
+    referral:
+      "referral",
+
+    "cliente anterior":
+      "previous_customer",
+
+    "previous customer":
+      "previous_customer",
+
+    otro:
+      "other",
+
+    other:
+      "other",
+  };
+
+  return (
+    mapa[valor] ||
+    null
+  );
+};
+
+
+// ======================================================
+// CLAVE TRADUCCIÓN ROLES
+// ======================================================
+
+const obtenerClaveRol = (
+  nombre
+) => {
+  const valor =
+    normalizarTexto(
+      nombre
+    );
+
+  const mapa = {
+    "super admin":
+      "super_admin",
+
+    administrador:
+      "administrator",
+
+    administrator:
+      "administrator",
+
+    secretary:
+      "secretary",
+
+    secretaria:
+      "secretary",
+
+    contractor:
+      "contractor",
+
+    contratista:
+      "contractor",
+
+    manager:
+      "manager",
+
+    gerente:
+      "manager",
+
+    driver:
+      "driver",
+
+    chofer:
+      "driver",
+
+    contador:
+      "accountant",
+
+    contadora:
+      "accountant",
+
+    accountant:
+      "accountant",
+  };
+
+  return (
+    mapa[valor] ||
+    null
+  );
 };
 
 
@@ -175,105 +363,67 @@ const generarOpcionesHora = (
 // ======================================================
 
 export default function AgendaModal({
-  abierto,
+  abierto = false,
 
   fechaSeleccionada,
 
-  horaSeleccionada,
+  horaSeleccionada = "08:00",
 
   formData,
+
+  guardando = false,
+
+  locale = "es-EC",
 
   onCerrar,
 
   onGuardar,
-
-  guardando = false,
 }) {
   const {
     t,
   } = useTranslation();
 
 
+  // ====================================================
+  // FORM
+  // ====================================================
+
   const [
     form,
     setForm,
   ] = useState({
-    nombres: "",
+    contacto: "",
     celular: "",
     correo: "",
-
     direccion: "",
 
-    id_medio_contacto: "",
-
+    id_medio: "",
     id_tipo_cita: "",
 
-    asignado_a: "",
-
-    hora_inicio: "08:00",
-
-    duracion_minutos: 60,
+    id_rol_responsable: "",
+    id_usuario_asignado: "",
 
     descripcion: "",
 
-    observaciones: "",
+    fecha: "",
+    hora: "",
   });
 
 
-  const tiposCita =
-    formData
-      ?.tipos_cita ||
-    [];
-
-
-  const usuarios =
-    formData
-      ?.usuarios ||
-    [];
-
-
-  const medios =
-    formData
-      ?.medios_contacto ||
-    [];
-
-
-  const configuracion =
-    formData
-      ?.configuracion ||
-    {};
-
-
   // ====================================================
-  // OPCIONES HORARIO
+  // HORARIOS DISPONIBLES
   // ====================================================
 
-  const opcionesHora =
+  const horariosDisponibles =
     useMemo(
       () =>
-        generarOpcionesHora(
-          configuracion
-            ?.hora_inicio ||
-            "08:00",
-
-          configuracion
-            ?.hora_fin ||
-            "17:00",
-
-          Number(
-            configuracion
-              ?.intervalo_minutos
-          ) ||
-          30
-        ),
-      [
-        configuracion,
-      ]
+        generarHorarios(),
+      []
     );
 
 
   // ====================================================
-  // ABRIR MODAL
+  // CARGAR DATOS INICIALES
   // ====================================================
 
   useEffect(() => {
@@ -281,119 +431,187 @@ export default function AgendaModal({
       return;
     }
 
-
-    const hora =
-      horaSeleccionada ||
-      configuracion
-        ?.hora_inicio ||
-      "08:00";
-
-
-    const unicoUsuario =
-      usuarios.length === 1
-        ? String(
-            usuarios[0]
-              .id_usuario
-          )
-        : "";
-
-
     setForm({
-      nombres: "",
+      contacto: "",
       celular: "",
       correo: "",
-
       direccion: "",
 
-      id_medio_contacto:
-        "",
+      id_medio: "",
+      id_tipo_cita: "",
 
-      id_tipo_cita:
-        "",
-
-      asignado_a:
-        unicoUsuario,
-
-      hora_inicio:
-        hora,
-
-      duracion_minutos:
-        60,
+      id_rol_responsable: "",
+      id_usuario_asignado: "",
 
       descripcion: "",
 
-      observaciones: "",
+      fecha:
+        fechaSeleccionada ||
+        "",
+
+      hora:
+        horaSeleccionada ||
+        "08:00",
     });
 
   }, [
     abierto,
+    fechaSeleccionada,
     horaSeleccionada,
-    usuarios,
-    configuracion,
   ]);
 
 
   // ====================================================
-  // TIPO SELECCIONADO
+  // ROLES DISPONIBLES
   // ====================================================
 
-  const tipoSeleccionado =
+  const rolesDisponibles =
     useMemo(
-      () =>
-        tiposCita.find(
+      () => {
+        const mapa =
+          new Map();
+
+        (
+          formData
+            ?.usuarios ||
+          []
+        ).forEach(
           (
-            tipo
+            usuario
+          ) => {
+            if (
+              !usuario.id_rol
+            ) {
+              return;
+            }
+
+            const idRol =
+              Number(
+                usuario.id_rol
+              );
+
+            if (
+              !mapa.has(
+                idRol
+              )
+            ) {
+              mapa.set(
+                idRol,
+                {
+                  id_rol:
+                    idRol,
+
+                  rol:
+                    usuario.rol ||
+                    "",
+                }
+              );
+            }
+          }
+        );
+
+        return Array.from(
+          mapa.values()
+        ).sort(
+          (
+            a,
+            b
           ) =>
-            Number(
-              tipo.id_tipo_cita
-            ) ===
-            Number(
-              form.id_tipo_cita
+            String(
+              a.rol
+            ).localeCompare(
+              String(
+                b.rol
+              )
             )
-        ),
+        );
+      },
       [
-        tiposCita,
-        form.id_tipo_cita,
+        formData?.usuarios,
       ]
     );
 
 
   // ====================================================
-  // DURACIÓN AUTOMÁTICA
+  // USUARIOS SEGÚN ROL
+  // ====================================================
+
+  const usuariosFiltrados =
+    useMemo(
+      () => {
+        if (
+          !form.id_rol_responsable
+        ) {
+          return [];
+        }
+
+        return (
+          formData
+            ?.usuarios ||
+          []
+        ).filter(
+          (
+            usuario
+          ) =>
+            Number(
+              usuario.id_rol
+            ) ===
+            Number(
+              form.id_rol_responsable
+            )
+        );
+      },
+      [
+        form.id_rol_responsable,
+        formData?.usuarios,
+      ]
+    );
+
+
+  // ====================================================
+  // AUTO ASIGNAR SI SOLO HAY UNO
   // ====================================================
 
   useEffect(() => {
     if (
-      tipoSeleccionado
-        ?.duracion_minutos
+      usuariosFiltrados.length === 1
     ) {
       setForm(
         (
-          actual
+          anterior
         ) => ({
-          ...actual,
+          ...anterior,
 
-          duracion_minutos:
-            Number(
-              tipoSeleccionado
-                .duracion_minutos
+          id_usuario_asignado:
+            String(
+              usuariosFiltrados[0]
+                .id_usuario
             ),
         })
       );
+
+      return;
     }
 
+    setForm(
+      (
+        anterior
+      ) => ({
+        ...anterior,
+
+        id_usuario_asignado:
+          "",
+      })
+    );
+
   }, [
-    tipoSeleccionado,
+    form.id_rol_responsable,
+    usuariosFiltrados,
   ]);
 
 
-  if (!abierto) {
-    return null;
-  }
-
-
   // ====================================================
-  // CHANGE
+  // HANDLE CHANGE
   // ====================================================
 
   const handleChange =
@@ -408,9 +626,9 @@ export default function AgendaModal({
 
       setForm(
         (
-          actual
+          anterior
         ) => ({
-          ...actual,
+          ...anterior,
           [name]:
             value,
         })
@@ -419,7 +637,34 @@ export default function AgendaModal({
 
 
   // ====================================================
-  // SUBMIT
+  // CAMBIO ROL
+  // ====================================================
+
+  const handleCambioRol =
+    (
+      event
+    ) => {
+      const value =
+        event.target.value;
+
+      setForm(
+        (
+          anterior
+        ) => ({
+          ...anterior,
+
+          id_rol_responsable:
+            value,
+
+          id_usuario_asignado:
+            "",
+        })
+      );
+    };
+
+
+  // ====================================================
+  // GUARDAR
   // ====================================================
 
   const handleSubmit =
@@ -428,28 +673,19 @@ export default function AgendaModal({
     ) => {
       event.preventDefault();
 
-
       if (
-        !fechaSeleccionada
+        !form.contacto.trim() ||
+        !form.celular.trim() ||
+        !form.id_tipo_cita ||
+        !form.fecha ||
+        !form.hora
       ) {
         return;
       }
 
-
-      const horaFin =
-        sumarMinutos(
-          form.hora_inicio,
-
-          Number(
-            form.duracion_minutos ||
-            60
-          )
-        );
-
-
       const payload = {
-        nombres:
-          form.nombres.trim(),
+        contacto:
+          form.contacto.trim(),
 
         celular:
           form.celular.trim(),
@@ -462,10 +698,10 @@ export default function AgendaModal({
           form.direccion.trim() ||
           null,
 
-        id_medio_contacto:
-          form.id_medio_contacto
+        id_medio:
+          form.id_medio
             ? Number(
-                form.id_medio_contacto
+                form.id_medio
               )
             : null,
 
@@ -474,41 +710,37 @@ export default function AgendaModal({
             form.id_tipo_cita
           ),
 
-        asignado_a:
-          form.asignado_a
+        id_usuario_asignado:
+          form.id_usuario_asignado
             ? Number(
-                form.asignado_a
+                form.id_usuario_asignado
               )
             : null,
-
-        fecha_inicio:
-          `${fechaSeleccionada} ${form.hora_inicio}:00`,
-
-        fecha_fin:
-          `${fechaSeleccionada} ${horaFin}:00`,
-
-        titulo:
-          tipoSeleccionado
-            ?.nombre ||
-          t(
-            "agenda.appointment",
-            "Cita"
-          ),
 
         descripcion:
           form.descripcion.trim() ||
           null,
 
-        observaciones:
-          form.observaciones.trim() ||
-          null,
-      };
+        fecha:
+          form.fecha,
 
+        hora:
+          form.hora,
+      };
 
       await onGuardar?.(
         payload
       );
     };
+
+
+  // ====================================================
+  // NO ABIERTO
+  // ====================================================
+
+  if (!abierto) {
+    return null;
+  }
 
 
   // ====================================================
@@ -520,21 +752,20 @@ export default function AgendaModal({
       className="
         fixed
         inset-0
-        z-50
+        z-[100]
         flex
         items-center
         justify-center
         bg-slate-950/40
-        p-4
-        backdrop-blur-sm
+        p-3
+        backdrop-blur-[2px]
       "
     >
-
       <div
         className="
           max-h-[94vh]
           w-full
-          max-w-2xl
+          max-w-3xl
           overflow-y-auto
           rounded-2xl
           bg-white
@@ -542,20 +773,25 @@ export default function AgendaModal({
         "
       >
 
+        {/* =========================================== */}
         {/* HEADER */}
+        {/* =========================================== */}
 
         <div
           className="
+            sticky
+            top-0
+            z-10
             flex
-            items-center
+            items-start
             justify-between
             border-b
             border-slate-100
+            bg-white
             px-5
             py-4
           "
         >
-
           <div>
             <h2
               className="
@@ -565,8 +801,7 @@ export default function AgendaModal({
               "
             >
               {t(
-                "agenda.new.title",
-                "Nueva cita"
+                "agenda.new.title"
               )}
             </h2>
 
@@ -578,20 +813,16 @@ export default function AgendaModal({
               "
             >
               {t(
-                "agenda.new.subtitle",
-                "Registra los datos y agenda la cita."
+                "agenda.new.subtitle"
               )}
             </p>
           </div>
 
-
           <button
             type="button"
-
             onClick={
               onCerrar
             }
-
             className="
               rounded-lg
               p-2
@@ -602,38 +833,45 @@ export default function AgendaModal({
             "
           >
             <X
-              size={19}
+              size={18}
             />
           </button>
-
         </div>
 
+
+        {/* =========================================== */}
+        {/* FORM */}
+        {/* =========================================== */}
 
         <form
           onSubmit={
             handleSubmit
           }
-
           className="
             space-y-4
             p-5
           "
         >
 
-          {/* NOMBRE / TELÉFONO */}
+          {/* ========================================= */}
+          {/* CLIENTE */}
+          {/* ========================================= */}
 
           <div
             className="
               grid
-              gap-3
-              md:grid-cols-2
+              grid-cols-1
+              gap-4
+              md:grid-cols-3
             "
           >
+
+            {/* NOMBRE */}
 
             <div>
               <label
                 className="
-                  mb-1
+                  mb-1.5
                   block
                   text-xs
                   font-medium
@@ -641,10 +879,8 @@ export default function AgendaModal({
                 "
               >
                 {t(
-                  "agenda.new.name",
-                  "Nombre"
-                )}
-                {" *"}
+                  "agenda.new.name"
+                )} *
               </label>
 
               <div
@@ -653,8 +889,9 @@ export default function AgendaModal({
                 "
               >
                 <UserRound
-                  size={16}
+                  size={17}
                   className="
+                    pointer-events-none
                     absolute
                     left-3
                     top-1/2
@@ -664,32 +901,25 @@ export default function AgendaModal({
                 />
 
                 <input
-                  name="nombres"
-
+                  name="contacto"
                   value={
-                    form.nombres
+                    form.contacto
                   }
-
                   onChange={
                     handleChange
                   }
-
-                  required
-
                   placeholder={
                     t(
-                      "agenda.new.full_name",
-                      "Nombre completo"
+                      "agenda.new.full_name"
                     )
                   }
-
                   className="
+                    h-11
                     w-full
                     rounded-xl
                     border
                     border-slate-200
-                    py-2.5
-                    pl-9
+                    pl-10
                     pr-3
                     text-sm
                     outline-none
@@ -703,10 +933,12 @@ export default function AgendaModal({
             </div>
 
 
+            {/* CELULAR */}
+
             <div>
               <label
                 className="
-                  mb-1
+                  mb-1.5
                   block
                   text-xs
                   font-medium
@@ -714,10 +946,8 @@ export default function AgendaModal({
                 "
               >
                 {t(
-                  "agenda.new.phone",
-                  "Celular"
-                )}
-                {" *"}
+                  "agenda.new.phone"
+                )} *
               </label>
 
               <div
@@ -726,8 +956,9 @@ export default function AgendaModal({
                 "
               >
                 <Phone
-                  size={16}
+                  size={17}
                   className="
+                    pointer-events-none
                     absolute
                     left-3
                     top-1/2
@@ -738,31 +969,92 @@ export default function AgendaModal({
 
                 <input
                   name="celular"
-
                   value={
                     form.celular
                   }
-
                   onChange={
                     handleChange
                   }
-
-                  required
-
                   placeholder={
                     t(
-                      "agenda.new.phone_placeholder",
-                      "Teléfono"
+                      "agenda.new.phone_placeholder"
                     )
                   }
-
                   className="
+                    h-11
                     w-full
                     rounded-xl
                     border
                     border-slate-200
-                    py-2.5
-                    pl-9
+                    pl-10
+                    pr-3
+                    text-sm
+                    outline-none
+                    transition
+                    focus:border-blue-500
+                    focus:ring-4
+                    focus:ring-blue-100
+                  "
+                />
+              </div>
+            </div>
+
+
+            {/* CORREO */}
+
+            <div>
+              <label
+                className="
+                  mb-1.5
+                  block
+                  text-xs
+                  font-medium
+                  text-slate-700
+                "
+              >
+                {t(
+                  "agenda.new.email"
+                )}
+              </label>
+
+              <div
+                className="
+                  relative
+                "
+              >
+                <Mail
+                  size={17}
+                  className="
+                    pointer-events-none
+                    absolute
+                    left-3
+                    top-1/2
+                    -translate-y-1/2
+                    text-slate-400
+                  "
+                />
+
+                <input
+                  type="email"
+                  name="correo"
+                  value={
+                    form.correo
+                  }
+                  onChange={
+                    handleChange
+                  }
+                  placeholder={
+                    t(
+                      "agenda.new.email_placeholder"
+                    )
+                  }
+                  className="
+                    h-11
+                    w-full
+                    rounded-xl
+                    border
+                    border-slate-200
+                    pl-10
                     pr-3
                     text-sm
                     outline-none
@@ -778,161 +1070,25 @@ export default function AgendaModal({
           </div>
 
 
-          {/* CORREO */}
-
-          <div>
-            <label
-              className="
-                mb-1
-                block
-                text-xs
-                font-medium
-                text-slate-700
-              "
-            >
-              {t(
-                "agenda.new.email",
-                "Correo"
-              )}
-            </label>
-
-            <div
-              className="
-                relative
-              "
-            >
-              <Mail
-                size={16}
-                className="
-                  absolute
-                  left-3
-                  top-1/2
-                  -translate-y-1/2
-                  text-slate-400
-                "
-              />
-
-              <input
-                name="correo"
-
-                type="email"
-
-                value={
-                  form.correo
-                }
-
-                onChange={
-                  handleChange
-                }
-
-                placeholder="correo@ejemplo.com"
-
-                className="
-                  w-full
-                  rounded-xl
-                  border
-                  border-slate-200
-                  py-2.5
-                  pl-9
-                  pr-3
-                  text-sm
-                  outline-none
-                  transition
-                  focus:border-blue-500
-                  focus:ring-4
-                  focus:ring-blue-100
-                "
-              />
-            </div>
-          </div>
-
-
-          {/* DIRECCIÓN */}
-
-          <div>
-            <label
-              className="
-                mb-1
-                block
-                text-xs
-                font-medium
-                text-slate-700
-              "
-            >
-              {t(
-                "agenda.new.address",
-                "Dirección"
-              )}
-            </label>
-
-            <div
-              className="
-                relative
-              "
-            >
-              <MapPin
-                size={16}
-                className="
-                  absolute
-                  left-3
-                  top-1/2
-                  -translate-y-1/2
-                  text-slate-400
-                "
-              />
-
-              <input
-                name="direccion"
-
-                value={
-                  form.direccion
-                }
-
-                onChange={
-                  handleChange
-                }
-
-                placeholder={
-                  t(
-                    "agenda.new.address_placeholder",
-                    "Dirección de la cita"
-                  )
-                }
-
-                className="
-                  w-full
-                  rounded-xl
-                  border
-                  border-slate-200
-                  py-2.5
-                  pl-9
-                  pr-3
-                  text-sm
-                  outline-none
-                  transition
-                  focus:border-blue-500
-                  focus:ring-4
-                  focus:ring-blue-100
-                "
-              />
-            </div>
-          </div>
-
-
-          {/* MEDIO / TIPO */}
+          {/* ========================================= */}
+          {/* DIRECCIÓN + MEDIO */}
+          {/* ========================================= */}
 
           <div
             className="
               grid
-              gap-3
-              md:grid-cols-2
+              grid-cols-1
+              gap-4
+              md:grid-cols-[2fr_1fr]
             "
           >
 
+            {/* DIRECCIÓN */}
+
             <div>
               <label
                 className="
-                  mb-1
+                  mb-1.5
                   block
                   text-xs
                   font-medium
@@ -940,74 +1096,66 @@ export default function AgendaModal({
                 "
               >
                 {t(
-                  "agenda.new.contact_method",
-                  "Medio de contacto"
+                  "agenda.new.address"
                 )}
               </label>
 
-              <select
-                name="id_medio_contacto"
-
-                value={
-                  form.id_medio_contacto
-                }
-
-                onChange={
-                  handleChange
-                }
-
+              <div
                 className="
-                  w-full
-                  rounded-xl
-                  border
-                  border-slate-200
-                  bg-white
-                  px-3
-                  py-2.5
-                  text-sm
-                  outline-none
-                  focus:border-blue-500
-                  focus:ring-4
-                  focus:ring-blue-100
+                  relative
                 "
               >
-                <option value="">
-                  {t(
-                    "agenda.new.select",
-                    "Seleccionar"
-                  )}
-                </option>
+                <MapPin
+                  size={17}
+                  className="
+                    pointer-events-none
+                    absolute
+                    left-3
+                    top-1/2
+                    -translate-y-1/2
+                    text-slate-400
+                  "
+                />
 
-                {medios.map(
-                  (
-                    medio
-                  ) => (
-                    <option
-                      key={
-                        medio.id_medio_contacto ||
-                        medio.id_medio
-                      }
-
-                      value={
-                        medio.id_medio_contacto ||
-                        medio.id_medio
-                      }
-                    >
-                      {
-                        medio.nombre
-                      }
-                    </option>
-                  )
-                )}
-
-              </select>
+                <input
+                  name="direccion"
+                  value={
+                    form.direccion
+                  }
+                  onChange={
+                    handleChange
+                  }
+                  placeholder={
+                    t(
+                      "agenda.new.address_placeholder"
+                    )
+                  }
+                  className="
+                    h-11
+                    w-full
+                    rounded-xl
+                    border
+                    border-slate-200
+                    pl-10
+                    pr-3
+                    text-sm
+                    outline-none
+                    transition
+                    focus:border-blue-500
+                    focus:ring-4
+                    focus:ring-blue-100
+                  "
+                />
+              </div>
             </div>
 
 
+            {/* MEDIO CONTACTO */}
+
             <div>
               <label
                 className="
-                  mb-1
+                  mb-1.5
                   block
                   text-xs
                   font-medium
@@ -1015,83 +1163,507 @@ export default function AgendaModal({
                 "
               >
                 {t(
-                  "agenda.new.appointment_type",
-                  "Tipo de cita"
+                  "agenda.new.contact_method"
                 )}
-                {" *"}
               </label>
 
-              <select
-                name="id_tipo_cita"
-
-                value={
-                  form.id_tipo_cita
-                }
-
-                onChange={
-                  handleChange
-                }
-
-                required
-
+              <div
                 className="
-                  w-full
-                  rounded-xl
-                  border
-                  border-slate-200
-                  bg-white
-                  px-3
-                  py-2.5
-                  text-sm
-                  outline-none
-                  focus:border-blue-500
-                  focus:ring-4
-                  focus:ring-blue-100
+                  relative
                 "
               >
-                <option value="">
-                  {t(
-                    "agenda.new.select",
-                    "Seleccionar"
+                <select
+                  name="id_medio"
+                  value={
+                    form.id_medio
+                  }
+                  onChange={
+                    handleChange
+                  }
+                  className="
+                    h-11
+                    w-full
+                    appearance-none
+                    rounded-xl
+                    border
+                    border-slate-200
+                    bg-white
+                    px-3
+                    pr-10
+                    text-sm
+                    outline-none
+                    transition
+                    focus:border-blue-500
+                    focus:ring-4
+                    focus:ring-blue-100
+                  "
+                >
+                  <option value="">
+                    {t(
+                      "agenda.new.select"
+                    )}
+                  </option>
+
+                  {(
+                    formData
+                      ?.medios_contacto ||
+                    []
+                  ).map(
+                    (
+                      medio
+                    ) => {
+                      const clave =
+                        obtenerClaveMedio(
+                          medio.nombre
+                        );
+
+                      return (
+                        <option
+                          key={
+                            medio.id_medio
+                          }
+                          value={
+                            medio.id_medio
+                          }
+                        >
+                          {clave
+                            ? t(
+                                `agenda.contact_methods.${clave}`,
+                                {
+                                  defaultValue:
+                                    medio.nombre,
+                                }
+                              )
+                            : medio.nombre}
+                        </option>
+                      );
+                    }
                   )}
-                </option>
+                </select>
 
-                {tiposCita.map(
-                  (
-                    tipo
-                  ) => (
-                    <option
-                      key={
-                        tipo.id_tipo_cita
-                      }
-
-                      value={
-                        tipo.id_tipo_cita
-                      }
-                    >
-                      {
-                        tipo.nombre
-                      }
-                    </option>
-                  )
-                )}
-
-              </select>
+                <ChevronDown
+                  size={17}
+                  className="
+                    pointer-events-none
+                    absolute
+                    right-3
+                    top-1/2
+                    -translate-y-1/2
+                    text-slate-400
+                  "
+                />
+              </div>
             </div>
 
           </div>
 
 
-          {/* FECHA Y HORA */}
+          {/* ========================================= */}
+          {/* TRABAJO + ROL + RESPONSABLE */}
+          {/* ========================================= */}
 
           <div
             className="
-              rounded-xl
+              grid
+              grid-cols-1
+              gap-4
+              md:grid-cols-3
+            "
+          >
+
+            {/* TIPO TRABAJO */}
+
+            <div>
+              <label
+                className="
+                  mb-1.5
+                  block
+                  text-xs
+                  font-medium
+                  text-slate-700
+                "
+              >
+                {t(
+                  "agenda.job_type"
+                )} *
+              </label>
+
+              <div
+                className="
+                  relative
+                "
+              >
+                <BriefcaseBusiness
+                  size={16}
+                  className="
+                    pointer-events-none
+                    absolute
+                    left-3
+                    top-1/2
+                    -translate-y-1/2
+                    text-slate-400
+                  "
+                />
+
+                <select
+                  name="id_tipo_cita"
+                  value={
+                    form.id_tipo_cita
+                  }
+                  onChange={
+                    handleChange
+                  }
+                  className="
+                    h-11
+                    w-full
+                    appearance-none
+                    rounded-xl
+                    border
+                    border-slate-200
+                    bg-white
+                    pl-10
+                    pr-10
+                    text-sm
+                    outline-none
+                    transition
+                    focus:border-blue-500
+                    focus:ring-4
+                    focus:ring-blue-100
+                  "
+                >
+                  <option value="">
+                    {t(
+                      "agenda.new.select"
+                    )}
+                  </option>
+
+                  {(
+                    formData
+                      ?.tipos_cita ||
+                    []
+                  ).map(
+                    (
+                      tipo
+                    ) => {
+                      const clave =
+                        obtenerClaveTrabajo(
+                          tipo.nombre
+                        );
+
+                      return (
+                        <option
+                          key={
+                            tipo.id_tipo_cita
+                          }
+                          value={
+                            tipo.id_tipo_cita
+                          }
+                        >
+                          {clave
+                            ? t(
+                                `agenda.job_types.${clave}`,
+                                {
+                                  defaultValue:
+                                    tipo.nombre,
+                                }
+                              )
+                            : tipo.nombre}
+                        </option>
+                      );
+                    }
+                  )}
+                </select>
+
+                <ChevronDown
+                  size={17}
+                  className="
+                    pointer-events-none
+                    absolute
+                    right-3
+                    top-1/2
+                    -translate-y-1/2
+                    text-slate-400
+                  "
+                />
+              </div>
+            </div>
+
+
+            {/* ROL */}
+
+            <div>
+              <label
+                className="
+                  mb-1.5
+                  block
+                  text-xs
+                  font-medium
+                  text-slate-700
+                "
+              >
+                {t(
+                  "agenda.responsible_role"
+                )}
+              </label>
+
+              <div
+                className="
+                  relative
+                "
+              >
+                <Users
+                  size={16}
+                  className="
+                    pointer-events-none
+                    absolute
+                    left-3
+                    top-1/2
+                    -translate-y-1/2
+                    text-slate-400
+                  "
+                />
+
+                <select
+                  name="id_rol_responsable"
+                  value={
+                    form.id_rol_responsable
+                  }
+                  onChange={
+                    handleCambioRol
+                  }
+                  className="
+                    h-11
+                    w-full
+                    appearance-none
+                    rounded-xl
+                    border
+                    border-slate-200
+                    bg-white
+                    pl-10
+                    pr-10
+                    text-sm
+                    outline-none
+                    transition
+                    focus:border-blue-500
+                    focus:ring-4
+                    focus:ring-blue-100
+                  "
+                >
+                  <option value="">
+                    {t(
+                      "agenda.select_role"
+                    )}
+                  </option>
+
+                  {rolesDisponibles.map(
+                    (
+                      rol
+                    ) => {
+                      const clave =
+                        obtenerClaveRol(
+                          rol.rol
+                        );
+
+                      return (
+                        <option
+                          key={
+                            rol.id_rol
+                          }
+                          value={
+                            rol.id_rol
+                          }
+                        >
+                          {clave
+                            ? t(
+                                `agenda.roles.${clave}`,
+                                {
+                                  defaultValue:
+                                    rol.rol,
+                                }
+                              )
+                            : rol.rol}
+                        </option>
+                      );
+                    }
+                  )}
+                </select>
+
+                <ChevronDown
+                  size={17}
+                  className="
+                    pointer-events-none
+                    absolute
+                    right-3
+                    top-1/2
+                    -translate-y-1/2
+                    text-slate-400
+                  "
+                />
+              </div>
+            </div>
+
+
+            {/* RESPONSABLE */}
+
+            <div>
+              <label
+                className="
+                  mb-1.5
+                  block
+                  text-xs
+                  font-medium
+                  text-slate-700
+                "
+              >
+                {t(
+                  "agenda.responsible"
+                )}
+              </label>
+
+              <div
+                className="
+                  relative
+                "
+              >
+                <select
+                  name="id_usuario_asignado"
+                  value={
+                    form.id_usuario_asignado
+                  }
+                  onChange={
+                    handleChange
+                  }
+                  disabled={
+                    !form.id_rol_responsable ||
+                    usuariosFiltrados.length === 0
+                  }
+                  className="
+                    h-11
+                    w-full
+                    appearance-none
+                    rounded-xl
+                    border
+                    border-slate-200
+                    bg-white
+                    px-3
+                    pr-10
+                    text-sm
+                    outline-none
+                    transition
+                    disabled:cursor-not-allowed
+                    disabled:bg-slate-50
+                    disabled:text-slate-400
+                    focus:border-blue-500
+                    focus:ring-4
+                    focus:ring-blue-100
+                  "
+                >
+                  <option value="">
+                    {t(
+                      "agenda.select_responsible"
+                    )}
+                  </option>
+
+                  {usuariosFiltrados.map(
+                    (
+                      usuario
+                    ) => (
+                      <option
+                        key={
+                          usuario.id_usuario
+                        }
+                        value={
+                          usuario.id_usuario
+                        }
+                      >
+                        {
+                          usuario.nombres
+                        }
+                      </option>
+                    )
+                  )}
+                </select>
+
+                <ChevronDown
+                  size={17}
+                  className="
+                    pointer-events-none
+                    absolute
+                    right-3
+                    top-1/2
+                    -translate-y-1/2
+                    text-slate-400
+                  "
+                />
+              </div>
+            </div>
+
+          </div>
+
+
+          {/* ========================================= */}
+          {/* DESCRIPCIÓN */}
+          {/* ========================================= */}
+
+          <div>
+            <label
+              className="
+                mb-1.5
+                block
+                text-xs
+                font-medium
+                text-slate-700
+              "
+            >
+              {t(
+                "agenda.job_description"
+              )}
+            </label>
+
+            <textarea
+              name="descripcion"
+              value={
+                form.descripcion
+              }
+              onChange={
+                handleChange
+              }
+              rows={3}
+              placeholder={
+                t(
+                  "agenda.new.description_placeholder"
+                )
+              }
+              className="
+                w-full
+                resize-none
+                rounded-xl
+                border
+                border-slate-200
+                px-3
+                py-3
+                text-sm
+                outline-none
+                transition
+                focus:border-blue-500
+                focus:ring-4
+                focus:ring-blue-100
+              "
+            />
+          </div>
+
+
+          {/* ========================================= */}
+          {/* FECHA + HORA */}
+          {/* ========================================= */}
+
+          <div
+            className="
+              rounded-2xl
               bg-slate-50
               p-4
             "
           >
-
             <div
               className="
                 mb-3
@@ -1115,25 +1687,24 @@ export default function AgendaModal({
                 "
               >
                 {t(
-                  "agenda.new.date_time",
-                  "Fecha y hora"
+                  "agenda.new.date_time"
                 )}
               </span>
             </div>
 
-
             <div
               className="
                 grid
+                grid-cols-1
                 gap-3
-                md:grid-cols-3
+                sm:grid-cols-2
               "
             >
 
               {/* FECHA */}
 
               <div>
-                <label
+                <span
                   className="
                     mb-1
                     block
@@ -1145,38 +1716,39 @@ export default function AgendaModal({
                   "
                 >
                   {t(
-                    "agenda.new.date",
-                    "Fecha"
+                    "agenda.new.date"
                   )}
-                </label>
+                </span>
 
-                <input
-                  value={
-                    fechaSeleccionada ||
-                    ""
-                  }
-
-                  disabled
-
+                <div
                   className="
-                    w-full
+                    flex
+                    h-11
+                    items-center
                     rounded-xl
                     border
                     border-slate-200
                     bg-white
                     px-3
-                    py-2.5
                     text-sm
-                    text-slate-700
+                    font-semibold
+                    text-slate-800
                   "
-                />
+                >
+                  {
+                    formatearFechaVisual(
+                      form.fecha,
+                      locale
+                    )
+                  }
+                </div>
               </div>
 
 
               {/* HORA */}
 
               <div>
-                <label
+                <span
                   className="
                     mb-1
                     block
@@ -1188,10 +1760,9 @@ export default function AgendaModal({
                   "
                 >
                   {t(
-                    "agenda.new.time",
-                    "Hora"
+                    "agenda.new.time"
                   )}
-                </label>
+                </span>
 
                 <div
                   className="
@@ -1199,281 +1770,89 @@ export default function AgendaModal({
                   "
                 >
                   <Clock3
-                    size={15}
+                    size={16}
                     className="
                       pointer-events-none
                       absolute
                       left-3
                       top-1/2
+                      z-10
                       -translate-y-1/2
                       text-slate-400
                     "
                   />
 
                   <select
-                    name="hora_inicio"
-
+                    name="hora"
                     value={
-                      form.hora_inicio
+                      form.hora
                     }
-
                     onChange={
                       handleChange
                     }
-
                     className="
+                      h-11
                       w-full
                       appearance-none
                       rounded-xl
                       border
                       border-slate-200
                       bg-white
-                      py-2.5
-                      pl-9
-                      pr-3
+                      pl-10
+                      pr-10
                       text-sm
-                      font-medium
-                      text-slate-700
+                      font-semibold
+                      text-slate-800
                       outline-none
+                      transition
                       focus:border-blue-500
                       focus:ring-4
                       focus:ring-blue-100
                     "
                   >
-                    {opcionesHora.map(
+                    {horariosDisponibles.map(
                       (
-                        opcion
+                        hora
                       ) => (
                         <option
                           key={
-                            opcion.valor
+                            hora
                           }
-
                           value={
-                            opcion.valor
+                            hora
                           }
                         >
                           {
-                            opcion.label
+                            formatoHora12(
+                              hora
+                            )
                           }
                         </option>
                       )
                     )}
-
                   </select>
+
+                  <ChevronDown
+                    size={17}
+                    className="
+                      pointer-events-none
+                      absolute
+                      right-3
+                      top-1/2
+                      -translate-y-1/2
+                      text-slate-400
+                    "
+                  />
                 </div>
               </div>
 
-
-              {/* DURACIÓN */}
-
-              <div>
-                <label
-                  className="
-                    mb-1
-                    block
-                    text-[10px]
-                    font-semibold
-                    uppercase
-                    tracking-wide
-                    text-slate-500
-                  "
-                >
-                  {t(
-                    "agenda.new.duration",
-                    "Duración"
-                  )}
-                </label>
-
-                <select
-                  name="duracion_minutos"
-
-                  value={
-                    form.duracion_minutos
-                  }
-
-                  onChange={
-                    handleChange
-                  }
-
-                  className="
-                    w-full
-                    rounded-xl
-                    border
-                    border-slate-200
-                    bg-white
-                    px-3
-                    py-2.5
-                    text-sm
-                    text-slate-700
-                    outline-none
-                    focus:border-blue-500
-                    focus:ring-4
-                    focus:ring-blue-100
-                  "
-                >
-                  <option value="30">
-                    30 min
-                  </option>
-
-                  <option value="60">
-                    1 h
-                  </option>
-
-                  <option value="90">
-                    1 h 30 min
-                  </option>
-
-                  <option value="120">
-                    2 h
-                  </option>
-                </select>
-              </div>
-
             </div>
-
           </div>
 
 
-          {/* RESPONSABLE */}
-
-          {usuarios.length > 0 && (
-            <div>
-              <label
-                className="
-                  mb-1
-                  block
-                  text-xs
-                  font-medium
-                  text-slate-700
-                "
-              >
-                {t(
-                  "agenda.new.assign_to",
-                  "Asignar a"
-                )}
-              </label>
-
-              <select
-                name="asignado_a"
-
-                value={
-                  form.asignado_a
-                }
-
-                onChange={
-                  handleChange
-                }
-
-                className="
-                  w-full
-                  rounded-xl
-                  border
-                  border-slate-200
-                  bg-white
-                  px-3
-                  py-2.5
-                  text-sm
-                  outline-none
-                  focus:border-blue-500
-                  focus:ring-4
-                  focus:ring-blue-100
-                "
-              >
-                <option value="">
-                  {t(
-                    "agenda.new.select_responsible",
-                    "Seleccionar responsable"
-                  )}
-                </option>
-
-                {usuarios.map(
-                  (
-                    usuario
-                  ) => (
-                    <option
-                      key={
-                        usuario.id_usuario
-                      }
-
-                      value={
-                        usuario.id_usuario
-                      }
-                    >
-                      {
-                        usuario.nombres
-                      }
-
-                      {usuario.rol
-                        ? ` · ${usuario.rol}`
-                        : ""}
-                    </option>
-                  )
-                )}
-
-              </select>
-            </div>
-          )}
-
-
-          {/* DESCRIPCIÓN */}
-
-          <div>
-            <label
-              className="
-                mb-1
-                block
-                text-xs
-                font-medium
-                text-slate-700
-              "
-            >
-              {t(
-                "agenda.new.description",
-                "Descripción"
-              )}
-            </label>
-
-            <textarea
-              name="descripcion"
-
-              value={
-                form.descripcion
-              }
-
-              onChange={
-                handleChange
-              }
-
-              rows={2}
-
-              placeholder={
-                t(
-                  "agenda.new.description_placeholder",
-                  "Motivo de la cita..."
-                )
-              }
-
-              className="
-                w-full
-                resize-none
-                rounded-xl
-                border
-                border-slate-200
-                px-3
-                py-2.5
-                text-sm
-                outline-none
-                transition
-                focus:border-blue-500
-                focus:ring-4
-                focus:ring-blue-100
-              "
-            />
-          </div>
-
-
+          {/* ========================================= */}
           {/* FOOTER */}
+          {/* ========================================= */}
 
           <div
             className="
@@ -1485,45 +1864,34 @@ export default function AgendaModal({
               pt-4
             "
           >
-
             <button
               type="button"
-
               onClick={
                 onCerrar
               }
-
-              disabled={
-                guardando
-              }
-
               className="
                 rounded-xl
                 border
                 border-slate-200
-                px-4
+                px-5
                 py-2.5
                 text-sm
                 font-medium
-                text-slate-600
+                text-slate-700
                 transition
                 hover:bg-slate-50
               "
             >
               {t(
-                "agenda.new.cancel",
-                "Cancelar"
+                "agenda.new.cancel"
               )}
             </button>
 
-
             <button
               type="submit"
-
               disabled={
                 guardando
               }
-
               className="
                 rounded-xl
                 bg-blue-600
@@ -1532,7 +1900,6 @@ export default function AgendaModal({
                 text-sm
                 font-semibold
                 text-white
-                shadow-sm
                 transition
                 hover:bg-blue-700
                 disabled:cursor-not-allowed
@@ -1541,21 +1908,16 @@ export default function AgendaModal({
             >
               {guardando
                 ? t(
-                    "agenda.new.saving",
-                    "Guardando..."
+                    "agenda.new.saving"
                   )
                 : t(
-                    "agenda.new.save",
-                    "Guardar cita"
+                    "agenda.new.save"
                   )}
             </button>
-
           </div>
 
         </form>
-
       </div>
-
     </div>
   );
 }

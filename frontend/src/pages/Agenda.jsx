@@ -24,6 +24,9 @@ import Swal from "sweetalert2";
 
 import AgendaDayView from "../components/agenda/AgendaDayView";
 import AgendaModal from "../components/agenda/AgendaModal";
+import AgendaDetalleModal from "../components/agenda/AgendaDetalleModal";
+
+
 
 import {
   createAgendaCita,
@@ -379,10 +382,23 @@ export default function Agenda() {
     setGuardando,
   ] = useState(false);
 
+  // ====================================================
+  const [
+    citaSeleccionada,
+    setCitaSeleccionada,
+  ] = useState(null);
+
+  const [
+    detalleAbierto,
+    setDetalleAbierto,
+  ] = useState(false);
+
 
   // ====================================================
   // HOY
   // ====================================================
+
+
 
   const hoy =
     useMemo(
@@ -1420,6 +1436,7 @@ export default function Agenda() {
                       }
 
                       className={`
+                        group
                         relative
                         min-h-[58px]
                         border-b
@@ -1804,12 +1821,13 @@ export default function Agenda() {
                   }
 
                   onSeleccionarCita={
-                    (
-                      cita
-                    ) => {
-                      console.log(
-                        "CITA SELECCIONADA:",
+                    (cita) => {
+                      setCitaSeleccionada(
                         cita
+                      );
+
+                      setDetalleAbierto(
+                        true
                       );
                     }
                   }
@@ -1861,6 +1879,56 @@ export default function Agenda() {
 
           onGuardar={
             guardarCita
+          }
+        />
+        <AgendaDetalleModal
+          abierto={
+            detalleAbierto
+          }
+
+          cita={
+            citaSeleccionada
+          }
+
+          locale={
+            locale
+          }
+
+          onCerrar={() => {
+            setDetalleAbierto(
+              false
+            );
+
+            setCitaSeleccionada(
+              null
+            );
+          }}
+
+          onReagendar={
+            (cita) => {
+              console.log(
+                "REAGENDAR:",
+                cita
+              );
+            }
+          }
+
+          onCancelar={
+            (cita) => {
+              console.log(
+                "CANCELAR:",
+                cita
+              );
+            }
+          }
+
+          onCompletar={
+            (cita) => {
+              console.log(
+                "COMPLETAR:",
+                cita
+              );
+            }
           }
         />
 
