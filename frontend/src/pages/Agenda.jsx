@@ -1416,6 +1416,147 @@ export default function Agenda() {
                     estilosDiasSemana[indiceDiaSemana];
 
 
+                  // ==========================================
+                  // ORDENAR CITAS DEL DÍA
+                  // ==========================================
+
+                  const citasOrdenadasCalendario =
+                    [...citasDiaCalendario].sort(
+                      (a, b) => {
+                        const fechaA =
+                          new Date(
+                            String(
+                              a.fecha_inicio || ""
+                            ).replace(
+                              " ",
+                              "T"
+                            )
+                          );
+
+                        const fechaB =
+                          new Date(
+                            String(
+                              b.fecha_inicio || ""
+                            ).replace(
+                              " ",
+                              "T"
+                            )
+                          );
+
+                        return (
+                          fechaA.getTime() -
+                          fechaB.getTime()
+                        );
+                      }
+                    );
+
+
+                  // ==========================================
+                  // CITA VISIBLE EN EL CALENDARIO
+                  // ==========================================
+
+                  let citaVisible =
+                    null;
+
+                  if (
+                    citasOrdenadasCalendario.length >
+                    0
+                  ) {
+
+                    if (fechaPasada) {
+
+                      citaVisible =
+                        citasOrdenadasCalendario[
+                          citasOrdenadasCalendario.length -
+                            1
+                        ];
+
+                    } else if (esHoy) {
+
+                      const ahoraCalendario =
+                        new Date();
+
+                      const proximaCita =
+                        citasOrdenadasCalendario.find(
+                          (cita) => {
+
+                            const fechaCita =
+                              new Date(
+                                String(
+                                  cita.fecha_inicio ||
+                                  ""
+                                ).replace(
+                                  " ",
+                                  "T"
+                                )
+                              );
+
+                            return (
+                              !Number.isNaN(
+                                fechaCita.getTime()
+                              ) &&
+                              fechaCita.getTime() >=
+                                ahoraCalendario.getTime()
+                            );
+                          }
+                        );
+
+                      citaVisible =
+                        proximaCita ||
+                        citasOrdenadasCalendario[
+                          citasOrdenadasCalendario.length -
+                            1
+                        ];
+
+                    } else {
+
+                      citaVisible =
+                        citasOrdenadasCalendario[0];
+
+                    }
+                  }
+
+
+                  // ==========================================
+                  // HORA DE LA CITA VISIBLE
+                  // ==========================================
+
+                  let horaCitaVisible =
+                    "";
+
+                  if (citaVisible) {
+
+                    const fechaInicioVisible =
+                      new Date(
+                        String(
+                          citaVisible.fecha_inicio ||
+                          ""
+                        ).replace(
+                          " ",
+                          "T"
+                        )
+                      );
+
+                    if (
+                      !Number.isNaN(
+                        fechaInicioVisible.getTime()
+                      )
+                    ) {
+
+                      horaCitaVisible =
+                        fechaInicioVisible
+                          .toLocaleTimeString(
+                            locale,
+                            {
+                              hour: "numeric",
+                              minute: "2-digit",
+                              hour12: true,
+                            }
+                          );
+                    }
+                  }
+
+
                   return (
                     <button
                       type="button"
@@ -1431,8 +1572,14 @@ export default function Agenda() {
 
                       title={
                         fechaPasada
-                          ? t("agenda.past_date")
-                          : t("agenda.double_click")
+                          ? t(
+                              "agenda.past_date",
+                              "Fecha pasada"
+                            )
+                          : t(
+                              "agenda.double_click",
+                              "Doble clic para crear una cita"
+                            )
                       }
 
                       className={`
@@ -1448,10 +1595,14 @@ export default function Agenda() {
 
                         ${
                           seleccionado
-                            ? "bg-sky-100 ring-2 ring-inset ring-blue-500"
-                            : perteneceMes
-                              ? `bg-white ${estiloDia.cell}`
-                              : "bg-slate-50"
+                            ? "bg-sky-50 ring-2 ring-inset ring-blue-500"
+                            : !perteneceMes
+                              ? "bg-slate-50"
+                              : fechaPasada
+                                ? "bg-slate-50"
+                                : citasDiaCalendario.length > 0
+                                  ? "bg-violet-50/40 hover:bg-violet-50/70"
+                                  : `bg-white ${estiloDia.cell}`
                         }
 
                         ${
@@ -1480,12 +1631,13 @@ export default function Agenda() {
                             px-1
                             text-xs
                             font-bold
+                            transition
 
                             ${
                               esHoy
-                                ? "bg-blue-600 text-white shadow-sm"
+                                ? "bg-emerald-500 text-white shadow-sm"
                                 : seleccionado
-                                  ? "bg-blue-100 text-blue-700"
+                                  ? "bg-blue-600 text-white shadow-sm"
                                   : !perteneceMes
                                     ? "text-slate-300"
                                     : fechaPasada
@@ -1497,17 +1649,22 @@ export default function Agenda() {
                           {fecha.getDate()}
                         </span>
 
+
                         {citasDiaCalendario.length > 0 && (
                           <span
                             className="
                               ml-1
+                              inline-flex
+                              h-4
+                              min-w-4
+                              items-center
+                              justify-center
                               rounded-full
-                              bg-blue-100
-                              px-1.5
-                              py-0.5
+                              bg-violet-100
+                              px-1
                               text-[9px]
                               font-bold
-                              text-blue-700
+                              text-violet-700
                             "
                           >
                             {citasDiaCalendario.length}
@@ -1516,64 +1673,50 @@ export default function Agenda() {
                       </div>
 
 
-                      <div className="mt-1 space-y-0.5">
-                        {citasDiaCalendario
-                          .slice(0, 1)
-                          .map((cita) => {
-                            const fechaInicio =
-                              new Date(
-                                cita.fecha_inicio
-                              );
-
-                            const hora =
-                              fechaInicio.toLocaleTimeString(
-                                locale,
-                                {
-                                  hour: "numeric",
-                                  minute: "2-digit",
-                                  hour12: true,
-                                }
-                              );
-
-                            return (
-                              <div
-                                key={cita.id_cita}
-                                className="
-                                  truncate
-                                  rounded-md
-                                  bg-blue-50
-                                  px-1.5
-                                  py-0.5
-                                  text-center
-                                  text-[9px]
-                                  font-medium
-                                  text-blue-700
-                                "
-                              >
-                                {hora}{" "}
-                                {cita.contacto ||
-                                  cita.nombres ||
-                                  ""}
-                              </div>
-                            );
-                          })}
-
-                        {citasDiaCalendario.length > 1 && (
-                          <p
-                            className="
-                              px-1
+                      <div
+                        className="
+                          mt-1
+                          min-h-[18px]
+                        "
+                      >
+                        {citaVisible && (
+                          <div
+                            className={`
+                              truncate
+                              rounded-md
+                              border
+                              px-1.5
+                              py-0.5
                               text-center
                               text-[9px]
-                              font-medium
-                              text-blue-600
-                            "
+
+                              ${
+                                fechaPasada
+                                  ? "border-slate-200 bg-slate-100 text-slate-500"
+                                  : "border-violet-200 bg-violet-50 text-violet-700"
+                              }
+                            `}
                           >
-                            {t("agenda.more", {
-                              count:
-                                citasDiaCalendario.length -
-                                1,
-                            })}
-                          </p>
+                            <span
+                              className="
+                                font-extrabold
+                              "
+                            >
+                              {horaCitaVisible}
+                            </span>
+
+                            {" · "}
+
+                            <span
+                              className="
+                                font-medium
+                              "
+                            >
+                              {citaVisible.contacto ||
+                                citaVisible.nombres ||
+                                ""}
+                            </span>
+                          </div>
                         )}
                       </div>
 
