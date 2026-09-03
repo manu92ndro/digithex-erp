@@ -1150,83 +1150,7 @@ export default function AgendaDetalleModal({
           </section>
 
 
-          {/* RESPONSIBLE PERSON */}
-
-          <section>
-            <p
-              className="
-                mb-2
-                text-xs
-                font-semibold
-                uppercase
-                tracking-wide
-                text-slate-400
-              "
-            >
-              {t(
-                "agenda.responsible"
-              )}
-            </p>
-
-            <div
-              className="
-                flex
-                items-center
-                gap-3
-                rounded-xl
-                border
-                border-slate-200
-                p-3
-              "
-            >
-              <div
-                className="
-                  flex
-                  h-9
-                  w-9
-                  items-center
-                  justify-center
-                  rounded-full
-                  bg-blue-50
-                  text-blue-600
-                "
-              >
-                <UserRound
-                  size={17}
-                />
-              </div>
-
-              <div>
-                <p
-                  className="
-                    text-sm
-                    font-semibold
-                    text-slate-800
-                  "
-                >
-                  {
-                    cita.asignado_nombre ||
-                    t(
-                      "agenda.not_assigned"
-                    )
-                  }
-                </p>
-
-                {cita.asignado_rol && (
-                  <p
-                    className="
-                      text-xs
-                      text-slate-500
-                    "
-                  >
-                    {
-                      cita.asignado_rol
-                    }
-                  </p>
-                )}
-              </div>
-            </div>
-          </section>
+          
 
 
           {/* JOB DESCRIPTION */}
@@ -1373,6 +1297,84 @@ export default function AgendaDetalleModal({
                 )}
               </button>
 
+            </div>
+          </section>
+
+          {/* RESPONSIBLE PERSON */}
+
+          <section>
+            <p
+              className="
+                mb-2
+                text-xs
+                font-semibold
+                uppercase
+                tracking-wide
+                text-slate-400
+              "
+            >
+              {t(
+                "agenda.responsible"
+              )}
+            </p>
+
+            <div
+              className="
+                flex
+                items-center
+                gap-3
+                rounded-xl
+                border
+                border-slate-200
+                p-3
+              "
+            >
+              <div
+                className="
+                  flex
+                  h-9
+                  w-9
+                  items-center
+                  justify-center
+                  rounded-full
+                  bg-blue-50
+                  text-blue-600
+                "
+              >
+                <UserRound
+                  size={17}
+                />
+              </div>
+
+              <div>
+                <p
+                  className="
+                    text-sm
+                    font-semibold
+                    text-slate-800
+                  "
+                >
+                  {
+                    cita.asignado_nombre ||
+                    t(
+                      "agenda.not_assigned"
+                    )
+                  }
+                </p>
+
+                {cita.asignado_rol && (
+                  <p
+                    className="
+                      text-xs
+                      text-slate-500
+                    "
+                  >
+                    {
+                      cita.asignado_rol
+                    }
+                  </p>
+                )}
+              </div>
             </div>
           </section>
 
