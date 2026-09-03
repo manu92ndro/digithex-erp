@@ -1,4 +1,6 @@
 import {
+  AtSign,
+  BriefcaseBusiness,
   CalendarDays,
   CheckCircle2,
   Clock3,
@@ -10,16 +12,21 @@ import {
   Trash2,
   UserRound,
   X,
-  BriefcaseBusiness,
 } from "lucide-react";
 
 import {
   useTranslation,
 } from "react-i18next";
 
+import Swal from "sweetalert2";
+
+import {
+  enviarAgendaCitaEmail,
+} from "../../api/agenda";
+
 
 // ======================================================
-// FORMATEAR FECHA
+// FORMAT DATE
 // ======================================================
 
 const formatearFecha = (
@@ -53,7 +60,7 @@ const formatearFecha = (
 
 
 // ======================================================
-// FORMATEAR HORA
+// FORMAT TIME
 // ======================================================
 
 const formatearHora = (
@@ -87,29 +94,98 @@ const formatearHora = (
 
 
 // ======================================================
-// LIMPIAR TELÉFONO
+// FORMAT DATE FOR OUTGOING WHATSAPP
+// Always English because the operational message is sent
+// to the field assignee in English.
+// ======================================================
+
+const formatearFechaWhatsApp = (
+  valor
+) => {
+  if (!valor) {
+    return "-";
+  }
+
+  const fecha =
+    new Date(valor);
+
+  if (
+    Number.isNaN(
+      fecha.getTime()
+    )
+  ) {
+    return "-";
+  }
+
+  return new Intl.DateTimeFormat(
+    "en-US",
+    {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+    }
+  )
+    .format(fecha)
+    .toUpperCase();
+};
+
+
+// ======================================================
+// FORMAT TIME FOR OUTGOING WHATSAPP
+// ======================================================
+
+const formatearHoraWhatsApp = (
+  valor
+) => {
+  if (!valor) {
+    return "-";
+  }
+
+  const fecha =
+    new Date(valor);
+
+  if (
+    Number.isNaN(
+      fecha.getTime()
+    )
+  ) {
+    return "-";
+  }
+
+  return new Intl.DateTimeFormat(
+    "en-US",
+    {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    }
+  ).format(fecha);
+};
+
+
+// ======================================================
+// CLEAN PHONE
 // ======================================================
 
 const limpiarTelefono = (
   telefono
-) => {
-  return String(
+) =>
+  String(
     telefono || ""
   ).replace(
     /\D/g,
     ""
   );
-};
 
 
 // ======================================================
-// COMPONENTE
+// COMPONENT
 // ======================================================
 
 export default function AgendaDetalleModal({
   abierto = false,
   cita,
-  locale = "es-EC",
+  locale = "en-US",
 
   onCerrar,
   onReagendar,
@@ -118,7 +194,6 @@ export default function AgendaDetalleModal({
 }) {
   const {
     t,
-    i18n,
   } = useTranslation();
 
 
@@ -130,70 +205,126 @@ export default function AgendaDetalleModal({
   }
 
 
-  const idiomaIngles =
-    i18n.language
-      ?.toLowerCase()
-      ?.startsWith(
-        "en"
-      );
+  // ====================================================
+  // APPOINTMENT STATUS
+  // ====================================================
+
+  const estado =
+    String(
+      cita.estado ||
+      ""
+    ).toLowerCase();
+
+
+  const bloqueada =
+    estado === "cancelada" ||
+    estado === "cancelado" ||
+    estado === "completada" ||
+    estado === "completado";
 
 
   // ====================================================
-  // WHATSAPP RESPONSABLE
+  // CLIENT DATA
+  // ====================================================
+
+  const nombreCliente =
+    cita.contacto ||
+    cita.nombres ||
+    "-";
+
+
+  const celularCliente =
+    String(
+      cita.celular ||
+      ""
+    ).trim();
+
+
+  const correoCliente =
+    String(
+      cita.correo ||
+      ""
+    ).trim();
+
+
+  const direccionCliente =
+    String(
+      cita.direccion ||
+      ""
+    ).trim();
+
+
+  // ====================================================
+  // WHATSAPP TO ASSIGNEE
   // ====================================================
 
   const enviarWhatsApp =
     () => {
+
       const telefono =
         limpiarTelefono(
           cita.asignado_celular ||
           cita.responsable_celular
         );
 
+
       if (!telefono) {
+        Swal.fire({
+          icon: "warning",
+          title:
+            t(
+              "agenda.whatsapp_no_phone_title"
+            ),
+          text:
+            t(
+              "agenda.whatsapp_no_phone_message"
+            ),
+          confirmButtonText:
+            t(
+              "agenda.ok"
+            ),
+        });
+
         return;
       }
 
-      const mensaje =
-        idiomaIngles
-          ? [
-              `Hello ${cita.asignado_nombre || ""},`,
-              "",
-              "You have an appointment scheduled:",
-              "",
-              `Client: ${cita.contacto || "-"}`,
-              `Job: ${cita.tipo_cita || "-"}`,
-              `Date: ${formatearFecha(cita.fecha_inicio, locale)}`,
-              `Time: ${formatearHora(cita.fecha_inicio, locale)}`,
-              `Address: ${cita.direccion || "-"}`,
-              "",
-              cita.descripcion
-                ? `Description: ${cita.descripcion}`
-                : "",
-            ]
-              .filter(Boolean)
-              .join("\n")
 
-          : [
-              `Hola ${cita.asignado_nombre || ""},`,
-              "",
-              "Tienes una cita programada:",
-              "",
-              `Cliente: ${cita.contacto || "-"}`,
-              `Trabajo: ${cita.tipo_cita || "-"}`,
-              `Fecha: ${formatearFecha(cita.fecha_inicio, locale)}`,
-              `Hora: ${formatearHora(cita.fecha_inicio, locale)}`,
-              `Dirección: ${cita.direccion || "-"}`,
-              "",
-              cita.descripcion
-                ? `Descripción: ${cita.descripcion}`
-                : "",
-            ]
-              .filter(Boolean)
-              .join("\n");
+      const fecha =
+        formatearFechaWhatsApp(
+          cita.fecha_inicio
+        );
+
+
+      const hora =
+        formatearHoraWhatsApp(
+          cita.fecha_inicio
+        );
+
+
+      const mensaje =
+        [
+          "📅 *YOU HAVE A SCHEDULED APPOINTMENT*",
+          "",
+          `🗓️ *${fecha}*`,
+          `⏰ *TIME: ${hora}*`,
+          `📍 Address: ${direccionCliente || "-"}`,
+          "",
+          `👤 Client: ${nombreCliente}`,
+          `🏗️ Project: ${cita.tipo_cita || "-"}`,
+          celularCliente
+            ? `📞 Client phone: ${celularCliente}`
+            : "",
+          "",
+          "📝 *Project details:*",
+          cita.descripcion ||
+            "No additional details.",
+        ]
+          .filter(Boolean)
+          .join("\n");
+
 
       window.open(
-        `https://wa.me/${telefono}?text=${encodeURIComponent(
+        `https://api.whatsapp.com/send?phone=${telefono}&text=${encodeURIComponent(
           mensaje
         )}`,
         "_blank",
@@ -203,88 +334,166 @@ export default function AgendaDetalleModal({
 
 
   // ====================================================
-  // EMAIL RESPONSABLE
+  // EMAIL CLIENT USING BACKEND SMTP
   // ====================================================
 
   const enviarEmail =
-    () => {
-      const correo =
-        cita.asignado_correo ||
-        cita.responsable_correo;
+    async () => {
 
-      if (!correo) {
+      const resultado =
+        await Swal.fire({
+          title:
+            t(
+              "agenda.email_prompt_title"
+            ),
+
+          text:
+            t(
+              "agenda.email_prompt_message"
+            ),
+
+          input:
+            "email",
+
+          inputValue:
+            correoCliente,
+
+          inputPlaceholder:
+            t(
+              "agenda.email_placeholder"
+            ),
+
+          showCancelButton:
+            true,
+
+          confirmButtonText:
+            t(
+              "agenda.email_send"
+            ),
+
+          cancelButtonText:
+            t(
+              "agenda.new.cancel"
+            ),
+
+          reverseButtons:
+            true,
+
+          inputValidator:
+            (valor) => {
+              const email =
+                String(
+                  valor ||
+                  ""
+                ).trim();
+
+              if (!email) {
+                return t(
+                  "agenda.email_required"
+                );
+              }
+
+              const valido =
+                /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+                  .test(
+                    email
+                  );
+
+              if (!valido) {
+                return t(
+                  "agenda.email_invalid"
+                );
+              }
+
+              return undefined;
+            },
+        });
+
+
+      if (
+        !resultado.isConfirmed
+      ) {
         return;
       }
 
-      const asunto =
-        idiomaIngles
-          ? "Scheduled appointment"
-          : "Cita programada";
 
-      const mensaje =
-        idiomaIngles
-          ? [
-              `Hello ${cita.asignado_nombre || ""},`,
-              "",
-              "You have an appointment scheduled.",
-              "",
-              `Client: ${cita.contacto || "-"}`,
-              `Job: ${cita.tipo_cita || "-"}`,
-              `Date: ${formatearFecha(cita.fecha_inicio, locale)}`,
-              `Time: ${formatearHora(cita.fecha_inicio, locale)}`,
-              `Address: ${cita.direccion || "-"}`,
-              "",
-              cita.descripcion
-                ? `Description: ${cita.descripcion}`
-                : "",
-            ]
-              .filter(Boolean)
-              .join("\n")
+      const correo =
+        String(
+          resultado.value ||
+          ""
+        ).trim();
 
-          : [
-              `Hola ${cita.asignado_nombre || ""},`,
-              "",
-              "Tienes una cita programada.",
-              "",
-              `Cliente: ${cita.contacto || "-"}`,
-              `Trabajo: ${cita.tipo_cita || "-"}`,
-              `Fecha: ${formatearFecha(cita.fecha_inicio, locale)}`,
-              `Hora: ${formatearHora(cita.fecha_inicio, locale)}`,
-              `Dirección: ${cita.direccion || "-"}`,
-              "",
-              cita.descripcion
-                ? `Descripción: ${cita.descripcion}`
-                : "",
-            ]
-              .filter(Boolean)
-              .join("\n");
 
-      window.location.href =
-        `mailto:${correo}` +
-        `?subject=${encodeURIComponent(
-          asunto
-        )}` +
-        `&body=${encodeURIComponent(
-          mensaje
-        )}`;
+      try {
+
+        Swal.fire({
+          title:
+            t(
+              "agenda.email_sending"
+            ),
+          allowOutsideClick:
+            false,
+          allowEscapeKey:
+            false,
+          didOpen:
+            () => {
+              Swal.showLoading();
+            },
+        });
+
+
+        const response =
+          await enviarAgendaCitaEmail(
+            cita.id_cita,
+            correo
+          );
+
+
+        await Swal.fire({
+          icon: "success",
+
+          title:
+            t(
+              "agenda.email_sent_title"
+            ),
+
+          text:
+            response?.message ||
+            t(
+              "agenda.email_sent_message"
+            ),
+
+          confirmButtonText:
+            t(
+              "agenda.ok"
+            ),
+        });
+
+      } catch (error) {
+
+        await Swal.fire({
+          icon: "error",
+
+          title:
+            t(
+              "agenda.email_error_title"
+            ),
+
+          text:
+            error?.response?.data?.message ||
+            error?.response?.data?.msg ||
+            error?.message ||
+            t(
+              "agenda.email_error_message"
+            ),
+
+          confirmButtonText:
+            t(
+              "agenda.ok"
+            ),
+        });
+      }
     };
-
-
-  const estado =
-    String(
-      cita.estado ||
-      ""
-    ).toLowerCase();
-
-  const bloqueada =
-    estado ===
-      "cancelada" ||
-    estado ===
-      "cancelado" ||
-    estado ===
-      "completada" ||
-    estado ===
-      "completado";
 
 
   return (
@@ -304,9 +513,10 @@ export default function AgendaDetalleModal({
 
       <div
         className="
+          max-h-[94vh]
           w-full
-          max-w-xl
-          overflow-hidden
+          max-w-2xl
+          overflow-y-auto
           rounded-2xl
           bg-white
           shadow-2xl
@@ -317,11 +527,15 @@ export default function AgendaDetalleModal({
 
         <div
           className="
+            sticky
+            top-0
+            z-10
             flex
             items-start
             justify-between
             border-b
             border-slate-100
+            bg-white
             px-5
             py-4
           "
@@ -380,6 +594,11 @@ export default function AgendaDetalleModal({
               hover:bg-slate-100
               hover:text-slate-700
             "
+            aria-label={
+              t(
+                "agenda.close"
+              )
+            }
           >
             <X
               size={18}
@@ -397,168 +616,283 @@ export default function AgendaDetalleModal({
           "
         >
 
-          {/* CLIENTE / TRABAJO */}
+          {/* CLIENT INFORMATION */}
 
-          <div>
+          <section>
             <p
               className="
-                text-xl
-                font-bold
-                text-slate-900
+                mb-2
+                text-xs
+                font-semibold
+                uppercase
+                tracking-wide
+                text-slate-400
               "
             >
-              {
-                cita.contacto ||
-                "-"
-              }
+              {t(
+                "agenda.client_information"
+              )}
             </p>
 
-            <div
-              className="
-                mt-1
-                flex
-                items-center
-                gap-2
-                text-sm
-                font-medium
-                text-blue-600
-              "
-            >
-              <BriefcaseBusiness
-                size={15}
-              />
-
-              {
-                cita.tipo_cita ||
-                "-"
-              }
-            </div>
-          </div>
-
-
-          {/* INFO */}
-
-          <div
-            className="
-              grid
-              gap-3
-              rounded-2xl
-              bg-slate-50
-              p-4
-              sm:grid-cols-2
-            "
-          >
 
             <div
               className="
-                flex
-                gap-2
+                grid
+                gap-3
+                rounded-2xl
+                border
+                border-slate-200
+                bg-white
+                p-4
+                sm:grid-cols-2
               "
             >
-              <CalendarDays
-                size={17}
-                className="
-                  mt-0.5
-                  text-blue-600
-                "
-              />
 
-              <div>
-                <p
-                  className="
-                    text-[10px]
-                    font-semibold
-                    uppercase
-                    text-slate-400
-                  "
-                >
-                  {t(
-                    "agenda.new.date"
-                  )}
-                </p>
-
-                <p
-                  className="
-                    text-sm
-                    font-semibold
-                    text-slate-800
-                  "
-                >
-                  {
-                    formatearFecha(
-                      cita.fecha_inicio,
-                      locale
-                    )
-                  }
-                </p>
-              </div>
-            </div>
-
-
-            <div
-              className="
-                flex
-                gap-2
-              "
-            >
-              <Clock3
-                size={17}
-                className="
-                  mt-0.5
-                  text-blue-600
-                "
-              />
-
-              <div>
-                <p
-                  className="
-                    text-[10px]
-                    font-semibold
-                    uppercase
-                    text-slate-400
-                  "
-                >
-                  {t(
-                    "agenda.new.time"
-                  )}
-                </p>
-
-                <p
-                  className="
-                    text-sm
-                    font-semibold
-                    text-slate-800
-                  "
-                >
-                  {
-                    formatearHora(
-                      cita.fecha_inicio,
-                      locale
-                    )
-                  }
-                </p>
-              </div>
-            </div>
-
-
-            {cita.direccion && (
               <div
                 className="
                   flex
-                  gap-2
-                  sm:col-span-2
+                  items-start
+                  gap-3
                 "
               >
-                <MapPin
-                  size={17}
+                <div
                   className="
-                    mt-0.5
+                    flex
+                    h-9
+                    w-9
                     shrink-0
+                    items-center
+                    justify-center
+                    rounded-full
+                    bg-blue-50
                     text-blue-600
                   "
-                />
+                >
+                  <UserRound
+                    size={17}
+                  />
+                </div>
 
-                <div>
+                <div
+                  className="
+                    min-w-0
+                  "
+                >
+                  <p
+                    className="
+                      text-[10px]
+                      font-semibold
+                      uppercase
+                      text-slate-400
+                    "
+                  >
+                    {t(
+                      "agenda.client"
+                    )}
+                  </p>
+
+                  <p
+                    className="
+                      break-words
+                      text-sm
+                      font-bold
+                      text-slate-900
+                    "
+                  >
+                    {
+                      nombreCliente
+                    }
+                  </p>
+                </div>
+              </div>
+
+
+              <div
+                className="
+                  flex
+                  items-start
+                  gap-3
+                "
+              >
+                <div
+                  className="
+                    flex
+                    h-9
+                    w-9
+                    shrink-0
+                    items-center
+                    justify-center
+                    rounded-full
+                    bg-emerald-50
+                    text-emerald-600
+                  "
+                >
+                  <Phone
+                    size={16}
+                  />
+                </div>
+
+                <div
+                  className="
+                    min-w-0
+                  "
+                >
+                  <p
+                    className="
+                      text-[10px]
+                      font-semibold
+                      uppercase
+                      text-slate-400
+                    "
+                  >
+                    {t(
+                      "agenda.new.phone"
+                    )}
+                  </p>
+
+                  {
+                    celularCliente
+                      ? (
+                          <a
+                            href={
+                              `tel:${celularCliente}`
+                            }
+                            className="
+                              break-words
+                              text-sm
+                              font-semibold
+                              text-slate-800
+                              hover:text-blue-600
+                            "
+                          >
+                            {
+                              celularCliente
+                            }
+                          </a>
+                        )
+                      : (
+                          <p
+                            className="
+                              text-sm
+                              text-slate-400
+                            "
+                          >
+                            -
+                          </p>
+                        )
+                  }
+                </div>
+              </div>
+
+
+              <div
+                className="
+                  flex
+                  items-start
+                  gap-3
+                "
+              >
+                <div
+                  className="
+                    flex
+                    h-9
+                    w-9
+                    shrink-0
+                    items-center
+                    justify-center
+                    rounded-full
+                    bg-indigo-50
+                    text-indigo-600
+                  "
+                >
+                  <AtSign
+                    size={16}
+                  />
+                </div>
+
+                <div
+                  className="
+                    min-w-0
+                  "
+                >
+                  <p
+                    className="
+                      text-[10px]
+                      font-semibold
+                      uppercase
+                      text-slate-400
+                    "
+                  >
+                    {t(
+                      "agenda.new.email"
+                    )}
+                  </p>
+
+                  {
+                    correoCliente
+                      ? (
+                          <a
+                            href={
+                              `mailto:${correoCliente}`
+                            }
+                            className="
+                              break-all
+                              text-sm
+                              font-semibold
+                              text-slate-800
+                              hover:text-blue-600
+                            "
+                          >
+                            {
+                              correoCliente
+                            }
+                          </a>
+                        )
+                      : (
+                          <p
+                            className="
+                              text-sm
+                              text-slate-400
+                            "
+                          >
+                            -
+                          </p>
+                        )
+                  }
+                </div>
+              </div>
+
+
+              <div
+                className="
+                  flex
+                  items-start
+                  gap-3
+                "
+              >
+                <div
+                  className="
+                    flex
+                    h-9
+                    w-9
+                    shrink-0
+                    items-center
+                    justify-center
+                    rounded-full
+                    bg-amber-50
+                    text-amber-600
+                  "
+                >
+                  <MapPin
+                    size={16}
+                  />
+                </div>
+
+                <div
+                  className="
+                    min-w-0
+                  "
+                >
                   <p
                     className="
                       text-[10px]
@@ -574,24 +908,333 @@ export default function AgendaDetalleModal({
 
                   <p
                     className="
+                      break-words
                       text-sm
                       text-slate-700
                     "
                   >
                     {
-                      cita.direccion
+                      direccionCliente ||
+                      "-"
                     }
                   </p>
                 </div>
               </div>
-            )}
 
-          </div>
+            </div>
+          </section>
 
 
-          {/* RESPONSABLE */}
+          {/* APPOINTMENT INFORMATION */}
 
-          <div>
+          <section>
+            <p
+              className="
+                mb-2
+                text-xs
+                font-semibold
+                uppercase
+                tracking-wide
+                text-slate-400
+              "
+            >
+              {t(
+                "agenda.appointment_information"
+              )}
+            </p>
+
+
+            <div
+              className="
+                grid
+                gap-3
+                rounded-2xl
+                bg-slate-50
+                p-4
+                sm:grid-cols-2
+              "
+            >
+
+              <div
+                className="
+                  flex
+                  gap-2
+                "
+              >
+                <BriefcaseBusiness
+                  size={17}
+                  className="
+                    mt-0.5
+                    text-blue-600
+                  "
+                />
+
+                <div>
+                  <p
+                    className="
+                      text-[10px]
+                      font-semibold
+                      uppercase
+                      text-slate-400
+                    "
+                  >
+                    {t(
+                      "agenda.job_type"
+                    )}
+                  </p>
+
+                  <p
+                    className="
+                      text-sm
+                      font-semibold
+                      text-blue-700
+                    "
+                  >
+                    {
+                      cita.tipo_cita ||
+                      "-"
+                    }
+                  </p>
+                </div>
+              </div>
+
+
+              <div
+                className="
+                  flex
+                  gap-2
+                "
+              >
+                <CalendarDays
+                  size={17}
+                  className="
+                    mt-0.5
+                    text-blue-600
+                  "
+                />
+
+                <div>
+                  <p
+                    className="
+                      text-[10px]
+                      font-semibold
+                      uppercase
+                      text-slate-400
+                    "
+                  >
+                    {t(
+                      "agenda.new.date"
+                    )}
+                  </p>
+
+                  <p
+                    className="
+                      text-sm
+                      font-semibold
+                      text-slate-800
+                    "
+                  >
+                    {
+                      formatearFecha(
+                        cita.fecha_inicio,
+                        locale
+                      )
+                    }
+                  </p>
+                </div>
+              </div>
+
+
+              <div
+                className="
+                  flex
+                  gap-2
+                "
+              >
+                <Clock3
+                  size={17}
+                  className="
+                    mt-0.5
+                    text-blue-600
+                  "
+                />
+
+                <div>
+                  <p
+                    className="
+                      text-[10px]
+                      font-semibold
+                      uppercase
+                      text-slate-400
+                    "
+                  >
+                    {t(
+                      "agenda.new.time"
+                    )}
+                  </p>
+
+                  <p
+                    className="
+                      text-sm
+                      font-bold
+                      text-slate-900
+                    "
+                  >
+                    {
+                      formatearHora(
+                        cita.fecha_inicio,
+                        locale
+                      )
+                    }
+                  </p>
+                </div>
+              </div>
+
+            </div>
+          </section>
+
+
+          
+          {/* JOB DESCRIPTION */}
+
+          {cita.descripcion && (
+            <section>
+              <p
+                className="
+                  mb-1
+                  text-xs
+                  font-semibold
+                  uppercase
+                  tracking-wide
+                  text-slate-400
+                "
+              >
+                {t(
+                  "agenda.job_description"
+                )}
+              </p>
+
+              <p
+                className="
+                  whitespace-pre-line
+                  rounded-xl
+                  bg-slate-50
+                  p-3
+                  text-sm
+                  leading-6
+                  text-slate-700
+                "
+              >
+                {
+                  cita.descripcion
+                }
+              </p>
+            </section>
+          )}
+
+          
+
+
+          {/* COMMUNICATION */}
+
+          <section className="border-t border-slate-100 pt-4" >
+            <p
+              className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400"
+            >
+              {t(
+                "agenda.communication"
+              )}
+            </p>
+
+            <div
+              className="
+                flex
+                flex-wrap
+                gap-2
+              "
+            >
+
+              <button
+                type="button"
+
+                disabled={
+                  !(
+                    cita.asignado_celular ||
+                    cita.responsable_celular
+                  )
+                }
+
+                onClick={
+                  enviarWhatsApp
+                }
+
+                className="
+                  inline-flex
+                  items-center
+                  gap-2
+                  rounded-xl
+                  border
+                  border-green-200
+                  bg-green-50
+                  px-3.5
+                  py-2
+                  text-xs
+                  font-semibold
+                  text-green-700
+                  hover:bg-green-100
+                  disabled:cursor-not-allowed
+                  disabled:opacity-40
+                "
+              >
+                <MessageCircle
+                  size={15}
+                />
+
+                {t(
+                  "agenda.whatsapp_assignee"
+                )}
+              </button>
+
+
+              <button
+                type="button"
+
+                onClick={
+                  enviarEmail
+                }
+
+                className="
+                  inline-flex
+                  items-center
+                  gap-2
+                  rounded-xl
+                  border
+                  border-blue-200
+                  bg-blue-50
+                  px-3.5
+                  py-2
+                  text-xs
+                  font-semibold
+                  text-blue-700
+                  hover:bg-blue-100
+                "
+              >
+                <Mail
+                  size={15}
+                />
+
+                {t(
+                  "agenda.email_client"
+                )}
+              </button>
+
+            </div>
+          </section>
+
+
+          {/* RESPONSIBLE PERSON */}
+
+          <section>
             <p
               className="
                 mb-2
@@ -665,139 +1308,7 @@ export default function AgendaDetalleModal({
                 )}
               </div>
             </div>
-          </div>
-
-
-          {/* DESCRIPCIÓN */}
-
-          {cita.descripcion && (
-            <div>
-              <p
-                className="
-                  mb-1
-                  text-xs
-                  font-semibold
-                  uppercase
-                  tracking-wide
-                  text-slate-400
-                "
-              >
-                {t(
-                  "agenda.job_description"
-                )}
-              </p>
-
-              <p
-                className="
-                  whitespace-pre-line
-                  text-sm
-                  leading-6
-                  text-slate-700
-                "
-              >
-                {
-                  cita.descripcion
-                }
-              </p>
-            </div>
-          )}
-
-
-          {/* CONTACTAR */}
-
-          <div
-            className="
-              flex
-              flex-wrap
-              gap-2
-              border-t
-              border-slate-100
-              pt-4
-            "
-          >
-
-            <button
-              type="button"
-
-              disabled={
-                !(
-                  cita.asignado_celular ||
-                  cita.responsable_celular
-                )
-              }
-
-              onClick={
-                enviarWhatsApp
-              }
-
-              className="
-                inline-flex
-                items-center
-                gap-2
-                rounded-xl
-                border
-                border-green-200
-                bg-green-50
-                px-3.5
-                py-2
-                text-xs
-                font-semibold
-                text-green-700
-                hover:bg-green-100
-                disabled:cursor-not-allowed
-                disabled:opacity-40
-              "
-            >
-              <MessageCircle
-                size={15}
-              />
-
-              WhatsApp
-            </button>
-
-
-            <button
-              type="button"
-
-              disabled={
-                !(
-                  cita.asignado_correo ||
-                  cita.responsable_correo
-                )
-              }
-
-              onClick={
-                enviarEmail
-              }
-
-              className="
-                inline-flex
-                items-center
-                gap-2
-                rounded-xl
-                border
-                border-blue-200
-                bg-blue-50
-                px-3.5
-                py-2
-                text-xs
-                font-semibold
-                text-blue-700
-                hover:bg-blue-100
-                disabled:cursor-not-allowed
-                disabled:opacity-40
-              "
-            >
-              <Mail
-                size={15}
-              />
-
-              {t(
-                "agenda.send_email"
-              )}
-            </button>
-
-          </div>
+          </section>
 
         </div>
 
@@ -807,15 +1318,18 @@ export default function AgendaDetalleModal({
         {!bloqueada && (
           <div
             className="
+              sticky
+              bottom-0
               flex
               flex-wrap
               justify-end
               gap-2
               border-t
               border-slate-100
-              bg-slate-50/70
+              bg-slate-50/95
               px-5
               py-4
+              backdrop-blur
             "
           >
 
@@ -925,7 +1439,6 @@ export default function AgendaDetalleModal({
         )}
 
       </div>
-
     </div>
   );
 }

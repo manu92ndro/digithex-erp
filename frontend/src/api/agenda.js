@@ -53,6 +53,19 @@ export const createAgendaCita = async (
 };
 
 
+export const reagendarAgendaCita = async (
+  id_cita,
+  payload
+) => {
+  const { data } = await api.patch(
+    `/agenda/${id_cita}/reagendar`,
+    payload
+  );
+
+  return data;
+};
+
+
 export const cancelarAgendaCita = async (
   id_cita
 ) => {
@@ -69,6 +82,25 @@ export const completarAgendaCita = async (
 ) => {
   const { data } = await api.patch(
     `/agenda/${id_cita}/completar`
+  );
+
+  return data;
+};
+
+// ======================================================
+// SEND APPOINTMENT EMAIL TO CLIENT
+// ======================================================
+
+export const enviarAgendaCitaEmail = async (
+  id_cita,
+  correo = null
+) => {
+  const { data } = await api.post(
+    `/agenda/${id_cita}/email`,
+    {
+      correo:
+        correo || undefined,
+    }
   );
 
   return data;

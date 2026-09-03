@@ -1125,6 +1125,360 @@ const obtenerDetalle =
   };
 
 
+
+
+// ======================================================
+// REAGENDAR CITA
+// ======================================================
+
+const reagendarCita =
+  async (
+    usuario,
+    idCita,
+    body
+  ) => {
+
+    const connection =
+      await pool
+        .getConnection();
+
+    try {
+
+      await connection
+        .beginTransaction();
+
+      const id_empresa =
+        Number(
+          usuario?.id_empresa
+        );
+
+      const id_cita =
+        Number(
+          idCita
+        );
+
+      if (
+        !id_empresa ||
+        !id_cita
+      ) {
+
+        const error =
+          new Error(
+            "La cita no es válida"
+          );
+
+        error.status = 400;
+        error.code =
+          "AGENDA_CITA_INVALIDA";
+
+        throw error;
+      }
+
+      const cita =
+        await repository
+          .obtenerCitaPorId({
+            id_empresa,
+            id_cita,
+          });
+
+      if (!cita) {
+
+        const error =
+          new Error(
+            "Cita no encontrada"
+          );
+
+        error.status = 404;
+        error.code =
+          "AGENDA_CITA_NO_ENCONTRADA";
+
+        throw error;
+      }
+
+      const estadoActual =
+        String(
+          cita.estado || ""
+        ).toLowerCase();
+
+      if (
+        estadoActual ===
+          ESTADOS_CITA.CANCELADA ||
+        estadoActual ===
+          ESTADOS_CITA.COMPLETADA
+      ) {
+
+        const error =
+          new Error(
+            "No se puede reagendar una cita cancelada o completada"
+          );
+
+        error.status = 409;
+        error.code =
+          "AGENDA_CITA_BLOQUEADA";
+
+        throw error;
+      }
+
+      const fecha =
+        limpiarTexto(
+          body?.fecha
+        );
+
+      const hora =
+        limpiarTexto(
+          body?.hora
+        );
+
+      const nuevoInicio =
+        construirFechaHora(
+          fecha,
+          hora
+        );
+
+      if (!nuevoInicio) {
+
+        const error =
+          new Error(
+            "La nueva fecha u hora no es válida"
+          );
+
+        error.status = 400;
+        error.code =
+          "AGENDA_FECHA_INVALIDA";
+
+        throw error;
+      }
+
+      if (
+        nuevoInicio.getTime() <
+        Date.now()
+      ) {
+
+        const error =
+          new Error(
+            "No se puede reagendar una cita en una fecha u hora pasada"
+          );
+
+        error.status = 400;
+        error.code =
+          "AGENDA_FECHA_PASADA";
+
+        throw error;
+      }
+
+      const inicioAnterior =
+        convertirADate(
+          cita.fecha_inicio
+        );
+
+      const finAnterior =
+        convertirADate(
+          cita.fecha_fin
+        );
+
+      let duracionMinutos =
+        INTERVALO_MINUTOS;
+
+      if (
+        inicioAnterior &&
+        finAnterior &&
+        finAnterior >
+          inicioAnterior
+      ) {
+
+        duracionMinutos =
+          Math.max(
+            1,
+            Math.round(
+              (
+                finAnterior.getTime() -
+                inicioAnterior.getTime()
+              ) /
+              60000
+            )
+          );
+      }
+
+      const nuevoFin =
+        new Date(
+          nuevoInicio.getTime() +
+          duracionMinutos *
+            60000
+        );
+
+      const validacion =
+        validarRangoFecha(
+          nuevoInicio,
+          nuevoFin
+        );
+
+      if (
+        !validacion.ok
+      ) {
+
+        const error =
+          new Error(
+            validacion.message
+          );
+
+        error.status = 400;
+        error.code =
+          "AGENDA_RANGO_INVALIDO";
+
+        throw error;
+      }
+
+      const minutosInicio =
+        nuevoInicio.getHours() *
+          60 +
+        nuevoInicio.getMinutes();
+
+      const minutosFin =
+        nuevoFin.getHours() *
+          60 +
+        nuevoFin.getMinutes();
+
+      const [
+        horaInicioAgenda,
+        minutoInicioAgenda,
+      ] =
+        HORA_INICIO
+          .split(":")
+          .map(Number);
+
+      const [
+        horaFinAgenda,
+        minutoFinAgenda,
+      ] =
+        HORA_FIN
+          .split(":")
+          .map(Number);
+
+      const limiteInicio =
+        horaInicioAgenda * 60 +
+        minutoInicioAgenda;
+
+      const limiteFin =
+        horaFinAgenda * 60 +
+        minutoFinAgenda;
+
+      if (
+        minutosInicio <
+          limiteInicio ||
+        minutosFin >
+          limiteFin
+      ) {
+
+        const error =
+          new Error(
+            `La cita debe estar dentro del horario ${HORA_INICIO} - ${HORA_FIN}`
+          );
+
+        error.status = 400;
+        error.code =
+          "AGENDA_FUERA_HORARIO";
+
+        throw error;
+      }
+
+      const fecha_inicio =
+        formatearFechaMysql(
+          nuevoInicio
+        );
+
+      const fecha_fin =
+        formatearFechaMysql(
+          nuevoFin
+        );
+
+      const ocupado =
+        await repository
+          .existeSolapamiento(
+            connection,
+            {
+              id_empresa,
+
+              asignado_a:
+                Number(
+                  cita.asignado_a
+                ),
+
+              fecha_inicio,
+              fecha_fin,
+
+              excluir_id_cita:
+                id_cita,
+            }
+          );
+
+      if (ocupado) {
+
+        const error =
+          new Error(
+            "El responsable ya tiene una cita en ese horario"
+          );
+
+        error.status = 409;
+        error.code =
+          "AGENDA_HORARIO_OCUPADO";
+
+        throw error;
+      }
+
+      const actualizado =
+        await repository
+          .actualizarHorarioCita(
+            connection,
+            {
+              id_empresa,
+              id_cita,
+              fecha_inicio,
+              fecha_fin,
+            }
+          );
+
+      if (!actualizado) {
+
+        const error =
+          new Error(
+            "No se pudo reagendar la cita"
+          );
+
+        error.status = 400;
+        error.code =
+          "AGENDA_NO_REAGENDADA";
+
+        throw error;
+      }
+
+      await connection
+        .commit();
+
+      return (
+        await repository
+          .obtenerCitaPorId({
+            id_empresa,
+            id_cita,
+          })
+      );
+
+
+    } catch (error) {
+
+      await connection
+        .rollback();
+
+      throw error;
+
+
+    } finally {
+
+      connection
+        .release();
+    }
+  };
+
+
 // ======================================================
 // CAMBIAR ESTADO
 // ======================================================
@@ -1281,6 +1635,8 @@ module.exports = {
   listarCitas,
 
   obtenerDetalle,
+
+  reagendarCita,
 
   cambiarEstado,
 };

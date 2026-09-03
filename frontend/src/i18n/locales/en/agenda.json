@@ -2,56 +2,60 @@
   "agenda": {
     "title": "Schedule",
     "subtitle": "Organize appointments, meetings and visits.",
-
     "calendar": "Calendar",
     "today": "Today",
     "loading": "Loading schedule...",
     "load_error": "The schedule could not be loaded.",
-
     "new_appointment": "New appointment",
     "day_schedule": "Day schedule",
     "schedule_this_day": "Schedule this day",
-
     "available": "Available",
     "unavailable": "Unavailable",
-
     "past_date": "Past date",
     "double_click": "Double-click to create an appointment",
-
     "no_appointments": "No appointments scheduled.",
     "one_appointment": "1 appointment scheduled.",
     "appointments_count": "{{count}} appointments scheduled.",
-
     "more": "+{{count}} more",
     "appointment": "Appointment",
-
     "saved_title": "Appointment scheduled",
     "saved_message": "The appointment was successfully scheduled.",
-
     "save_error_title": "Could not save",
     "save_error": "An error occurred while scheduling the appointment.",
-
     "job_type": "Job type",
-
     "responsible_role": "Responsible role",
     "responsible": "Responsible person",
-
     "select_role": "Select role",
     "select_responsible": "Select responsible person",
-
     "appointment_details": "Appointment details",
-
+    "appointment_information": "Appointment information",
+    "client_information": "Client information",
+    "client": "Client",
     "job_description": "Job description",
-
     "not_assigned": "Not assigned",
-
+    "communication": "Communication",
+    "whatsapp_assignee": "WhatsApp assignee",
+    "email_client": "Email client",
     "reschedule": "Reschedule",
     "cancel_appointment": "Cancel appointment",
     "complete": "Complete",
-
     "send_whatsapp": "Send WhatsApp",
     "send_email": "Send email",
-
+    "close": "Close",
+    "ok": "OK",
+    "whatsapp_no_phone_title": "No phone number",
+    "whatsapp_no_phone_message": "The assigned person does not have a phone number available.",
+    "email_prompt_title": "Send appointment confirmation",
+    "email_prompt_message": "Confirm or update the client's email address.",
+    "email_placeholder": "client@example.com",
+    "email_send": "Send email",
+    "email_required": "Enter the client's email address.",
+    "email_invalid": "Enter a valid email address.",
+    "email_sending": "Sending email...",
+    "email_sent_title": "Email sent",
+    "email_sent_message": "The appointment confirmation was sent successfully.",
+    "email_error_title": "Email could not be sent",
+    "email_error_message": "An error occurred while sending the appointment confirmation.",
     "days": {
       "mon": "Mon",
       "tue": "Tue",
@@ -61,7 +65,6 @@
       "sat": "Sat",
       "sun": "Sun"
     },
-
     "job_types": {
       "asphalt": "Asphalt",
       "block_work": "Block Work",
@@ -77,7 +80,6 @@
       "steps": "Steps",
       "walkways": "Walkways"
     },
-
     "contact_methods": {
       "phone_call": "Phone call",
       "whatsapp": "WhatsApp",
@@ -90,7 +92,6 @@
       "previous_customer": "Previous customer",
       "other": "Other"
     },
-
     "roles": {
       "super_admin": "Super Admin",
       "administrator": "Administrator",
@@ -100,40 +101,26 @@
       "driver": "Driver",
       "accountant": "Accountant"
     },
-
     "new": {
       "title": "New appointment",
-
       "subtitle": "Enter the information and schedule the appointment.",
-
       "name": "Name",
       "full_name": "Full name",
-
       "phone": "Phone",
       "phone_placeholder": "Phone number",
-
       "email": "Email",
       "email_placeholder": "email@example.com",
-
       "address": "Address",
       "address_placeholder": "Appointment address",
-
       "contact_method": "Contact method",
-
       "select": "Select",
-
       "date_time": "Date and time",
       "date": "Date",
       "time": "Time",
-
       "description": "Description",
-
       "description_placeholder": "Describe the work or reason for the appointment...",
-
       "cancel": "Cancel",
-
       "save": "Save appointment",
-
       "saving": "Saving..."
     }
   }

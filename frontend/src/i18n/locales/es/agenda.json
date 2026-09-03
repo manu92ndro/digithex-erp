@@ -2,56 +2,60 @@
   "agenda": {
     "title": "Agenda",
     "subtitle": "Organiza citas, reuniones y visitas.",
-
     "calendar": "Calendario",
     "today": "Hoy",
     "loading": "Cargando agenda...",
     "load_error": "No se pudo cargar la agenda.",
-
     "new_appointment": "Nueva cita",
-    "day_schedule": "Horario del día",
+    "day_schedule": "Agenda del día",
     "schedule_this_day": "Agendar este día",
-
     "available": "Disponible",
     "unavailable": "No disponible",
-
     "past_date": "Fecha pasada",
-    "double_click": "Doble clic para crear una cita",
-
+    "double_click": "Haz doble clic para crear una cita",
     "no_appointments": "No hay citas programadas.",
     "one_appointment": "1 cita programada.",
     "appointments_count": "{{count}} citas programadas.",
-
     "more": "+{{count}} más",
     "appointment": "Cita",
-
-    "saved_title": "Cita agendada",
-    "saved_message": "La cita fue registrada correctamente.",
-
+    "saved_title": "Cita programada",
+    "saved_message": "La cita fue programada correctamente.",
     "save_error_title": "No se pudo guardar",
-    "save_error": "Ocurrió un error al registrar la cita.",
-
+    "save_error": "Ocurrió un error al programar la cita.",
     "job_type": "Tipo de trabajo",
-
     "responsible_role": "Rol responsable",
-    "responsible": "Responsable",
-
+    "responsible": "Persona responsable",
     "select_role": "Seleccionar rol",
     "select_responsible": "Seleccionar responsable",
-
-    "appointment_details": "Detalle de la cita",
-
+    "appointment_details": "Detalles de la cita",
+    "appointment_information": "Información de la cita",
+    "client_information": "Información del cliente",
+    "client": "Cliente",
     "job_description": "Descripción del trabajo",
-
     "not_assigned": "Sin asignar",
-
+    "communication": "Comunicación",
+    "whatsapp_assignee": "WhatsApp al responsable",
+    "email_client": "Correo al cliente",
     "reschedule": "Reagendar",
     "cancel_appointment": "Cancelar cita",
     "complete": "Completar",
-
     "send_whatsapp": "Enviar WhatsApp",
     "send_email": "Enviar correo",
-
+    "close": "Cerrar",
+    "ok": "Aceptar",
+    "whatsapp_no_phone_title": "Sin número de teléfono",
+    "whatsapp_no_phone_message": "La persona responsable no tiene un número de teléfono disponible.",
+    "email_prompt_title": "Enviar confirmación de cita",
+    "email_prompt_message": "Confirma o actualiza el correo electrónico del cliente.",
+    "email_placeholder": "cliente@ejemplo.com",
+    "email_send": "Enviar correo",
+    "email_required": "Ingresa el correo electrónico del cliente.",
+    "email_invalid": "Ingresa un correo electrónico válido.",
+    "email_sending": "Enviando correo...",
+    "email_sent_title": "Correo enviado",
+    "email_sent_message": "La confirmación de la cita fue enviada correctamente.",
+    "email_error_title": "No se pudo enviar el correo",
+    "email_error_message": "Ocurrió un error al enviar la confirmación de la cita.",
     "days": {
       "mon": "Lun",
       "tue": "Mar",
@@ -61,11 +65,10 @@
       "sat": "Sáb",
       "sun": "Dom"
     },
-
     "job_types": {
       "asphalt": "Asfalto",
       "block_work": "Trabajo en bloque",
-      "bluestone_patios": "Patios de piedra azul",
+      "bluestone_patios": "Patios de bluestone",
       "brick_pavers": "Adoquines de ladrillo",
       "concrete": "Concreto",
       "driveways": "Entradas vehiculares",
@@ -77,63 +80,47 @@
       "steps": "Escaleras",
       "walkways": "Senderos"
     },
-
     "contact_methods": {
       "phone_call": "Llamada telefónica",
       "whatsapp": "WhatsApp",
       "google": "Google",
       "facebook": "Facebook",
       "instagram": "Instagram",
-      "website": "Página web",
+      "website": "Sitio web",
       "email": "Correo electrónico",
       "referral": "Referido",
       "previous_customer": "Cliente anterior",
       "other": "Otro"
     },
-
     "roles": {
-      "super_admin": "Superadministrador",
+      "super_admin": "Super Administrador",
       "administrator": "Administrador",
-      "secretary": "Secretaria",
+      "secretary": "Secretaría",
       "contractor": "Contratista",
       "manager": "Gerente",
       "driver": "Conductor",
       "accountant": "Contador"
     },
-
     "new": {
       "title": "Nueva cita",
-
-      "subtitle": "Registra los datos y agenda la cita.",
-
+      "subtitle": "Ingresa la información y programa la cita.",
       "name": "Nombre",
       "full_name": "Nombre completo",
-
-      "phone": "Celular",
+      "phone": "Teléfono",
       "phone_placeholder": "Número de teléfono",
-
-      "email": "Correo",
+      "email": "Correo electrónico",
       "email_placeholder": "correo@ejemplo.com",
-
       "address": "Dirección",
       "address_placeholder": "Dirección de la cita",
-
       "contact_method": "Medio de contacto",
-
       "select": "Seleccionar",
-
       "date_time": "Fecha y hora",
       "date": "Fecha",
       "time": "Hora",
-
       "description": "Descripción",
-
       "description_placeholder": "Describe el trabajo o motivo de la cita...",
-
       "cancel": "Cancelar",
-
       "save": "Guardar cita",
-
       "saving": "Guardando..."
     }
   }

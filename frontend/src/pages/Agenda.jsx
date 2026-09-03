@@ -32,6 +32,7 @@ import {
   createAgendaCita,
   getAgendaCitas,
   getAgendaFormData,
+  reagendarAgendaCita,
 } from "../api/agenda";
 
 
@@ -877,6 +878,325 @@ export default function Agenda() {
         setGuardando(
           false
         );
+      }
+    };
+
+
+
+
+  // ====================================================
+  // REAGENDAR CITA
+  // ====================================================
+
+  const reagendarCita =
+    async (
+      cita
+    ) => {
+
+      if (
+        !cita?.id_cita
+      ) {
+        return;
+      }
+
+      const fechaActual =
+        obtenerFechaCita(
+          cita.fecha_inicio
+        );
+
+      if (!fechaActual) {
+        return;
+      }
+
+      const fechaInicial =
+        fechaLocalISO(
+          fechaActual
+        );
+
+      const horaInicial =
+        `${String(
+          fechaActual.getHours()
+        ).padStart(
+          2,
+          "0"
+        )}:${String(
+          fechaActual.getMinutes()
+        ).padStart(
+          2,
+          "0"
+        )}`;
+
+      const resultado =
+        await Swal.fire({
+          title:
+            t(
+              "agenda.reschedule",
+              "Reagendar"
+            ),
+
+          html: `
+            <div style="text-align:left;">
+              <label style="display:block;font-size:12px;font-weight:600;color:#475569;margin-bottom:6px;">
+                ${t(
+                  "agenda.new.date",
+                  "Fecha"
+                )}
+              </label>
+
+              <input
+                id="agenda-reagendar-fecha"
+                type="date"
+                value="${fechaInicial}"
+                min="${fechaLocalISO(
+                  new Date()
+                )}"
+                class="swal2-input"
+                style="width:100%;margin:0 0 14px 0;"
+              />
+
+              <label style="display:block;font-size:12px;font-weight:600;color:#475569;margin-bottom:6px;">
+                ${t(
+                  "agenda.new.time",
+                  "Hora"
+                )}
+              </label>
+
+              <input
+                id="agenda-reagendar-hora"
+                type="time"
+                value="${horaInicial}"
+                min="${
+                  formData
+                    ?.configuracion
+                    ?.hora_inicio ||
+                  "08:00"
+                }"
+                max="${
+                  formData
+                    ?.configuracion
+                    ?.hora_fin ||
+                  "17:00"
+                }"
+                step="${
+                  (
+                    Number(
+                      formData
+                        ?.configuracion
+                        ?.intervalo_minutos
+                    ) || 30
+                  ) * 60
+                }"
+                class="swal2-input"
+                style="width:100%;margin:0;"
+              />
+            </div>
+          `,
+
+          showCancelButton:
+            true,
+
+          confirmButtonText:
+            t(
+              "agenda.reschedule",
+              "Reagendar"
+            ),
+
+          cancelButtonText:
+            t(
+              "agenda.new.cancel",
+              "Cancelar"
+            ),
+
+          confirmButtonColor:
+            "#2563eb",
+
+          focusConfirm:
+            false,
+
+          preConfirm:
+            () => {
+              const fecha =
+                document
+                  .getElementById(
+                    "agenda-reagendar-fecha"
+                  )
+                  ?.value;
+
+              const hora =
+                document
+                  .getElementById(
+                    "agenda-reagendar-hora"
+                  )
+                  ?.value;
+
+              if (
+                !fecha ||
+                !hora
+              ) {
+
+                Swal
+                  .showValidationMessage(
+                    t(
+                      "agenda.reschedule_required",
+                      "Selecciona una fecha y una hora."
+                    )
+                  );
+
+                return false;
+              }
+
+              const nuevaFecha =
+                new Date(
+                  `${fecha}T${hora}:00`
+                );
+
+              if (
+                Number.isNaN(
+                  nuevaFecha.getTime()
+                ) ||
+                nuevaFecha.getTime() <
+                  Date.now()
+              ) {
+
+                Swal
+                  .showValidationMessage(
+                    t(
+                      "agenda.reschedule_past",
+                      "La nueva fecha y hora no pueden estar en el pasado."
+                    )
+                  );
+
+                return false;
+              }
+
+              return {
+                fecha,
+                hora,
+              };
+            },
+        });
+
+      if (
+        !resultado.isConfirmed ||
+        !resultado.value
+      ) {
+        return;
+      }
+
+      try {
+
+        Swal.fire({
+          title:
+            t(
+              "agenda.rescheduling",
+              "Reagendando..."
+            ),
+
+          allowOutsideClick:
+            false,
+
+          allowEscapeKey:
+            false,
+
+          didOpen:
+            () => {
+              Swal
+                .showLoading();
+            },
+        });
+
+        const response =
+          await reagendarAgendaCita(
+            cita.id_cita,
+            resultado.value
+          );
+
+        const nuevaCita =
+          response?.cita;
+
+        const nuevaFecha =
+          obtenerFechaCita(
+            nuevaCita
+              ?.fecha_inicio ||
+            `${resultado.value.fecha}T${resultado.value.hora}:00`
+          );
+
+        setDetalleAbierto(
+          false
+        );
+
+        setCitaSeleccionada(
+          null
+        );
+
+        if (nuevaFecha) {
+
+          setFechaSeleccionada(
+            nuevaFecha
+          );
+
+          setMesActual(
+            new Date(
+              nuevaFecha.getFullYear(),
+              nuevaFecha.getMonth(),
+              1
+            )
+          );
+        }
+
+        await cargarCitas();
+
+        await Swal.fire({
+          icon:
+            "success",
+
+          title:
+            t(
+              "agenda.rescheduled_title",
+              "Cita reagendada"
+            ),
+
+          text:
+            response?.message ||
+            t(
+              "agenda.rescheduled_message",
+              "La cita fue reagendada correctamente."
+            ),
+
+          timer:
+            1800,
+
+          showConfirmButton:
+            false,
+        });
+
+
+      } catch (error) {
+
+        console.error(
+          "ERROR REAGENDANDO CITA:",
+          error
+        );
+
+        await Swal.fire({
+          icon:
+            "error",
+
+          title:
+            t(
+              "agenda.reschedule_error_title",
+              "No se pudo reagendar"
+            ),
+
+          text:
+            error.response
+              ?.data
+              ?.message ||
+            t(
+              "agenda.reschedule_error",
+              "Ocurrió un error al reagendar la cita."
+            ),
+        });
       }
     };
 
@@ -2048,12 +2368,7 @@ export default function Agenda() {
           }}
 
           onReagendar={
-            (cita) => {
-              console.log(
-                "REAGENDAR:",
-                cita
-              );
-            }
+            reagendarCita
           }
 
           onCancelar={
