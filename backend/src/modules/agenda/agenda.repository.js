@@ -773,6 +773,14 @@ const listarCitas =
             contacto.celular,
             contacto.correo,
 
+            empresa.nombre_empresa,
+            empresa.email
+              AS empresa_email,
+            empresa.telefono
+              AS telefono_empresa,
+            empresa.telefono_secundario
+              AS telefono_secundario_empresa,
+
             c.id_tipo_cita,
             tc.nombre
               AS tipo_cita,
@@ -781,6 +789,18 @@ const listarCitas =
 
             usuario.nombres
               AS asignado_nombre,
+
+            usuario.email
+              AS asignado_email,
+
+            usuario.celular
+              AS asignado_celular,
+
+            ue.id_rol
+              AS asignado_id_rol,
+
+            rol.rol
+              AS asignado_rol,
 
             c.titulo,
             c.descripcion,
@@ -800,6 +820,11 @@ const listarCitas =
             tb_agenda_citas c
 
           INNER JOIN
+            tb_empresas empresa
+              ON empresa.id_empresa =
+                 c.id_empresa
+
+          INNER JOIN
             tb_agenda_contactos contacto
               ON contacto.id_contacto =
                  c.id_contacto
@@ -813,6 +838,19 @@ const listarCitas =
             tb_usuarios usuario
               ON usuario.id_usuario =
                  c.asignado_a
+
+          LEFT JOIN
+            tb_usuario_empresas ue
+              ON ue.id_usuario =
+                 c.asignado_a
+              AND ue.id_empresa =
+                  c.id_empresa
+              AND ue.estado = 1
+
+          LEFT JOIN
+            tb_roles rol
+              ON rol.id_rol =
+                 ue.id_rol
 
           WHERE
             c.id_empresa = ?
@@ -856,9 +894,18 @@ const obtenerCitaPorId =
 
             c.id_contacto,
 
-            contacto.nombres,
+            contacto.nombres
+              AS contacto,
             contacto.celular,
             contacto.correo,
+
+            empresa.nombre_empresa,
+            empresa.email
+              AS empresa_email,
+            empresa.telefono
+              AS telefono_empresa,
+            empresa.telefono_secundario
+              AS telefono_secundario_empresa,
 
             contacto.id_medio_contacto,
 
@@ -876,6 +923,18 @@ const obtenerCitaPorId =
 
             usuario.nombres
               AS asignado_nombre,
+
+            usuario.email
+              AS asignado_email,
+
+            usuario.celular
+              AS asignado_celular,
+
+            ue.id_rol
+              AS asignado_id_rol,
+
+            rol.rol
+              AS asignado_rol,
 
             c.titulo,
             c.descripcion,
@@ -900,6 +959,11 @@ const obtenerCitaPorId =
             tb_agenda_citas c
 
           INNER JOIN
+            tb_empresas empresa
+              ON empresa.id_empresa =
+                 c.id_empresa
+
+          INNER JOIN
             tb_agenda_contactos contacto
               ON contacto.id_contacto =
                  c.id_contacto
@@ -919,6 +983,19 @@ const obtenerCitaPorId =
               ON usuario.id_usuario =
                  c.asignado_a
 
+          LEFT JOIN
+            tb_usuario_empresas ue
+              ON ue.id_usuario =
+                 c.asignado_a
+              AND ue.id_empresa =
+                  c.id_empresa
+              AND ue.estado = 1
+
+          LEFT JOIN
+            tb_roles rol
+              ON rol.id_rol =
+                 ue.id_rol
+
           WHERE
             c.id_cita = ?
 
@@ -934,6 +1011,52 @@ const obtenerCitaPorId =
 
 
     return rows[0] || null;
+  };
+
+
+
+
+// ======================================================
+// REAGENDAR CITA
+// ======================================================
+
+const actualizarHorarioCita =
+  async (
+    connection,
+    {
+      id_empresa,
+      id_cita,
+      fecha_inicio,
+      fecha_fin,
+    }
+  ) => {
+
+    const [result] =
+      await connection.query(
+        `
+          UPDATE
+            tb_agenda_citas
+
+          SET
+            fecha_inicio = ?,
+            fecha_fin = ?,
+            fyh_actualizacion = NOW()
+
+          WHERE
+            id_cita = ?
+            AND id_empresa = ?
+        `,
+        [
+          fecha_inicio,
+          fecha_fin,
+          id_cita,
+          id_empresa,
+        ]
+      );
+
+    return (
+      result.affectedRows > 0
+    );
   };
 
 
@@ -1063,6 +1186,50 @@ const cambiarEstadoCita =
   };
 
 
+
+
+// ======================================================
+// EMAIL / SMTP CONFIGURATION BY COMPANY
+// ======================================================
+
+const obtenerConfiguracionEmailEmpresa =
+  async (
+    id_empresa
+  ) => {
+
+    const [rows] =
+      await pool.query(
+        `
+          SELECT
+            ec.smtp_host,
+            ec.smtp_port,
+            ec.smtp_secure,
+            ec.smtp_user,
+            ec.smtp_password,
+            ec.smtp_from_name,
+            ec.smtp_reply_to
+
+          FROM
+            tb_empresa_configuracion ec
+
+          WHERE
+            ec.id_empresa = ?
+
+          LIMIT 1
+        `,
+        [
+          id_empresa,
+        ]
+      );
+
+
+    return (
+      rows[0] ||
+      null
+    );
+  };
+
+
 module.exports = {
 
   obtenerMediosContacto,
@@ -1091,7 +1258,11 @@ module.exports = {
 
   obtenerCitaPorId,
 
+  actualizarHorarioCita,
+
   actualizarCita,
 
   cambiarEstadoCita,
+
+  obtenerConfiguracionEmailEmpresa,
 };

@@ -15,9 +15,13 @@ const {
 
   postCita,
 
+  reagendarCita,
+
   cancelarCita,
 
   completarCita,
+
+  enviarEmailCita,
 } =
   require(
     "./agenda.controller"
@@ -108,6 +112,25 @@ router.post(
 );
 
 
+
+
+// ======================================================
+// REAGENDAR
+// ======================================================
+
+router.patch(
+  "/:id_cita/reagendar",
+
+  validarJWT,
+
+  validarPermiso(
+    "agenda.editar"
+  ),
+
+  reagendarCita
+);
+
+
 // ======================================================
 // CANCELAR
 // ======================================================
@@ -139,6 +162,24 @@ router.patch(
   ),
 
   completarCita
+);
+
+
+// ======================================================
+// SEND EMAIL TO CLIENT
+// Uses the company's SMTP configuration.
+// ======================================================
+
+router.post(
+  "/:id_cita/email",
+
+  validarJWT,
+
+  validarPermiso(
+    "agenda.ver"
+  ),
+
+  enviarEmailCita
 );
 
 

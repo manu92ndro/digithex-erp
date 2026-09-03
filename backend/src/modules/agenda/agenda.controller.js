@@ -2,6 +2,8 @@ const pool = require("../../config/db");
 
 const service = require("./agenda.service");
 
+const emailService = require("./agenda-email.service");
+
 const {
   ESTADOS_CITA,
 } = require("./agenda.constants");
@@ -265,6 +267,55 @@ const postCita = async (req, res) => {
 };
 
 
+
+
+// ======================================================
+// REAGENDAR CITA
+// ======================================================
+
+const reagendarCita = async (
+  req,
+  res
+) => {
+  try {
+    const id_cita = Number(
+      req.params.id_cita
+    );
+
+    if (!id_cita) {
+      return res.status(400).json({
+        ok: false,
+        code: "CITA_NO_VALIDA",
+        message:
+          "El identificador de la cita no es válido",
+      });
+    }
+
+    const cita =
+      await service.reagendarCita(
+        req.usuario,
+        id_cita,
+        req.body
+      );
+
+    return res.json({
+      ok: true,
+
+      message:
+        "Cita reagendada correctamente",
+
+      cita,
+    });
+
+  } catch (error) {
+    return responderError(
+      res,
+      error
+    );
+  }
+};
+
+
 // ======================================================
 // CANCELAR CITA
 // ======================================================
@@ -353,6 +404,65 @@ const completarCita = async (
 };
 
 
+
+
+// ======================================================
+// SEND APPOINTMENT CONFIRMATION EMAIL TO CLIENT
+// ======================================================
+
+const enviarEmailCita = async (
+  req,
+  res
+) => {
+  try {
+
+    const id_cita =
+      Number(
+        req.params.id_cita
+      );
+
+
+    if (!id_cita) {
+      return res
+        .status(400)
+        .json({
+          ok: false,
+          code:
+            "CITA_NO_VALIDA",
+          message:
+            "El identificador de la cita no es válido",
+        });
+    }
+
+
+    const resultado =
+      await emailService
+        .enviarConfirmacionCliente(
+          req.usuario,
+          id_cita,
+          req.body
+        );
+
+
+    return res.json({
+      ok: true,
+
+      message:
+        "Appointment confirmation sent successfully",
+
+      ...resultado,
+    });
+
+  } catch (error) {
+
+    return responderError(
+      res,
+      error
+    );
+  }
+};
+
+
 // ======================================================
 // EXPORTACIONES
 // ======================================================
@@ -362,6 +472,8 @@ module.exports = {
   getCitas,
   getCita,
   postCita,
+  reagendarCita,
   cancelarCita,
   completarCita,
+  enviarEmailCita,
 };
