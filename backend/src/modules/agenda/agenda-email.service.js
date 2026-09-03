@@ -151,6 +151,77 @@ const formatearHoraIngles =
 
 
 // ======================================================
+// RESOLVE COMPANY LOGO URL
+// ======================================================
+
+const obtenerLogoPublico =
+  (
+    valor
+  ) => {
+
+    const logo =
+      limpiarTexto(
+        valor
+      );
+
+    if (!logo) {
+      return "";
+    }
+
+
+    // Cloudinary / external absolute URL
+    if (
+      /^https?:\/\//i.test(
+        logo
+      )
+    ) {
+      return logo;
+    }
+
+
+    // If the database still stores a local filename,
+    // configure one of these environment variables with
+    // the public API base, for example:
+    // API_PUBLIC_URL=https://api.domthex.com
+    const basePublica =
+      limpiarTexto(
+        process.env
+          .FILES_PUBLIC_URL ||
+        process.env
+          .API_PUBLIC_URL ||
+        process.env
+          .PUBLIC_API_URL
+      )
+        .replace(
+          /\/+$/,
+          ""
+        );
+
+
+    if (!basePublica) {
+      return "";
+    }
+
+
+    if (
+      logo.startsWith(
+        "/uploads/"
+      )
+    ) {
+      return (
+        basePublica +
+        logo
+      );
+    }
+
+
+    return (
+      `${basePublica}/uploads/logos/${logo}`
+    );
+  };
+
+
+// ======================================================
 // CREATE TRANSPORTER FROM COMPANY SETTINGS
 // ======================================================
 
@@ -351,6 +422,12 @@ const enviarConfirmacionCliente =
       "Our Company";
 
 
+    const logoEmpresa =
+      obtenerLogoPublico(
+        cita.empresa_logo
+      );
+
+
     const cliente =
       limpiarTexto(
         cita.contacto ||
@@ -468,13 +545,20 @@ const enviarConfirmacionCliente =
       `
       <!doctype html>
       <html>
+        <head>
+          <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1"
+          />
+        </head>
+
         <body
           style="
             margin:0;
             padding:0;
-            background:#f8fafc;
+            background:#f5f6f8;
             font-family:Arial,Helvetica,sans-serif;
-            color:#0f172a;
+            color:#1f2937;
           "
         >
           <table
@@ -482,9 +566,11 @@ const enviarConfirmacionCliente =
             width="100%"
             cellspacing="0"
             cellpadding="0"
+            border="0"
             style="
-              background:#f8fafc;
-              padding:24px 12px;
+              width:100%;
+              background:#f5f6f8;
+              padding:32px 12px;
             "
           >
             <tr>
@@ -495,61 +581,97 @@ const enviarConfirmacionCliente =
                   width="100%"
                   cellspacing="0"
                   cellpadding="0"
+                  border="0"
                   style="
+                    width:100%;
                     max-width:620px;
                     background:#ffffff;
-                    border:1px solid #e2e8f0;
-                    border-radius:16px;
+                    border:1px solid #e5e7eb;
+                    border-radius:12px;
                     overflow:hidden;
                   "
                 >
 
+                  <!-- BRAND -->
                   <tr>
                     <td
+                      align="center"
                       style="
-                        background:#2563eb;
-                        color:#ffffff;
-                        padding:22px 28px;
+                        padding:30px 28px 24px;
+                        border-bottom:1px solid #e5e7eb;
+                        background:#ffffff;
                       "
                     >
-                      <div
-                        style="
-                          font-size:12px;
-                          font-weight:700;
-                          letter-spacing:.08em;
-                          text-transform:uppercase;
-                          opacity:.9;
-                        "
-                      >
-                        Appointment Confirmation
-                      </div>
+                      ${
+                        logoEmpresa
+                          ? `
+                            <img
+                              src="${escaparHtml(
+                                logoEmpresa
+                              )}"
+                              alt="${escaparHtml(
+                                empresa
+                              )}"
+                              width="160"
+                              style="
+                                display:block;
+                                max-width:160px;
+                                max-height:80px;
+                                width:auto;
+                                height:auto;
+                                margin:0 auto 16px;
+                                border:0;
+                                outline:none;
+                              "
+                            />
+                          `
+                          : `
+                            <div
+                              style="
+                                margin-bottom:8px;
+                                font-size:22px;
+                                line-height:1.3;
+                                font-weight:700;
+                                color:#111827;
+                              "
+                            >
+                              ${escaparHtml(
+                                empresa
+                              )}
+                            </div>
+                          `
+                      }
 
                       <div
                         style="
-                          margin-top:6px;
-                          font-size:24px;
+                          font-size:11px;
+                          line-height:1.4;
                           font-weight:700;
+                          letter-spacing:.12em;
+                          text-transform:uppercase;
+                          color:#6b7280;
                         "
                       >
-                        ${escaparHtml(
-                          empresa
-                        )}
+                        Appointment Confirmation
                       </div>
                     </td>
                   </tr>
 
 
+                  <!-- CONTENT -->
                   <tr>
                     <td
                       style="
-                        padding:28px;
+                        padding:30px 30px 26px;
+                        background:#ffffff;
                       "
                     >
                       <p
                         style="
-                          margin:0 0 18px;
+                          margin:0 0 12px;
                           font-size:16px;
                           line-height:1.6;
+                          color:#111827;
                         "
                       >
                         Hello
@@ -562,120 +684,151 @@ const enviarConfirmacionCliente =
 
                       <p
                         style="
-                          margin:0 0 22px;
+                          margin:0 0 28px;
                           font-size:15px;
                           line-height:1.7;
-                          color:#475569;
+                          color:#4b5563;
                         "
                       >
-                        This is a confirmation of your scheduled appointment with
+                        This email confirms your scheduled appointment with
                         ${escaparHtml(
                           empresa
                         )}.
                       </p>
 
 
+                      <!-- APPOINTMENT SUMMARY -->
                       <table
                         role="presentation"
                         width="100%"
                         cellspacing="0"
                         cellpadding="0"
+                        border="0"
                         style="
+                          width:100%;
+                          border:1px solid #e5e7eb;
+                          border-radius:10px;
                           border-collapse:separate;
-                          border-spacing:0;
-                          background:#f8fafc;
-                          border-radius:12px;
                           overflow:hidden;
                         "
                       >
                         <tr>
                           <td
                             style="
-                              padding:18px 20px 8px;
-                              font-size:12px;
-                              font-weight:700;
-                              color:#64748b;
-                              text-transform:uppercase;
+                              padding:18px 20px;
+                              border-bottom:1px solid #e5e7eb;
                             "
                           >
-                            Project
+                            <div
+                              style="
+                                margin-bottom:5px;
+                                font-size:10px;
+                                line-height:1.3;
+                                font-weight:700;
+                                letter-spacing:.08em;
+                                text-transform:uppercase;
+                                color:#6b7280;
+                              "
+                            >
+                              Project
+                            </div>
+
+                            <div
+                              style="
+                                font-size:16px;
+                                line-height:1.5;
+                                font-weight:700;
+                                color:#111827;
+                              "
+                            >
+                              ${escaparHtml(
+                                proyecto
+                              )}
+                            </div>
                           </td>
                         </tr>
+
 
                         <tr>
                           <td
                             style="
-                              padding:0 20px 16px;
-                              font-size:17px;
-                              font-weight:700;
+                              padding:18px 20px;
+                              border-bottom:1px solid #e5e7eb;
                             "
                           >
-                            ${escaparHtml(
-                              proyecto
-                            )}
+                            <div
+                              style="
+                                margin-bottom:5px;
+                                font-size:10px;
+                                line-height:1.3;
+                                font-weight:700;
+                                letter-spacing:.08em;
+                                text-transform:uppercase;
+                                color:#6b7280;
+                              "
+                            >
+                              Date & Time
+                            </div>
+
+                            <div
+                              style="
+                                font-size:17px;
+                                line-height:1.5;
+                                font-weight:700;
+                                color:#111827;
+                              "
+                            >
+                              ${escaparHtml(
+                                fecha
+                              )}
+                              &nbsp; · &nbsp;
+                              ${escaparHtml(
+                                hora
+                              )}
+                            </div>
                           </td>
                         </tr>
+
 
                         <tr>
                           <td
                             style="
-                              padding:0 20px 8px;
-                              font-size:12px;
-                              font-weight:700;
-                              color:#64748b;
-                              text-transform:uppercase;
+                              padding:18px 20px;
+                              ${
+                                responsable
+                                  ? "border-bottom:1px solid #e5e7eb;"
+                                  : ""
+                              }
                             "
                           >
-                            Date & Time
+                            <div
+                              style="
+                                margin-bottom:5px;
+                                font-size:10px;
+                                line-height:1.3;
+                                font-weight:700;
+                                letter-spacing:.08em;
+                                text-transform:uppercase;
+                                color:#6b7280;
+                              "
+                            >
+                              Address
+                            </div>
+
+                            <div
+                              style="
+                                font-size:15px;
+                                line-height:1.5;
+                                color:#374151;
+                              "
+                            >
+                              ${escaparHtml(
+                                direccion
+                              )}
+                            </div>
                           </td>
                         </tr>
 
-                        <tr>
-                          <td
-                            style="
-                              padding:0 20px 16px;
-                              font-size:18px;
-                              font-weight:700;
-                              color:#1d4ed8;
-                            "
-                          >
-                            ${escaparHtml(
-                              fecha
-                            )}
-                            &nbsp; • &nbsp;
-                            ${escaparHtml(
-                              hora
-                            )}
-                          </td>
-                        </tr>
-
-                        <tr>
-                          <td
-                            style="
-                              padding:0 20px 8px;
-                              font-size:12px;
-                              font-weight:700;
-                              color:#64748b;
-                              text-transform:uppercase;
-                            "
-                          >
-                            Address
-                          </td>
-                        </tr>
-
-                        <tr>
-                          <td
-                            style="
-                              padding:0 20px 18px;
-                              font-size:15px;
-                              color:#334155;
-                            "
-                          >
-                            ${escaparHtml(
-                              direccion
-                            )}
-                          </td>
-                        </tr>
 
                         ${
                           responsable
@@ -683,28 +836,34 @@ const enviarConfirmacionCliente =
                               <tr>
                                 <td
                                   style="
-                                    padding:0 20px 8px;
-                                    font-size:12px;
-                                    font-weight:700;
-                                    color:#64748b;
-                                    text-transform:uppercase;
+                                    padding:18px 20px;
                                   "
                                 >
-                                  Representative
-                                </td>
-                              </tr>
+                                  <div
+                                    style="
+                                      margin-bottom:5px;
+                                      font-size:10px;
+                                      line-height:1.3;
+                                      font-weight:700;
+                                      letter-spacing:.08em;
+                                      text-transform:uppercase;
+                                      color:#6b7280;
+                                    "
+                                  >
+                                    Representative
+                                  </div>
 
-                              <tr>
-                                <td
-                                  style="
-                                    padding:0 20px 18px;
-                                    font-size:15px;
-                                    color:#334155;
-                                  "
-                                >
-                                  ${escaparHtml(
-                                    responsable
-                                  )}
+                                  <div
+                                    style="
+                                      font-size:15px;
+                                      line-height:1.5;
+                                      color:#374151;
+                                    "
+                                  >
+                                    ${escaparHtml(
+                                      responsable
+                                    )}
+                                  </div>
                                 </td>
                               </tr>
                             `
@@ -718,30 +877,32 @@ const enviarConfirmacionCliente =
                           ? `
                             <div
                               style="
-                                margin-top:20px;
-                                padding:16px 18px;
-                                border-left:4px solid #2563eb;
-                                background:#eff6ff;
-                                border-radius:8px;
+                                margin-top:24px;
                               "
                             >
                               <div
                                 style="
-                                  margin-bottom:6px;
-                                  font-size:12px;
+                                  margin-bottom:7px;
+                                  font-size:10px;
+                                  line-height:1.3;
                                   font-weight:700;
-                                  color:#1d4ed8;
+                                  letter-spacing:.08em;
                                   text-transform:uppercase;
+                                  color:#6b7280;
                                 "
                               >
-                                Project details
+                                Project Details
                               </div>
 
                               <div
                                 style="
+                                  padding:15px 16px;
+                                  border:1px solid #e5e7eb;
+                                  border-radius:8px;
+                                  background:#fafafa;
                                   font-size:14px;
-                                  line-height:1.6;
-                                  color:#334155;
+                                  line-height:1.65;
+                                  color:#374151;
                                 "
                               >
                                 ${escaparHtml(
@@ -754,45 +915,48 @@ const enviarConfirmacionCliente =
                       }
 
 
+                      <!-- OFFICE NOTICE -->
                       <div
                         style="
-                          margin-top:22px;
-                          padding:16px 18px;
-                          border:1px solid #fde68a;
-                          background:#fffbeb;
-                          border-radius:10px;
+                          margin-top:26px;
+                          padding-top:22px;
+                          border-top:1px solid #e5e7eb;
                         "
                       >
                         <div
                           style="
-                            margin-bottom:6px;
-                            font-size:13px;
+                            margin-bottom:8px;
+                            font-size:11px;
+                            line-height:1.4;
                             font-weight:700;
-                            color:#92400e;
+                            letter-spacing:.08em;
+                            text-transform:uppercase;
+                            color:#374151;
                           "
                         >
-                          Need to make a change?
+                          Important Information
                         </div>
 
                         <div
                           style="
                             font-size:14px;
-                            line-height:1.6;
-                            color:#78350f;
+                            line-height:1.7;
+                            color:#4b5563;
                           "
                         >
                           For any change, cancellation, or rescheduling,
                           please contact our office directly.
-                          Please do not coordinate appointment changes
+                          Appointment changes should not be coordinated
                           with the field representative.
                         </div>
 
                         <div
                           style="
-                            margin-top:8px;
+                            margin-top:12px;
                             font-size:15px;
+                            line-height:1.5;
                             font-weight:700;
-                            color:#92400e;
+                            color:#111827;
                           "
                         >
                           ${
@@ -810,19 +974,44 @@ const enviarConfirmacionCliente =
 
                       <p
                         style="
-                          margin:24px 0 0;
-                          font-size:15px;
-                          line-height:1.6;
-                          color:#475569;
+                          margin:28px 0 0;
+                          font-size:14px;
+                          line-height:1.7;
+                          color:#6b7280;
                         "
                       >
                         Thank you for choosing
-                        <strong>
+                        <strong
+                          style="
+                            color:#374151;
+                          "
+                        >
                           ${escaparHtml(
                             empresa
                           )}
                         </strong>.
                       </p>
+                    </td>
+                  </tr>
+
+
+                  <!-- FOOTER -->
+                  <tr>
+                    <td
+                      align="center"
+                      style="
+                        padding:18px 24px;
+                        border-top:1px solid #e5e7eb;
+                        background:#fafafa;
+                        font-size:11px;
+                        line-height:1.6;
+                        color:#9ca3af;
+                      "
+                    >
+                      This is an appointment confirmation from
+                      ${escaparHtml(
+                        empresa
+                      )}.
                     </td>
                   </tr>
 
@@ -833,7 +1022,6 @@ const enviarConfirmacionCliente =
         </body>
       </html>
       `;
-
 
     const smtpUser =
       limpiarTexto(
