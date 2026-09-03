@@ -167,15 +167,71 @@ const formatearHoraWhatsApp = (
 // CLEAN PHONE
 // ======================================================
 
-const limpiarTelefono = (
+const normalizarTelefonoWhatsApp = (
   telefono
-) =>
-  String(
-    telefono || ""
-  ).replace(
-    /\D/g,
-    ""
-  );
+) => {
+  const original =
+    String(
+      telefono || ""
+    ).trim();
+
+  if (!original) {
+    return "";
+  }
+
+  let digitos =
+    original.replace(
+      /\D/g,
+      ""
+    );
+
+  // International prefix written as 00...
+  if (
+    digitos.startsWith(
+      "00"
+    )
+  ) {
+    digitos =
+      digitos.slice(2);
+  }
+
+  // Ecuador mobile saved locally:
+  // 09XXXXXXXX -> 5939XXXXXXXX
+  if (
+    /^09\d{8}$/.test(
+      digitos
+    )
+  ) {
+    return (
+      "593" +
+      digitos.slice(1)
+    );
+  }
+
+  // USA / Canada local 10-digit number:
+  // 9735551234 -> 19735551234
+  if (
+    /^\d{10}$/.test(
+      digitos
+    )
+  ) {
+    return (
+      "1" +
+      digitos
+    );
+  }
+
+  // Already international, e.g.
+  // 5939XXXXXXXX or 1XXXXXXXXXX
+  if (
+    digitos.length >= 8 &&
+    digitos.length <= 15
+  ) {
+    return digitos;
+  }
+
+  return "";
+};
 
 
 // ======================================================
@@ -262,7 +318,7 @@ export default function AgendaDetalleModal({
     () => {
 
       const telefono =
-        limpiarTelefono(
+        normalizarTelefonoWhatsApp(
           cita.asignado_celular ||
           cita.responsable_celular
         );
@@ -324,7 +380,7 @@ export default function AgendaDetalleModal({
 
 
       window.open(
-        `https://api.whatsapp.com/send?phone=${telefono}&text=${encodeURIComponent(
+        `https://wa.me/${telefono}?text=${encodeURIComponent(
           mensaje
         )}`,
         "_blank",
@@ -1094,7 +1150,85 @@ export default function AgendaDetalleModal({
           </section>
 
 
-          
+          {/* RESPONSIBLE PERSON */}
+
+          <section>
+            <p
+              className="
+                mb-2
+                text-xs
+                font-semibold
+                uppercase
+                tracking-wide
+                text-slate-400
+              "
+            >
+              {t(
+                "agenda.responsible"
+              )}
+            </p>
+
+            <div
+              className="
+                flex
+                items-center
+                gap-3
+                rounded-xl
+                border
+                border-slate-200
+                p-3
+              "
+            >
+              <div
+                className="
+                  flex
+                  h-9
+                  w-9
+                  items-center
+                  justify-center
+                  rounded-full
+                  bg-blue-50
+                  text-blue-600
+                "
+              >
+                <UserRound
+                  size={17}
+                />
+              </div>
+
+              <div>
+                <p
+                  className="
+                    text-sm
+                    font-semibold
+                    text-slate-800
+                  "
+                >
+                  {
+                    cita.asignado_nombre ||
+                    t(
+                      "agenda.not_assigned"
+                    )
+                  }
+                </p>
+
+                {cita.asignado_rol && (
+                  <p
+                    className="
+                      text-xs
+                      text-slate-500
+                    "
+                  >
+                    {
+                      cita.asignado_rol
+                    }
+                  </p>
+                )}
+              </div>
+            </div>
+          </section>
+
+
           {/* JOB DESCRIPTION */}
 
           {cita.descripcion && (
@@ -1132,14 +1266,25 @@ export default function AgendaDetalleModal({
             </section>
           )}
 
-          
-
 
           {/* COMMUNICATION */}
 
-          <section className="border-t border-slate-100 pt-4" >
+          <section
+            className="
+              border-t
+              border-slate-100
+              pt-4
+            "
+          >
             <p
-              className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400"
+              className="
+                mb-2
+                text-xs
+                font-semibold
+                uppercase
+                tracking-wide
+                text-slate-400
+              "
             >
               {t(
                 "agenda.communication"
@@ -1228,85 +1373,6 @@ export default function AgendaDetalleModal({
                 )}
               </button>
 
-            </div>
-          </section>
-
-
-          {/* RESPONSIBLE PERSON */}
-
-          <section>
-            <p
-              className="
-                mb-2
-                text-xs
-                font-semibold
-                uppercase
-                tracking-wide
-                text-slate-400
-              "
-            >
-              {t(
-                "agenda.responsible"
-              )}
-            </p>
-
-            <div
-              className="
-                flex
-                items-center
-                gap-3
-                rounded-xl
-                border
-                border-slate-200
-                p-3
-              "
-            >
-              <div
-                className="
-                  flex
-                  h-9
-                  w-9
-                  items-center
-                  justify-center
-                  rounded-full
-                  bg-blue-50
-                  text-blue-600
-                "
-              >
-                <UserRound
-                  size={17}
-                />
-              </div>
-
-              <div>
-                <p
-                  className="
-                    text-sm
-                    font-semibold
-                    text-slate-800
-                  "
-                >
-                  {
-                    cita.asignado_nombre ||
-                    t(
-                      "agenda.not_assigned"
-                    )
-                  }
-                </p>
-
-                {cita.asignado_rol && (
-                  <p
-                    className="
-                      text-xs
-                      text-slate-500
-                    "
-                  >
-                    {
-                      cita.asignado_rol
-                    }
-                  </p>
-                )}
-              </div>
             </div>
           </section>
 

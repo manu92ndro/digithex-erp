@@ -774,6 +774,8 @@ const listarCitas =
             contacto.correo,
 
             empresa.nombre_empresa,
+            empresa.logo
+              AS empresa_logo,
             empresa.email
               AS empresa_email,
             empresa.telefono
@@ -900,6 +902,8 @@ const obtenerCitaPorId =
             contacto.correo,
 
             empresa.nombre_empresa,
+            empresa.logo
+              AS empresa_logo,
             empresa.email
               AS empresa_email,
             empresa.telefono
