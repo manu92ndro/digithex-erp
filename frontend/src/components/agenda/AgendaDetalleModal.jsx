@@ -359,7 +359,7 @@ export default function AgendaDetalleModal({
 
       const mensaje =
         [
-          "📅 *YOU HAVE A SCHEDULED APPOINTMENT*",
+          "📅 *NEW APPOINTMENT*",
           "",
           `🗓️ *${fecha}*`,
           `⏰ *TIME: ${hora}*`,
