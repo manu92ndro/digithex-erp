@@ -15,6 +15,8 @@ import {
   Mail,
   Phone,
   MapPin,
+  Globe2,
+  Clock3,
   Plus,
   Pencil,
   CircleCheck,
@@ -30,6 +32,46 @@ import {
   deleteEmpresa
 } from "../api/empresas";
 
+
+const PAISES = [
+  {
+    value: "US",
+    label: "United States",
+  },
+  {
+    value: "EC",
+    label: "Ecuador",
+  },
+];
+
+const ZONAS_HORARIAS = {
+  US: [
+    {
+      value: "America/New_York",
+      label: "Eastern Time - New York / New Jersey",
+    },
+    {
+      value: "America/Chicago",
+      label: "Central Time - Chicago",
+    },
+    {
+      value: "America/Denver",
+      label: "Mountain Time - Denver",
+    },
+    {
+      value: "America/Los_Angeles",
+      label: "Pacific Time - Los Angeles",
+    },
+  ],
+
+  EC: [
+    {
+      value: "America/Guayaquil",
+      label: "Ecuador - Guayaquil",
+    },
+  ],
+};
+
 export default function Empresas() {
   const { t } = useTranslation();
 
@@ -44,7 +86,11 @@ export default function Empresas() {
     nombre_empresa: "",
     email: "",
     telefono: "",
+    telefono_secundario: "",
+    website: "",
     direccion: "",
+    pais: "",
+    zona_horaria: "",
     estado: 1
   });
 
@@ -94,10 +140,25 @@ export default function Empresas() {
   const handleChange = (e) => {
     const { name, value } = e.target;
 
-    setForm({
-      ...form,
-      [name]: name === "estado" ? Number(value) : value
-    });
+    if (name === "pais") {
+      const zonas = ZONAS_HORARIAS[value] || [];
+
+      setForm((prev) => ({
+        ...prev,
+        pais: value,
+        zona_horaria: zonas[0]?.value || "",
+      }));
+
+      return;
+    }
+
+    setForm((prev) => ({
+      ...prev,
+      [name]:
+        name === "estado"
+          ? Number(value)
+          : value,
+    }));
   };
 
   const guardarEmpresa = async (e) => {
@@ -105,6 +166,26 @@ export default function Empresas() {
 
     if (!form.nombre_empresa.trim()) {
       showError(t("company_name_required"));
+      return;
+    }
+
+    if (!form.pais) {
+      showError(
+        t(
+          "company_country_required",
+          "Selecciona el país de la empresa"
+        )
+      );
+      return;
+    }
+
+    if (!form.zona_horaria) {
+      showError(
+        t(
+          "company_timezone_required",
+          "Selecciona la zona horaria de la empresa"
+        )
+      );
       return;
     }
 
@@ -122,7 +203,7 @@ export default function Empresas() {
 
     } catch (error) {
       console.error("ERROR GUARDANDO EMPRESA:", error);
-      showSuccess(
+      showError(
         error?.response?.data?.message ||
         t("company_save_error")
       );
@@ -136,7 +217,13 @@ export default function Empresas() {
       nombre_empresa: empresa.nombre_empresa || "",
       email: empresa.email || "",
       telefono: empresa.telefono || "",
+      telefono_secundario:
+        empresa.telefono_secundario || "",
+      website: empresa.website || "",
       direccion: empresa.direccion || "",
+      pais: empresa.pais || "",
+      zona_horaria:
+        empresa.zona_horaria || "",
       estado: Number(empresa.estado) === 1 ? 1 : 0
     });
 
@@ -165,6 +252,8 @@ export default function Empresas() {
       ${empresa.email || ""}
       ${empresa.telefono || ""}
       ${empresa.direccion || ""}
+      ${empresa.pais || ""}
+      ${empresa.zona_horaria || ""}
     `.toLowerCase();
 
     return texto.includes(busqueda.toLowerCase());
@@ -303,6 +392,13 @@ export default function Empresas() {
                             <MapPin size={12} />
                             {empresa.direccion || t("no_address")}
                           </p>
+
+                          {empresa.zona_horaria && (
+                            <p className="mt-1 text-xs text-slate-400 flex items-center gap-1">
+                              <Clock3 size={12} />
+                              {empresa.zona_horaria}
+                            </p>
+                          )}
                         </div>
                       </div>
                     </td>
@@ -437,6 +533,111 @@ export default function Empresas() {
                     placeholder="0999999999"
                     className="mt-1 w-full border border-slate-200 p-2.5 rounded-xl outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500"
                   />
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-slate-600">
+                    {t(
+                      "secondary_phone",
+                      "Teléfono secundario"
+                    )}
+                  </label>
+                  <input
+                    type="text"
+                    name="telefono_secundario"
+                    value={form.telefono_secundario}
+                    onChange={handleChange}
+                    placeholder="+1 973 555 1234"
+                    className="mt-1 w-full border border-slate-200 p-2.5 rounded-xl outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-slate-600">
+                    {t("website", "Website")}
+                  </label>
+                  <input
+                    type="text"
+                    name="website"
+                    value={form.website}
+                    onChange={handleChange}
+                    placeholder="https://empresa.com"
+                    className="mt-1 w-full border border-slate-200 p-2.5 rounded-xl outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-slate-600">
+                    <span className="inline-flex items-center gap-1.5">
+                      <Globe2 size={15} />
+                      {t("country", "País")}
+                    </span>
+                  </label>
+
+                  <select
+                    name="pais"
+                    value={form.pais}
+                    onChange={handleChange}
+                    className="mt-1 w-full border border-slate-200 p-2.5 rounded-xl outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500"
+                    required
+                  >
+                    <option value="">
+                      {t(
+                        "select_country",
+                        "Selecciona un país"
+                      )}
+                    </option>
+
+                    {PAISES.map((pais) => (
+                      <option
+                        key={pais.value}
+                        value={pais.value}
+                      >
+                        {pais.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-slate-600">
+                    <span className="inline-flex items-center gap-1.5">
+                      <Clock3 size={15} />
+                      {t(
+                        "time_zone",
+                        "Zona horaria"
+                      )}
+                    </span>
+                  </label>
+
+                  <select
+                    name="zona_horaria"
+                    value={form.zona_horaria}
+                    onChange={handleChange}
+                    disabled={!form.pais}
+                    className="mt-1 w-full border border-slate-200 p-2.5 rounded-xl outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 disabled:bg-slate-100 disabled:text-slate-400"
+                    required
+                  >
+                    <option value="">
+                      {t(
+                        "select_time_zone",
+                        "Selecciona una zona horaria"
+                      )}
+                    </option>
+
+                    {(ZONAS_HORARIAS[
+                      form.pais
+                    ] || []).map(
+                      (zona) => (
+                        <option
+                          key={zona.value}
+                          value={zona.value}
+                        >
+                          {zona.label}
+                        </option>
+                      )
+                    )}
+                  </select>
                 </div>
 
                 <div>

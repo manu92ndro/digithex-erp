@@ -12,6 +12,47 @@ const esSuperAdmin = (req) => {
   return req.usuario?.rol?.toUpperCase() === 'SUPER ADMIN';
 };
 
+const limpiarTexto = (valor) => {
+  const texto = String(valor ?? "").trim();
+  return texto || null;
+};
+
+const zonaHorariaValida = (zona_horaria) => {
+  if (!zona_horaria) return false;
+
+  try {
+    new Intl.DateTimeFormat("en-US", {
+      timeZone: zona_horaria,
+    }).format(new Date());
+
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+const validarUbicacionEmpresa = ({
+  pais,
+  zona_horaria,
+}) => {
+  const paisLimpio = limpiarTexto(pais);
+  const zonaLimpia = limpiarTexto(zona_horaria);
+
+  if (!paisLimpio) {
+    return "El país de la empresa es obligatorio";
+  }
+
+  if (!zonaLimpia) {
+    return "La zona horaria de la empresa es obligatoria";
+  }
+
+  if (!zonaHorariaValida(zonaLimpia)) {
+    return "La zona horaria seleccionada no es válida";
+  }
+
+  return null;
+};
+
 const validarEmpresaDuplicada = async ({
   nombre_empresa,
   email,
@@ -121,6 +162,8 @@ const getEmpresaById = async (req, res) => {
         telefono_secundario,
         website,
         direccion,
+        pais,
+        zona_horaria,
         logo,
         CAST(estado AS UNSIGNED) AS estado,
         fyh_creacion,
@@ -158,8 +201,10 @@ const createEmpresa = async (req, res) => {
       email,
       telefono,
       telefono_secundario, // ✅ NUEVO: ya estaba en el body
-      website, // ✅ NUEVO: ya estaba en el body
+      website,
       direccion,
+      pais,
+      zona_horaria,
       estado = 1
     } = req.body;
 
@@ -174,6 +219,18 @@ const createEmpresa = async (req, res) => {
       return res.status(400).json({
         ok: false,
         message: 'El nombre de la empresa es obligatorio'
+      });
+    }
+
+    const errorUbicacion = validarUbicacionEmpresa({
+      pais,
+      zona_horaria,
+    });
+
+    if (errorUbicacion) {
+      return res.status(400).json({
+        ok: false,
+        message: errorUbicacion,
       });
     }
 
@@ -198,17 +255,21 @@ const createEmpresa = async (req, res) => {
         telefono_secundario,
         website,
         direccion,
+        pais,
+        zona_horaria,
         estado,
         fyh_creacion
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
     `, [
       nombre_empresa.trim(),
       email ? email.trim() : null,
       telefono || null,
-      telefono_secundario || null, // ✅ NUEVO: agregado
-      website || null, // ✅ NUEVO: agregado
-      direccion || null,
+      limpiarTexto(telefono_secundario),
+      limpiarTexto(website),
+      limpiarTexto(direccion),
+      limpiarTexto(pais)?.toUpperCase(),
+      limpiarTexto(zona_horaria),
       Number(estado)
     ]);
 
@@ -244,9 +305,11 @@ const updateEmpresa = async (req, res) => {
       nombre_empresa,
       email,
       telefono,
-      telefono_secundario, // ✅ NUEVO: agregado
-      website, // ✅ NUEVO: agregado
+      telefono_secundario,
+      website,
       direccion,
+      pais,
+      zona_horaria,
       estado = 1
     } = req.body;
 
@@ -261,6 +324,18 @@ const updateEmpresa = async (req, res) => {
       return res.status(400).json({
         ok: false,
         message: 'El nombre de la empresa es obligatorio'
+      });
+    }
+
+    const errorUbicacion = validarUbicacionEmpresa({
+      pais,
+      zona_horaria,
+    });
+
+    if (errorUbicacion) {
+      return res.status(400).json({
+        ok: false,
+        message: errorUbicacion,
       });
     }
 
@@ -284,8 +359,10 @@ const updateEmpresa = async (req, res) => {
         email = ?,
         telefono = ?,
         telefono_secundario = ?, -- ✅ NUEVO: agregado
-        website = ?, -- ✅ NUEVO: agregado
+        website = ?,
         direccion = ?,
+        pais = ?,
+        zona_horaria = ?,
         estado = ?,
         fyh_actualizacion = NOW()
       WHERE id_empresa = ?
@@ -293,9 +370,11 @@ const updateEmpresa = async (req, res) => {
       nombre_empresa.trim(),
       email ? email.trim() : null,
       telefono || null,
-      telefono_secundario || null, // ✅ NUEVO: agregado
-      website || null, // ✅ NUEVO: agregado
-      direccion || null,
+      limpiarTexto(telefono_secundario),
+      limpiarTexto(website),
+      limpiarTexto(direccion),
+      limpiarTexto(pais)?.toUpperCase(),
+      limpiarTexto(zona_horaria),
       Number(estado),
       id
     ]);
@@ -410,8 +489,10 @@ const getMiEmpresa = async (req, res) => {
         email, 
         telefono,
         telefono_secundario, -- ✅ NUEVO: agregado
-        website, -- ✅ NUEVO: agregado
-        direccion, 
+        website,
+        direccion,
+        pais,
+        zona_horaria,
         logo, 
         estado
        FROM tb_empresas
