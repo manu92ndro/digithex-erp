@@ -170,67 +170,52 @@ const formatearHoraWhatsApp = (
 const normalizarTelefonoWhatsApp = (
   telefono
 ) => {
-  const original =
-    String(
-      telefono || ""
-    ).trim();
+  let digitos = String(
+    telefono || ""
+  ).replace(/\D/g, "");
 
-  if (!original) {
+  if (!digitos) {
     return "";
   }
 
-  let digitos =
-    original.replace(
-      /\D/g,
-      ""
-    );
-
-  // International prefix written as 00...
+  // Ecuador local:
+  // 0984497246
+  // -> 593984497246
   if (
-    digitos.startsWith(
-      "00"
-    )
-  ) {
-    digitos =
-      digitos.slice(2);
-  }
-
-  // Ecuador mobile saved locally:
-  // 09XXXXXXXX -> 5939XXXXXXXX
-  if (
-    /^09\d{8}$/.test(
-      digitos
-    )
+    /^09\d{8}$/.test(digitos)
   ) {
     return (
       "593" +
-      digitos.slice(1)
+      digitos.substring(1)
     );
   }
 
-  // USA / Canada local 10-digit number:
-  // 9735551234 -> 19735551234
+  // USA local:
+  // 9735551234
+  // -> 19735551234
   if (
-    /^\d{10}$/.test(
-      digitos
-    )
+    /^\d{10}$/.test(digitos)
   ) {
-    return (
-      "1" +
-      digitos
-    );
+    return "1" + digitos;
   }
 
-  // Already international, e.g.
-  // 5939XXXXXXXX or 1XXXXXXXXXX
+  // USA ya internacional:
+  // 19735551234
   if (
-    digitos.length >= 8 &&
-    digitos.length <= 15
+    /^1\d{10}$/.test(digitos)
   ) {
     return digitos;
   }
 
-  return "";
+  // Ecuador ya internacional:
+  // 593984497246
+  if (
+    /^593\d{9}$/.test(digitos)
+  ) {
+    return digitos;
+  }
+
+  return digitos;
 };
 
 
