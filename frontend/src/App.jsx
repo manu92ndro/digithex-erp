@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 import Login from "./pages/Login";
+import SeleccionarEmpresa from "./pages/SeleccionarEmpresa";
 import Dashboard from "./pages/Dashboard";
 import Roles from "./pages/Roles";
 import Empresas from "./pages/Empresas";
@@ -29,6 +30,15 @@ function App() {
       <Routes>
 
         <Route path="/" element={<Login />} />
+
+        <Route
+          path="/seleccionar-empresa"
+          element={
+            <PrivateRoute>
+              <SeleccionarEmpresa />
+            </PrivateRoute>
+          }
+        />
 
         <Route
           path="/dashboard"
