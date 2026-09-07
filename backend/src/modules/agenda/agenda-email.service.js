@@ -79,6 +79,78 @@ const escaparHtml =
       );
 
 
+const normalizarColorHex =
+  (
+    valor,
+    fallback = "#FBBF24"
+  ) => {
+
+    let color =
+      limpiarTexto(
+        valor
+      );
+
+    if (!color) {
+      return fallback;
+    }
+
+    if (
+      /^[0-9a-fA-F]{6}$/.test(
+        color
+      )
+    ) {
+      color =
+        `#${color}`;
+    }
+
+    if (
+      /^#[0-9a-fA-F]{6}$/.test(
+        color
+      )
+    ) {
+      return color.toUpperCase();
+    }
+
+    return fallback;
+  };
+
+
+const obtenerColorPrimario =
+  (
+    configuracion
+  ) =>
+    normalizarColorHex(
+      configuracion
+        ?.color_primario ||
+      configuracion
+        ?.primary_color ||
+      configuracion
+        ?.branding_primary_color ||
+      configuracion
+        ?.color_primary ||
+      "#FBBF24",
+      "#FBBF24"
+    );
+
+
+const obtenerColorSecundario =
+  (
+    configuracion
+  ) =>
+    normalizarColorHex(
+      configuracion
+        ?.color_secundario ||
+      configuracion
+        ?.secondary_color ||
+      configuracion
+        ?.branding_secondary_color ||
+      configuracion
+        ?.color_secondary ||
+      "#111827",
+      "#111827"
+    );
+
+
 const convertirFecha =
   (valor) => {
 
@@ -211,6 +283,28 @@ const obtenerLogoPublico =
       return (
         basePublica +
         logo
+      );
+    }
+
+
+    if (
+      logo.startsWith(
+        "uploads/"
+      )
+    ) {
+      return (
+        `${basePublica}/${logo}`
+      );
+    }
+
+
+    if (
+      logo.startsWith(
+        "logos/"
+      )
+    ) {
+      return (
+        `${basePublica}/uploads/${logo}`
       );
     }
 
@@ -428,6 +522,24 @@ const enviarConfirmacionCliente =
       );
 
 
+    const colorPrimario =
+      obtenerColorPrimario(
+        configuracion
+      );
+
+
+    const colorSecundario =
+      obtenerColorSecundario(
+        configuracion
+      );
+
+
+    const logoCid =
+      logoEmpresa
+        ? `logo-empresa-${id_empresa}@digithex`
+        : "";
+
+
     const cliente =
       limpiarTexto(
         cita.contacto ||
@@ -598,7 +710,9 @@ const enviarConfirmacionCliente =
                       align="center"
                       style="
                         padding:30px 28px 24px;
-                        border-bottom:1px solid #e5e7eb;
+                        border-bottom:4px solid ${escaparHtml(
+                          colorPrimario
+                        )};
                         background:#ffffff;
                       "
                     >
@@ -606,8 +720,8 @@ const enviarConfirmacionCliente =
                         logoEmpresa
                           ? `
                             <img
-                              src="${escaparHtml(
-                                logoEmpresa
+                              src="cid:${escaparHtml(
+                                logoCid
                               )}"
                               alt="${escaparHtml(
                                 empresa
@@ -632,7 +746,9 @@ const enviarConfirmacionCliente =
                                 font-size:22px;
                                 line-height:1.3;
                                 font-weight:700;
-                                color:#FBBF24;
+                                color:${escaparHtml(
+                                  colorPrimario
+                                )};
                               "
                             >
                               ${escaparHtml(
@@ -649,7 +765,9 @@ const enviarConfirmacionCliente =
                           font-weight:700;
                           letter-spacing:.12em;
                           text-transform:uppercase;
-                          color:#6b7280;
+                          color:${escaparHtml(
+                            colorSecundario
+                          )};
                         "
                       >
                         Appointment Confirmation
@@ -1067,6 +1185,20 @@ const enviarConfirmacionCliente =
             textoPlano,
 
           html,
+
+          attachments:
+            logoEmpresa
+              ? [
+                  {
+                    filename:
+                      "company-logo",
+                    path:
+                      logoEmpresa,
+                    cid:
+                      logoCid,
+                  },
+                ]
+              : [],
         });
 
 

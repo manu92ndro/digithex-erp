@@ -776,12 +776,18 @@ const listarCitas =
             empresa.nombre_empresa,
             empresa.logo
               AS empresa_logo,
+            empresa.logo_public_id
+              AS empresa_logo_public_id,
             empresa.email
               AS empresa_email,
             empresa.telefono
               AS telefono_empresa,
             empresa.telefono_secundario
               AS telefono_secundario_empresa,
+            empresa.pais
+              AS empresa_pais,
+            empresa.zona_horaria
+              AS empresa_zona_horaria,
 
             c.id_tipo_cita,
             tc.nombre
@@ -904,12 +910,18 @@ const obtenerCitaPorId =
             empresa.nombre_empresa,
             empresa.logo
               AS empresa_logo,
+            empresa.logo_public_id
+              AS empresa_logo_public_id,
             empresa.email
               AS empresa_email,
             empresa.telefono
               AS telefono_empresa,
             empresa.telefono_secundario
               AS telefono_secundario_empresa,
+            empresa.pais
+              AS empresa_pais,
+            empresa.zona_horaria
+              AS empresa_zona_horaria,
 
             contacto.id_medio_contacto,
 
@@ -1205,13 +1217,7 @@ const obtenerConfiguracionEmailEmpresa =
       await pool.query(
         `
           SELECT
-            ec.smtp_host,
-            ec.smtp_port,
-            ec.smtp_secure,
-            ec.smtp_user,
-            ec.smtp_password,
-            ec.smtp_from_name,
-            ec.smtp_reply_to
+            ec.*
 
           FROM
             tb_empresa_configuracion ec
