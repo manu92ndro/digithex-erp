@@ -773,22 +773,6 @@ const listarCitas =
             contacto.celular,
             contacto.correo,
 
-            empresa.nombre_empresa,
-            empresa.logo
-              AS empresa_logo,
-            empresa.logo_public_id
-              AS empresa_logo_public_id,
-            empresa.email
-              AS empresa_email,
-            empresa.telefono
-              AS telefono_empresa,
-            empresa.telefono_secundario
-              AS telefono_secundario_empresa,
-            empresa.pais
-              AS empresa_pais,
-            empresa.zona_horaria
-              AS empresa_zona_horaria,
-
             c.id_tipo_cita,
             tc.nombre
               AS tipo_cita,
@@ -798,23 +782,18 @@ const listarCitas =
             usuario.nombres
               AS asignado_nombre,
 
-            usuario.email
-              AS asignado_email,
-
-            usuario.celular
-              AS asignado_celular,
-
-            ue.id_rol
-              AS asignado_id_rol,
-
-            rol.rol
-              AS asignado_rol,
-
             c.titulo,
             c.descripcion,
 
-            c.fecha_inicio,
-            c.fecha_fin,
+            DATE_FORMAT(
+              c.fecha_inicio,
+              '%Y-%m-%dT%H:%i:%s'
+            ) AS fecha_inicio,
+
+            DATE_FORMAT(
+              c.fecha_fin,
+              '%Y-%m-%dT%H:%i:%s'
+            ) AS fecha_fin,
 
             c.direccion,
             c.latitud,
@@ -826,11 +805,6 @@ const listarCitas =
 
           FROM
             tb_agenda_citas c
-
-          INNER JOIN
-            tb_empresas empresa
-              ON empresa.id_empresa =
-                 c.id_empresa
 
           INNER JOIN
             tb_agenda_contactos contacto
@@ -846,19 +820,6 @@ const listarCitas =
             tb_usuarios usuario
               ON usuario.id_usuario =
                  c.asignado_a
-
-          LEFT JOIN
-            tb_usuario_empresas ue
-              ON ue.id_usuario =
-                 c.asignado_a
-              AND ue.id_empresa =
-                  c.id_empresa
-              AND ue.estado = 1
-
-          LEFT JOIN
-            tb_roles rol
-              ON rol.id_rol =
-                 ue.id_rol
 
           WHERE
             c.id_empresa = ?
@@ -902,26 +863,9 @@ const obtenerCitaPorId =
 
             c.id_contacto,
 
-            contacto.nombres
-              AS contacto,
+            contacto.nombres,
             contacto.celular,
             contacto.correo,
-
-            empresa.nombre_empresa,
-            empresa.logo
-              AS empresa_logo,
-            empresa.logo_public_id
-              AS empresa_logo_public_id,
-            empresa.email
-              AS empresa_email,
-            empresa.telefono
-              AS telefono_empresa,
-            empresa.telefono_secundario
-              AS telefono_secundario_empresa,
-            empresa.pais
-              AS empresa_pais,
-            empresa.zona_horaria
-              AS empresa_zona_horaria,
 
             contacto.id_medio_contacto,
 
@@ -940,23 +884,18 @@ const obtenerCitaPorId =
             usuario.nombres
               AS asignado_nombre,
 
-            usuario.email
-              AS asignado_email,
-
-            usuario.celular
-              AS asignado_celular,
-
-            ue.id_rol
-              AS asignado_id_rol,
-
-            rol.rol
-              AS asignado_rol,
-
             c.titulo,
             c.descripcion,
 
-            c.fecha_inicio,
-            c.fecha_fin,
+            DATE_FORMAT(
+              c.fecha_inicio,
+              '%Y-%m-%dT%H:%i:%s'
+            ) AS fecha_inicio,
+
+            DATE_FORMAT(
+              c.fecha_fin,
+              '%Y-%m-%dT%H:%i:%s'
+            ) AS fecha_fin,
 
             c.direccion,
             c.latitud,
@@ -973,11 +912,6 @@ const obtenerCitaPorId =
 
           FROM
             tb_agenda_citas c
-
-          INNER JOIN
-            tb_empresas empresa
-              ON empresa.id_empresa =
-                 c.id_empresa
 
           INNER JOIN
             tb_agenda_contactos contacto
@@ -998,19 +932,6 @@ const obtenerCitaPorId =
             tb_usuarios usuario
               ON usuario.id_usuario =
                  c.asignado_a
-
-          LEFT JOIN
-            tb_usuario_empresas ue
-              ON ue.id_usuario =
-                 c.asignado_a
-              AND ue.id_empresa =
-                  c.id_empresa
-              AND ue.estado = 1
-
-          LEFT JOIN
-            tb_roles rol
-              ON rol.id_rol =
-                 ue.id_rol
 
           WHERE
             c.id_cita = ?
@@ -1202,44 +1123,6 @@ const cambiarEstadoCita =
   };
 
 
-
-
-// ======================================================
-// EMAIL / SMTP CONFIGURATION BY COMPANY
-// ======================================================
-
-const obtenerConfiguracionEmailEmpresa =
-  async (
-    id_empresa
-  ) => {
-
-    const [rows] =
-      await pool.query(
-        `
-          SELECT
-            ec.*
-
-          FROM
-            tb_empresa_configuracion ec
-
-          WHERE
-            ec.id_empresa = ?
-
-          LIMIT 1
-        `,
-        [
-          id_empresa,
-        ]
-      );
-
-
-    return (
-      rows[0] ||
-      null
-    );
-  };
-
-
 module.exports = {
 
   obtenerMediosContacto,
@@ -1273,6 +1156,4 @@ module.exports = {
   actualizarCita,
 
   cambiarEstadoCita,
-
-  obtenerConfiguracionEmailEmpresa,
 };

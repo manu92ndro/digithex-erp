@@ -32,7 +32,8 @@ import {
   createAgendaCita,
   getAgendaCitas,
   getAgendaFormData,
-  reagendarAgendaCita,
+  cancelarAgendaCita,
+  completarAgendaCita,
 } from "../api/agenda";
 
 
@@ -571,9 +572,35 @@ export default function Agenda() {
               ),
           });
 
+        const citasRecibidas =
+          Array.isArray(
+            response?.citas
+          )
+            ? response.citas
+            : [];
+
+        // Las citas canceladas se conservan en la base de datos
+        // para historial/auditoría, pero NO deben mostrarse
+        // en el calendario operativo.
+        const citasVisibles =
+          citasRecibidas.filter(
+            (cita) => {
+              const estado =
+                String(
+                  cita?.estado || ""
+                )
+                  .trim()
+                  .toLowerCase();
+
+              return (
+                estado !== "cancelada" &&
+                estado !== "cancelado"
+              );
+            }
+          );
+
         setCitasMes(
-          response?.citas ||
-          []
+          citasVisibles
         );
       },
       [
@@ -882,214 +909,70 @@ export default function Agenda() {
     };
 
 
-
-
   // ====================================================
-  // REAGENDAR CITA
+  // CANCELAR CITA
   // ====================================================
 
-  const reagendarCita =
+  const cancelarCita =
     async (
       cita
     ) => {
-
       if (
         !cita?.id_cita
       ) {
         return;
       }
 
-      const fechaActual =
-        obtenerFechaCita(
-          cita.fecha_inicio
-        );
-
-      if (!fechaActual) {
-        return;
-      }
-
-      const fechaInicial =
-        fechaLocalISO(
-          fechaActual
-        );
-
-      const horaInicial =
-        `${String(
-          fechaActual.getHours()
-        ).padStart(
-          2,
-          "0"
-        )}:${String(
-          fechaActual.getMinutes()
-        ).padStart(
-          2,
-          "0"
-        )}`;
-
-      const resultado =
+      const confirmacion =
         await Swal.fire({
+          icon: "warning",
+
           title:
             t(
-              "agenda.reschedule",
-              "Reagendar"
+              "agenda.cancel_appointment",
+              "Cancelar cita"
             ),
 
-          html: `
-            <div style="text-align:left;">
-              <label style="display:block;font-size:12px;font-weight:600;color:#475569;margin-bottom:6px;">
-                ${t(
-                  "agenda.new.date",
-                  "Fecha"
-                )}
-              </label>
-
-              <input
-                id="agenda-reagendar-fecha"
-                type="date"
-                value="${fechaInicial}"
-                min="${fechaLocalISO(
-                  new Date()
-                )}"
-                class="swal2-input"
-                style="width:100%;margin:0 0 14px 0;"
-              />
-
-              <label style="display:block;font-size:12px;font-weight:600;color:#475569;margin-bottom:6px;">
-                ${t(
-                  "agenda.new.time",
-                  "Hora"
-                )}
-              </label>
-
-              <input
-                id="agenda-reagendar-hora"
-                type="time"
-                value="${horaInicial}"
-                min="${
-                  formData
-                    ?.configuracion
-                    ?.hora_inicio ||
-                  "08:00"
-                }"
-                max="${
-                  formData
-                    ?.configuracion
-                    ?.hora_fin ||
-                  "17:00"
-                }"
-                step="${
-                  (
-                    Number(
-                      formData
-                        ?.configuracion
-                        ?.intervalo_minutos
-                    ) || 30
-                  ) * 60
-                }"
-                class="swal2-input"
-                style="width:100%;margin:0;"
-              />
-            </div>
-          `,
+          text:
+            t(
+              "agenda.cancel_confirm_message",
+              "¿Está seguro de cancelar esta cita?"
+            ),
 
           showCancelButton:
             true,
 
           confirmButtonText:
             t(
-              "agenda.reschedule",
-              "Reagendar"
+              "agenda.cancel_confirm",
+              "Sí, cancelar"
             ),
 
           cancelButtonText:
             t(
               "agenda.new.cancel",
-              "Cancelar"
+              "No"
             ),
 
           confirmButtonColor:
-            "#2563eb",
+            "#dc2626",
 
-          focusConfirm:
-            false,
-
-          preConfirm:
-            () => {
-              const fecha =
-                document
-                  .getElementById(
-                    "agenda-reagendar-fecha"
-                  )
-                  ?.value;
-
-              const hora =
-                document
-                  .getElementById(
-                    "agenda-reagendar-hora"
-                  )
-                  ?.value;
-
-              if (
-                !fecha ||
-                !hora
-              ) {
-
-                Swal
-                  .showValidationMessage(
-                    t(
-                      "agenda.reschedule_required",
-                      "Selecciona una fecha y una hora."
-                    )
-                  );
-
-                return false;
-              }
-
-              const nuevaFecha =
-                new Date(
-                  `${fecha}T${hora}:00`
-                );
-
-              if (
-                Number.isNaN(
-                  nuevaFecha.getTime()
-                ) ||
-                nuevaFecha.getTime() <
-                  Date.now()
-              ) {
-
-                Swal
-                  .showValidationMessage(
-                    t(
-                      "agenda.reschedule_past",
-                      "La nueva fecha y hora no pueden estar en el pasado."
-                    )
-                  );
-
-                return false;
-              }
-
-              return {
-                fecha,
-                hora,
-              };
-            },
+          reverseButtons:
+            true,
         });
 
       if (
-        !resultado.isConfirmed ||
-        !resultado.value
+        !confirmacion.isConfirmed
       ) {
         return;
       }
 
       try {
-
         Swal.fire({
           title:
             t(
-              "agenda.rescheduling",
-              "Reagendando..."
+              "agenda.canceling",
+              "Cancelando cita..."
             ),
 
           allowOutsideClick:
@@ -1100,26 +983,28 @@ export default function Agenda() {
 
           didOpen:
             () => {
-              Swal
-                .showLoading();
+              Swal.showLoading();
             },
         });
 
-        const response =
-          await reagendarAgendaCita(
-            cita.id_cita,
-            resultado.value
-          );
+        await cancelarAgendaCita(
+          cita.id_cita
+        );
 
-        const nuevaCita =
-          response?.cita;
-
-        const nuevaFecha =
-          obtenerFechaCita(
-            nuevaCita
-              ?.fecha_inicio ||
-            `${resultado.value.fecha}T${resultado.value.hora}:00`
-          );
+        // Quitarla inmediatamente del calendario,
+        // sin esperar a una recarga completa.
+        setCitasMes(
+          (citasActuales) =>
+            citasActuales.filter(
+              (item) =>
+                Number(
+                  item.id_cita
+                ) !==
+                Number(
+                  cita.id_cita
+                )
+            )
+        );
 
         setDetalleAbierto(
           false
@@ -1129,72 +1014,201 @@ export default function Agenda() {
           null
         );
 
-        if (nuevaFecha) {
-
-          setFechaSeleccionada(
-            nuevaFecha
-          );
-
-          setMesActual(
-            new Date(
-              nuevaFecha.getFullYear(),
-              nuevaFecha.getMonth(),
-              1
-            )
-          );
-        }
-
         await cargarCitas();
 
         await Swal.fire({
-          icon:
-            "success",
+          icon: "success",
 
           title:
             t(
-              "agenda.rescheduled_title",
-              "Cita reagendada"
+              "agenda.cancel_success_title",
+              "Cita cancelada"
             ),
 
           text:
-            response?.message ||
             t(
-              "agenda.rescheduled_message",
-              "La cita fue reagendada correctamente."
+              "agenda.cancel_success_message",
+              "La cita fue cancelada correctamente."
             ),
 
-          timer:
-            1800,
+          timer: 1800,
 
           showConfirmButton:
             false,
         });
 
-
       } catch (error) {
-
         console.error(
-          "ERROR REAGENDANDO CITA:",
+          "ERROR CANCELANDO CITA:",
           error
         );
 
         await Swal.fire({
-          icon:
-            "error",
+          icon: "error",
 
           title:
             t(
-              "agenda.reschedule_error_title",
-              "No se pudo reagendar"
+              "agenda.cancel_error_title",
+              "No se pudo cancelar"
             ),
 
           text:
-            error.response
-              ?.data
-              ?.message ||
+            error?.response?.data?.message ||
+            error?.response?.data?.msg ||
+            error?.message ||
             t(
-              "agenda.reschedule_error",
-              "Ocurrió un error al reagendar la cita."
+              "agenda.cancel_error_message",
+              "No se pudo cancelar la cita."
+            ),
+
+          confirmButtonText:
+            t(
+              "agenda.ok",
+              "OK"
+            ),
+        });
+      }
+    };
+
+
+  // ====================================================
+  // COMPLETAR CITA
+  // ====================================================
+
+  const completarCita =
+    async (
+      cita
+    ) => {
+      if (
+        !cita?.id_cita
+      ) {
+        return;
+      }
+
+      const confirmacion =
+        await Swal.fire({
+          icon: "question",
+
+          title:
+            t(
+              "agenda.complete",
+              "Completar cita"
+            ),
+
+          text:
+            t(
+              "agenda.complete_confirm_message",
+              "¿Desea marcar esta cita como completada?"
+            ),
+
+          showCancelButton:
+            true,
+
+          confirmButtonText:
+            t(
+              "agenda.complete_confirm",
+              "Sí, completar"
+            ),
+
+          cancelButtonText:
+            t(
+              "agenda.new.cancel",
+              "Cancelar"
+            ),
+
+          reverseButtons:
+            true,
+        });
+
+      if (
+        !confirmacion.isConfirmed
+      ) {
+        return;
+      }
+
+      try {
+        Swal.fire({
+          title:
+            t(
+              "agenda.completing",
+              "Completando cita..."
+            ),
+
+          allowOutsideClick:
+            false,
+
+          allowEscapeKey:
+            false,
+
+          didOpen:
+            () => {
+              Swal.showLoading();
+            },
+        });
+
+        await completarAgendaCita(
+          cita.id_cita
+        );
+
+        setDetalleAbierto(
+          false
+        );
+
+        setCitaSeleccionada(
+          null
+        );
+
+        await cargarCitas();
+
+        await Swal.fire({
+          icon: "success",
+
+          title:
+            t(
+              "agenda.complete_success_title",
+              "Cita completada"
+            ),
+
+          text:
+            t(
+              "agenda.complete_success_message",
+              "La cita fue marcada como completada correctamente."
+            ),
+
+          timer: 1800,
+
+          showConfirmButton:
+            false,
+        });
+
+      } catch (error) {
+        console.error(
+          "ERROR COMPLETANDO CITA:",
+          error
+        );
+
+        await Swal.fire({
+          icon: "error",
+
+          title:
+            t(
+              "agenda.complete_error_title",
+              "No se pudo completar"
+            ),
+
+          text:
+            error?.response?.data?.message ||
+            error?.response?.data?.msg ||
+            error?.message ||
+            t(
+              "agenda.complete_error_message",
+              "No se pudo completar la cita."
+            ),
+
+          confirmButtonText:
+            t(
+              "agenda.ok",
+              "OK"
             ),
         });
       }
@@ -2368,25 +2382,20 @@ export default function Agenda() {
           }}
 
           onReagendar={
-            reagendarCita
+            (cita) => {
+              console.log(
+                "REAGENDAR:",
+                cita
+              );
+            }
           }
 
           onCancelar={
-            (cita) => {
-              console.log(
-                "CANCELAR:",
-                cita
-              );
-            }
+            cancelarCita
           }
 
           onCompletar={
-            (cita) => {
-              console.log(
-                "COMPLETAR:",
-                cita
-              );
-            }
+            completarCita
           }
         />
 
