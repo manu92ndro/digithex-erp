@@ -45,9 +45,43 @@ export default function Login() {
 
     if (result.ok) {
       setErrorMsg("");
-      navigate(getDefaultRoute(result.usuario));
+
+      const empresas =
+        Array.isArray(
+          result.usuario?.empresas
+        )
+          ? result.usuario.empresas
+          : [];
+
+      // Si tiene más de una empresa,
+      // primero elegirá con cuál desea trabajar.
+      if (empresas.length > 1) {
+        navigate(
+          "/seleccionar-empresa",
+          {
+            replace: true,
+          }
+        );
+
+        return;
+      }
+
+      // Si solamente tiene una empresa,
+      // conserva el flujo actual.
+      navigate(
+        getDefaultRoute(
+          result.usuario
+        ),
+        {
+          replace: true,
+        }
+      );
+
     } else {
-      setErrorMsg(result.message || t("login_error"));
+      setErrorMsg(
+        result.message ||
+        t("login_error")
+      );
     }
   };
 
