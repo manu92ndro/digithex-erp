@@ -22,7 +22,7 @@ import Rentas from "./pages/Rentas";
 
 import CompanySettings from "./pages/CompanySettings";
 import Agenda from "./pages/Agenda";
-
+import Gastos from "./pages/Gastos";
 
 function App() {
   return (
@@ -154,6 +154,15 @@ function App() {
             <PermissionRoute permission="agenda.ver">
               <Agenda />
             </PermissionRoute>
+          }
+        />
+
+        <Route
+          path="/gastos"
+          element={
+            <PrivateRoute>
+              <Gastos />
+            </PrivateRoute>
           }
         />
 

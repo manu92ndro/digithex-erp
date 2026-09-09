@@ -1,0 +1,106 @@
+{
+  "expenses": {
+    "title": "Gastos",
+    "subtitle": "Registra gastos, pagos programados y próximos vencimientos.",
+    "tabs": {
+      "expenses": "Gastos",
+      "scheduled": "Programados",
+      "calendar": "Calendario",
+      "categories": "Categorías"
+    },
+    "summary": {
+      "paid": "Pagado este mes",
+      "pending": "Pendiente",
+      "overdue": "Vencido",
+      "scheduled": "Programado este mes"
+    },
+    "actions": {
+      "refresh": "Actualizar",
+      "new_expense": "Nuevo gasto",
+      "new_scheduled": "Nuevo programado",
+      "new_category": "Nueva categoría",
+      "pay": "Pagar",
+      "void": "Anular",
+      "enable": "Activar",
+      "disable": "Desactivar",
+      "edit": "Editar"
+    },
+    "fields": {
+      "category": "Categoría",
+      "amount": "Monto",
+      "estimated_amount": "Monto estimado",
+      "concept": "Concepto",
+      "name": "Nombre",
+      "description": "Descripción",
+      "reference": "Referencia / factura",
+      "due_date": "Fecha de vencimiento",
+      "payment_date": "Fecha de pago",
+      "payment_method": "Método de pago",
+      "status": "Estado",
+      "notes": "Observaciones",
+      "frequency": "Frecuencia",
+      "payment_day": "Día de pago",
+      "start_date": "Fecha de inicio",
+      "next_payment": "Próximo pago",
+      "category_name": "Nombre de categoría"
+    },
+    "status": {
+      "pendiente": "Pendiente",
+      "pagado": "Pagado",
+      "vencido": "Vencido",
+      "anulado": "Anulado",
+      "hoy": "Vence hoy",
+      "inactivo": "Inactivo"
+    },
+    "frequency": {
+      "unico": "Único",
+      "semanal": "Semanal",
+      "mensual": "Mensual",
+      "anual": "Anual"
+    },
+    "payment_methods": {
+      "cash": "Efectivo",
+      "card": "Tarjeta",
+      "transfer": "Transferencia",
+      "check": "Cheque",
+      "other": "Otro"
+    },
+    "common": {
+      "select": "Seleccionar",
+      "save": "Guardar",
+      "saving": "Guardando...",
+      "cancel": "Cancelar",
+      "loading": "Cargando...",
+      "today": "Hoy",
+      "active": "Activo",
+      "inactive": "Inactivo",
+      "no_description": "Sin descripción"
+    },
+    "messages": {
+      "saved": "Gasto guardado correctamente",
+      "payment_saved": "Pago registrado correctamente",
+      "voided": "Gasto anulado correctamente",
+      "scheduled_saved": "Pago programado guardado correctamente",
+      "category_saved": "Categoría guardada correctamente"
+    },
+    "errors": {
+      "load": "No se pudo cargar el módulo de gastos.",
+      "save": "No se pudo guardar la información.",
+      "payment": "No se pudo registrar el pago."
+    },
+    "empty": {
+      "expenses": "No hay gastos registrados.",
+      "scheduled": "No hay pagos programados.",
+      "categories": "No hay categorías registradas."
+    },
+    "days": {
+      "mon": "Lun",
+      "tue": "Mar",
+      "wed": "Mié",
+      "thu": "Jue",
+      "fri": "Vie",
+      "sat": "Sáb",
+      "sun": "Dom"
+    }
+  }
+}

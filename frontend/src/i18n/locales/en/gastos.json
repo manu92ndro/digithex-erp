@@ -1,0 +1,106 @@
+{
+  "expenses": {
+    "title": "Expenses",
+    "subtitle": "Track expenses, scheduled payments and upcoming due dates.",
+    "tabs": {
+      "expenses": "Expenses",
+      "scheduled": "Scheduled",
+      "calendar": "Calendar",
+      "categories": "Categories"
+    },
+    "summary": {
+      "paid": "Paid this month",
+      "pending": "Pending",
+      "overdue": "Overdue",
+      "scheduled": "Scheduled this month"
+    },
+    "actions": {
+      "refresh": "Refresh",
+      "new_expense": "New expense",
+      "new_scheduled": "New scheduled payment",
+      "new_category": "New category",
+      "pay": "Pay",
+      "void": "Void",
+      "enable": "Enable",
+      "disable": "Disable",
+      "edit": "Edit"
+    },
+    "fields": {
+      "category": "Category",
+      "amount": "Amount",
+      "estimated_amount": "Estimated amount",
+      "concept": "Concept",
+      "name": "Name",
+      "description": "Description",
+      "reference": "Reference / invoice",
+      "due_date": "Due date",
+      "payment_date": "Payment date",
+      "payment_method": "Payment method",
+      "status": "Status",
+      "notes": "Notes",
+      "frequency": "Frequency",
+      "payment_day": "Payment day",
+      "start_date": "Start date",
+      "next_payment": "Next payment",
+      "category_name": "Category name"
+    },
+    "status": {
+      "pendiente": "Pending",
+      "pagado": "Paid",
+      "vencido": "Overdue",
+      "anulado": "Void",
+      "hoy": "Due today",
+      "inactivo": "Inactive"
+    },
+    "frequency": {
+      "unico": "One time",
+      "semanal": "Weekly",
+      "mensual": "Monthly",
+      "anual": "Yearly"
+    },
+    "payment_methods": {
+      "cash": "Cash",
+      "card": "Card",
+      "transfer": "Transfer",
+      "check": "Check",
+      "other": "Other"
+    },
+    "common": {
+      "select": "Select",
+      "save": "Save",
+      "saving": "Saving...",
+      "cancel": "Cancel",
+      "loading": "Loading...",
+      "today": "Today",
+      "active": "Active",
+      "inactive": "Inactive",
+      "no_description": "No description"
+    },
+    "messages": {
+      "saved": "Expense saved successfully",
+      "payment_saved": "Payment registered successfully",
+      "voided": "Expense voided successfully",
+      "scheduled_saved": "Scheduled payment saved successfully",
+      "category_saved": "Category saved successfully"
+    },
+    "errors": {
+      "load": "Expenses could not be loaded.",
+      "save": "Could not save the information.",
+      "payment": "Could not register payment."
+    },
+    "empty": {
+      "expenses": "No expenses recorded.",
+      "scheduled": "No scheduled payments.",
+      "categories": "No categories created."
+    },
+    "days": {
+      "mon": "Mon",
+      "tue": "Tue",
+      "wed": "Wed",
+      "thu": "Thu",
+      "fri": "Fri",
+      "sat": "Sat",
+      "sun": "Sun"
+    }
+  }
+}
