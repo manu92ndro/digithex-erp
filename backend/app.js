@@ -229,6 +229,14 @@ app.use(
     "./src/modules/agenda/agenda.routes"
   )
 );
+
+app.use(
+  "/api/gastos",
+  require(
+    "./src/modules/gastos/gastos.routes"
+  )
+);
+
 // ===============================
 // Ruta no encontrada
 // ===============================
@@ -239,6 +247,8 @@ app.use((req, res) => {
     message: `Ruta no encontrada: ${req.method} ${req.originalUrl}`,
   });
 });
+
+
 
 // ===============================
 // Manejo global de errores
