@@ -1,5 +1,7 @@
 import i18n from "i18next";
-import { initReactI18next } from "react-i18next";
+import {
+  initReactI18next,
+} from "react-i18next";
 
 
 // ======================================================
@@ -19,6 +21,7 @@ import esTrucks from "./locales/es/trucks.json";
 import esUsers from "./locales/es/users.json";
 import esAudit from "./locales/es/audit.json";
 import esAgenda from "./locales/es/agenda.json";
+import esGastos from "./locales/es/gastos.json";
 
 
 // ======================================================
@@ -38,30 +41,15 @@ import enTrucks from "./locales/en/trucks.json";
 import enUsers from "./locales/en/users.json";
 import enAudit from "./locales/en/audit.json";
 import enAgenda from "./locales/en/agenda.json";
+import enGastos from "./locales/en/gastos.json";
 
 
 // ======================================================
-// UNIR TRADUCCIONES
-// ======================================================
-//
-// DigiThex utiliza un único namespace:
-// "translation"
-//
-// Por eso los componentes deben usar:
-//
-// const { t } = useTranslation();
-//
-// Ejemplo:
-//
-// t("agenda.new.title")
-//
-// NO:
-//
-// useTranslation("agenda")
-//
+// TRADUCCIONES
 // ======================================================
 
 const esTranslation = {
+
   ...esCommon,
   ...esAuth,
   ...esClients,
@@ -75,10 +63,36 @@ const esTranslation = {
   ...esUsers,
   ...esAudit,
   ...esAgenda,
+
+
+  // ====================================================
+  // GASTOS
+  // ====================================================
+  //
+  // Se registra explícitamente.
+  // Funciona tanto si gastos.json tiene:
+  //
+  // {
+  //   "expenses": {...}
+  // }
+  //
+  // como si tiene directamente:
+  //
+  // {
+  //   "title": "...",
+  //   ...
+  // }
+  //
+  // ====================================================
+
+  expenses:
+    esGastos.expenses ||
+    esGastos,
 };
 
 
 const enTranslation = {
+
   ...enCommon,
   ...enAuth,
   ...enClients,
@@ -92,51 +106,70 @@ const enTranslation = {
   ...enUsers,
   ...enAudit,
   ...enAgenda,
+
+
+  // ====================================================
+  // EXPENSES
+  // ====================================================
+
+  expenses:
+    enGastos.expenses ||
+    enGastos,
 };
 
 
 // ======================================================
-// OBTENER IDIOMA GUARDADO
+// IDIOMA GUARDADO
 // ======================================================
 
-const obtenerIdiomaGuardado = () => {
-  try {
-    const idioma =
-      localStorage.getItem("language");
+const obtenerIdiomaGuardado =
+  () => {
 
-    if (!idioma) {
+    try {
+
+      const idioma =
+        localStorage.getItem(
+          "language"
+        );
+
+
+      if (!idioma) {
+        return "es";
+      }
+
+
+      const normalizado =
+        String(
+          idioma
+        )
+          .trim()
+          .toLowerCase();
+
+
+      if (
+        normalizado === "en" ||
+        normalizado.startsWith(
+          "en-"
+        )
+      ) {
+        return "en";
+      }
+
+
+      return "es";
+
+
+    } catch (error) {
+
+      console.error(
+        "Error obteniendo idioma:",
+        error
+      );
+
+
       return "es";
     }
-
-    const idiomaNormalizado =
-      String(idioma)
-        .trim()
-        .toLowerCase();
-
-    // Permitir valores como:
-    // es
-    // es-EC
-    // en
-    // en-US
-
-    if (
-      idiomaNormalizado === "en" ||
-      idiomaNormalizado.startsWith("en-")
-    ) {
-      return "en";
-    }
-
-    return "es";
-
-  } catch (error) {
-    console.error(
-      "Error obteniendo idioma guardado:",
-      error
-    );
-
-    return "es";
-  }
-};
+  };
 
 
 const idiomaGuardado =
@@ -144,16 +177,14 @@ const idiomaGuardado =
 
 
 // ======================================================
-// CONFIGURACIÓN I18NEXT
+// INICIAR I18NEXT
 // ======================================================
 
 i18n
-  .use(initReactI18next)
+  .use(
+    initReactI18next
+  )
   .init({
-
-    // --------------------------------------------------
-    // RECURSOS
-    // --------------------------------------------------
 
     resources: {
 
@@ -170,65 +201,42 @@ i18n
     },
 
 
-    // --------------------------------------------------
-    // IDIOMA
-    // --------------------------------------------------
-
     lng:
       idiomaGuardado,
+
 
     fallbackLng:
       "es",
 
 
-    // --------------------------------------------------
-    // NAMESPACE
-    // --------------------------------------------------
-    //
-    // Todo DigiThex utiliza "translation".
-    //
-    // Esto permite:
-    //
-    // useTranslation()
-    //
-    // t("agenda.new.title")
-    //
-    // --------------------------------------------------
-
     defaultNS:
       "translation",
+
 
     ns: [
       "translation",
     ],
 
 
-    // --------------------------------------------------
-    // INTERPOLACIÓN
-    // --------------------------------------------------
-
     interpolation: {
+
       escapeValue:
         false,
+
     },
 
-
-    // --------------------------------------------------
-    // REACT
-    // --------------------------------------------------
 
     react: {
+
       useSuspense:
         false,
+
     },
 
-
-    // --------------------------------------------------
-    // CLAVES
-    // --------------------------------------------------
 
     keySeparator:
       ".",
+
 
     nsSeparator:
       ":",
@@ -237,20 +245,15 @@ i18n
 
 
 // ======================================================
-// DEBUG DE DESARROLLO
-// ======================================================
-//
-// Esto nos permite detectar inmediatamente si Agenda
-// fue cargada correctamente.
-//
-// Solo aparecerá durante desarrollo.
-//
+// DEBUG
 // ======================================================
 
-if (import.meta.env.DEV) {
+if (
+  import.meta.env.DEV
+) {
 
   console.log(
-    "================================="
+    "======================================"
   );
 
   console.log(
@@ -262,43 +265,89 @@ if (import.meta.env.DEV) {
     i18n.language
   );
 
+
   console.log(
-    "agenda.title:",
+    "ARCHIVO GASTOS ES:",
+    esGastos
+  );
+
+
+  console.log(
+    "ARCHIVO GASTOS EN:",
+    enGastos
+  );
+
+
+  console.log(
+    "OBJETO EXPENSES ES:",
+    esTranslation.expenses
+  );
+
+
+  console.log(
+    "OBJETO EXPENSES EN:",
+    enTranslation.expenses
+  );
+
+
+  console.log(
+    "expenses.title:",
     i18n.t(
-      "agenda.title"
+      "expenses.title"
     )
   );
 
+
   console.log(
-    "agenda.new.title:",
+    "expenses.subtitle:",
     i18n.t(
-      "agenda.new.title"
+      "expenses.subtitle"
     )
   );
 
+
   console.log(
-    "agenda.job_type:",
+    "expenses.tabs.expenses:",
     i18n.t(
-      "agenda.job_type"
+      "expenses.tabs.expenses"
     )
   );
 
+
   console.log(
-    "Existe agenda.title:",
+    "expenses.tabs.calendar:",
+    i18n.t(
+      "expenses.tabs.calendar"
+    )
+  );
+
+
+  console.log(
+    "expenses.summary.paid:",
+    i18n.t(
+      "expenses.summary.paid"
+    )
+  );
+
+
+  console.log(
+    "expenses.days.mon:",
+    i18n.t(
+      "expenses.days.mon"
+    )
+  );
+
+
+  console.log(
+    "EXISTE expenses.title:",
     i18n.exists(
-      "agenda.title"
+      "expenses.title"
     )
   );
 
-  console.log(
-    "Existe agenda.new.title:",
-    i18n.exists(
-      "agenda.new.title"
-    )
-  );
 
   console.log(
-    "================================="
+    "======================================"
   );
 }
 
