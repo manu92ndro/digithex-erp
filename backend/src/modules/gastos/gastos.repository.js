@@ -185,20 +185,20 @@ const obtenerProgramado = async (connection,{id_empresa,id_programado,for_update
 const crearProgramado = async (connection,d) => {
   const [r]=await connection.query(`
     INSERT INTO tb_gastos_programados
-    (id_empresa,id_categoria,nombre,descripcion,monto_estimado,frecuencia,dia_pago,
+    (id_empresa,id_categoria,nombre,descripcion,monto_estimado,frecuencia,intervalo_meses,dia_pago,
      fecha_inicio,fecha_proximo_pago,activo,creado_por,fyh_creacion)
-    VALUES(?,?,?,?,?,?,?,?,?,1,?,NOW())
+    VALUES(?,?,?,?,?,?,?,?,?,?,1,?,NOW())
   `,[d.id_empresa,d.id_categoria,d.nombre,d.descripcion||null,d.monto_estimado,d.frecuencia,
-     d.dia_pago||null,d.fecha_inicio,d.fecha_proximo_pago,d.creado_por]);
+     d.intervalo_meses||1,d.dia_pago||null,d.fecha_inicio,d.fecha_proximo_pago,d.creado_por]);
   return r.insertId;
 };
 
 const actualizarProgramado = async (connection,d) => {
   const [r]=await connection.query(`
     UPDATE tb_gastos_programados SET id_categoria=?,nombre=?,descripcion=?,monto_estimado=?,
-      frecuencia=?,dia_pago=?,fecha_inicio=?,fecha_proximo_pago=?,fyh_actualizacion=NOW()
+      frecuencia=?,intervalo_meses=?,dia_pago=?,fecha_inicio=?,fecha_proximo_pago=?,fyh_actualizacion=NOW()
     WHERE id_programado=? AND id_empresa=?
-  `,[d.id_categoria,d.nombre,d.descripcion||null,d.monto_estimado,d.frecuencia,d.dia_pago||null,
+  `,[d.id_categoria,d.nombre,d.descripcion||null,d.monto_estimado,d.frecuencia,d.intervalo_meses||1,d.dia_pago||null,
      d.fecha_inicio,d.fecha_proximo_pago,d.id_programado,d.id_empresa]);
   return r.affectedRows>0;
 };

@@ -1,7 +1,7 @@
 {
   "expenses": {
     "title": "Gastos",
-    "subtitle": "Registra gastos, pagos programados y próximos vencimientos.",
+    "subtitle": "Controla gastos, pagos recurrentes y próximos vencimientos.",
     "tabs": {
       "expenses": "Gastos",
       "scheduled": "Programados",
@@ -19,18 +19,36 @@
       "new_expense": "Nuevo gasto",
       "new_scheduled": "Nuevo programado",
       "new_category": "Nueva categoría",
-      "pay": "Pagar",
+      "pay": "Registrar pago",
       "void": "Anular",
       "enable": "Activar",
       "disable": "Desactivar",
-      "edit": "Editar"
+      "edit": "Editar",
+      "close": "Cerrar",
+      "view_day": "Ver pagos del día"
+    },
+    "filters": {
+      "search": "Buscar gasto...",
+      "all_status": "Todos los estados",
+      "all_categories": "Todas las categorías"
+    },
+    "table": {
+      "concept": "Concepto",
+      "category": "Categoría",
+      "amount": "Monto",
+      "due_date": "Vencimiento",
+      "status": "Estado",
+      "actions": "Acciones"
     },
     "fields": {
+      "record_type": "Tipo de registro",
+      "one_time": "Pago único",
+      "recurring": "Pago recurrente",
       "category": "Categoría",
       "amount": "Monto",
       "estimated_amount": "Monto estimado",
-      "concept": "Concepto",
-      "name": "Nombre",
+      "concept": "Concepto / gasto",
+      "name": "Nombre del pago",
       "description": "Descripción",
       "reference": "Referencia / factura",
       "due_date": "Fecha de vencimiento",
@@ -38,11 +56,19 @@
       "payment_method": "Método de pago",
       "status": "Estado",
       "notes": "Observaciones",
+      "repeat_every": "Se repite cada",
       "frequency": "Frecuencia",
       "payment_day": "Día de pago",
       "start_date": "Fecha de inicio",
       "next_payment": "Próximo pago",
       "category_name": "Nombre de categoría"
+    },
+    "repeat": {
+      "1": "Cada mes",
+      "3": "Cada 3 meses",
+      "6": "Cada 6 meses",
+      "9": "Cada 9 meses",
+      "12": "Cada 12 meses"
     },
     "status": {
       "pendiente": "Pendiente",
@@ -65,6 +91,34 @@
       "check": "Cheque",
       "other": "Otro"
     },
+    "calendar": {
+      "payments": "pagos",
+      "payment": "pago",
+      "total": "Total del día",
+      "no_payments": "No hay pagos para esta fecha.",
+      "day_title": "Pagos del {{date}}",
+      "outside_month": "Fuera del mes"
+    },
+    "messages": {
+      "saved": "Gasto guardado correctamente",
+      "payment_saved": "Pago registrado correctamente",
+      "voided": "Gasto anulado correctamente",
+      "scheduled_saved": "Pago programado guardado correctamente",
+      "category_saved": "Categoría guardada correctamente"
+    },
+    "confirm": {
+      "void_expense": "El gasto quedará anulado y se conservará en el historial."
+    },
+    "errors": {
+      "load": "No se pudo cargar el módulo de gastos.",
+      "save": "No se pudo guardar la información.",
+      "payment": "No se pudo registrar el pago."
+    },
+    "empty": {
+      "expenses": "No hay gastos registrados en este período.",
+      "scheduled": "No hay pagos programados.",
+      "categories": "No hay categorías registradas."
+    },
     "common": {
       "select": "Seleccionar",
       "save": "Guardar",
@@ -75,23 +129,6 @@
       "active": "Activo",
       "inactive": "Inactivo",
       "no_description": "Sin descripción"
-    },
-    "messages": {
-      "saved": "Gasto guardado correctamente",
-      "payment_saved": "Pago registrado correctamente",
-      "voided": "Gasto anulado correctamente",
-      "scheduled_saved": "Pago programado guardado correctamente",
-      "category_saved": "Categoría guardada correctamente"
-    },
-    "errors": {
-      "load": "No se pudo cargar el módulo de gastos.",
-      "save": "No se pudo guardar la información.",
-      "payment": "No se pudo registrar el pago."
-    },
-    "empty": {
-      "expenses": "No hay gastos registrados.",
-      "scheduled": "No hay pagos programados.",
-      "categories": "No hay categorías registradas."
     },
     "days": {
       "mon": "Lun",

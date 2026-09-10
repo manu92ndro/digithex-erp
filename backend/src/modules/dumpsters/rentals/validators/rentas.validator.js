@@ -7,6 +7,7 @@ const validarCrearRenta = (datos = {}) => {
     "id_camion",
     "id_material",
     "id_ubicacion",
+    "id_medio_contacto",
     "fecha_inicio",
     "dias_renta",
     "fecha_estimada_devolucion",
@@ -32,6 +33,7 @@ const validarCrearRenta = (datos = {}) => {
     idCamion: validarId(datos.id_camion, "ID del camión"),
     idMaterial: validarId(datos.id_material, "ID del material"),
     idUbicacion: validarId(datos.id_ubicacion, "ID de la ubicación"),
+    idMedioContacto: validarId(datos.id_medio_contacto, "ID del medio de contacto"),
   };
 
   const diasRenta = Number(datos.dias_renta);

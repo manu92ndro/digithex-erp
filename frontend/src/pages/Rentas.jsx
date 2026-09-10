@@ -383,6 +383,7 @@ const getProgresoRenta = (renta) => {
 
 const initialForm = {
   id_cliente: "",
+  id_medio_contacto: "",
   id_dumpster: "",
   tamano_yardas: "",
   id_camion: "",
@@ -698,6 +699,7 @@ function Rentas() {
   const [guardando, setGuardando] = useState(false);
 
   const [clientes, setClientes] = useState([]);
+  const [mediosContacto, setMediosContacto] = useState([]);
   const [dumpsters, setDumpsters] = useState([]);
   const [camiones, setCamiones] = useState([]);
   const [materiales, setMateriales] = useState([]);
@@ -828,6 +830,20 @@ function Rentas() {
       ]);
 
       setClientes(formData.clientes || []);
+      setMediosContacto(formData.mediosContacto || formData.medios_contacto || []);
+
+      if (import.meta.env.DEV) {
+        console.log("RENTAS FORM-DATA:", formData);
+        console.log("MEDIOS CONTACTO:", formData.mediosContacto || formData.medios_contacto || []);
+      }
+
+      if (import.meta.env.DEV) {
+        console.log("RENTAS FORM-DATA:", formData);
+        console.log(
+          "MEDIOS CONTACTO:",
+          formData.mediosContacto || formData.medios_contacto || []
+        );
+      }
       setDumpsters(formData.dumpsters || []);
       setCamiones(formData.camiones || []);
       setMateriales(formData.materiales || []);
@@ -877,6 +893,10 @@ function Rentas() {
 
   const ubicacionSeleccionada = ubicaciones.find(
     (u) => String(u.id_ubicacion) === String(form.id_ubicacion)
+  );
+
+  const medioContactoSeleccionado = mediosContacto.find(
+    (m) => String(m.id_medio) === String(form.id_medio_contacto)
   );
 
   const rentaBloqueada =
@@ -1154,6 +1174,8 @@ function Rentas() {
       [name]: type === "checkbox" ? checked : value,
     };
 
+    if (name === "tamano_yardas") nextForm.id_dumpster = "";
+
     if (name === "fecha_inicio" || name === "dias_renta") {
       const fechaInicio = name === "fecha_inicio" ? value : form.fecha_inicio;
       const dias = name === "dias_renta" ? value : form.dias_renta;
@@ -1207,6 +1229,7 @@ function Rentas() {
 
   const validarFormulario = () => {
     if (!form.id_cliente) return t("rentals.select_client_error");
+    if (!form.id_medio_contacto) return t("rentals.select_contact_method_error");
     if (!form.id_dumpster) return t("rentals.select_available_dumpster_error");
     if (!form.id_camion) return t("rentals.select_truck_error");
     if (!form.id_material) return t("rentals.select_material_error");
@@ -1510,13 +1533,8 @@ function Rentas() {
       return;
     }
 
-    const tipoExtra = String(
-      extraForm.tipo_extra || ""
-    ).trim();
-
-    const descripcion = String(
-      extraForm.descripcion || ""
-    ).trim();
+    const tipoExtra = String(extraForm.tipo_extra || "").trim();
+    const descripcion = String(extraForm.descripcion || "").trim();
 
     const monto = Number(
       extraForm.monto
@@ -2671,16 +2689,17 @@ const costoRetiroRegistrado =
               >
                 <div className="xl:col-span-2 space-y-4">
                   <section className="bg-white rounded-xl shadow p-5">
-                    <div className="flex items-center justify-between mb-4">
-                      <h2 className="font-semibold text-slate-800">
-                        {t("rentals.step_client")}
-                      </h2>
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+                      <div>
+                        <h2 className="font-semibold text-slate-800">{t("rentals.step_client")}</h2>
+                        <p className="text-xs text-slate-500 mt-1">{t("rentals.client_source_help")}</p>
+                      </div>
 
                       {canCreateCliente && (
                         <button
                           type="button"
                           onClick={() => setModalCliente(true)}
-                          className="inline-flex items-center gap-2 bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700"
+                          className="inline-flex items-center justify-center gap-2 bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700"
                         >
                           <UserPlus size={16} />
                           {t("new_client")}
@@ -2688,55 +2707,87 @@ const costoRetiroRegistrado =
                       )}
                     </div>
 
-                    <div className="relative">
-                      <Search
-                        size={18}
-                        className="absolute left-3 top-3 text-slate-400"
-                      />
-                      <input
-                        type="text"
-                        value={busquedaCliente}
-                        onChange={(e) => {
-                          setBusquedaCliente(e.target.value);
-                          setForm((prev) => ({ ...prev, id_cliente: "" }));
-                        }}
-                        placeholder={t("rentals.search_client_placeholder")}
-                        className="w-full border rounded-lg pl-10 pr-3 py-2"
-                      />
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="md:col-span-2">
+                        <label className="text-sm font-medium text-slate-700">{t("rentals.client_required")}</label>
+                        <div className="relative mt-1">
+                          <Search size={18} className="absolute left-3 top-3 text-slate-400" />
+                          <input
+                            type="text"
+                            value={busquedaCliente}
+                            onChange={(e) => {
+                              setBusquedaCliente(e.target.value);
+                              setForm((prev) => ({ ...prev, id_cliente: "" }));
+                            }}
+                            placeholder={t("rentals.search_client_placeholder")}
+                            className="w-full border rounded-lg pl-10 pr-3 py-2"
+                          />
 
-                      {busquedaCliente && !form.id_cliente && (
-                        <div className="absolute z-20 bg-white border rounded-lg shadow w-full mt-1 max-h-64 overflow-auto">
-                          {clientesFiltrados.map((cliente) => (
-                            <button
-                              type="button"
-                              key={cliente.id_cliente}
-                              onClick={() => seleccionarCliente(cliente)}
-                              className="w-full text-left px-4 py-2 hover:bg-slate-100 border-b"
-                            >
-                              <div className="font-medium">
-                                {cliente.nombres}
-                              </div>
-                              <div className="text-xs text-slate-500">
-                                {cliente.celular} ·{" "}
-                                {cliente.correo || t("no_email")}
-                              </div>
-                            </button>
-                          ))}
+                          {busquedaCliente && !form.id_cliente && (
+                            <div className="absolute z-20 bg-white border rounded-lg shadow-lg w-full mt-1 max-h-64 overflow-auto">
+                              {clientesFiltrados.map((cliente) => (
+                                <button
+                                  type="button"
+                                  key={cliente.id_cliente}
+                                  onClick={() => seleccionarCliente(cliente)}
+                                  className="w-full text-left px-4 py-2.5 hover:bg-slate-50 border-b last:border-b-0"
+                                >
+                                  <div className="font-medium text-slate-800">{cliente.nombres}</div>
+                                  <div className="text-xs text-slate-500 mt-0.5">
+                                    {cliente.celular} · {cliente.correo || t("no_email")}
+                                  </div>
+                                </button>
+                              ))}
 
-                          {clientesFiltrados.length === 0 && (
-                            <div className="p-3 text-sm text-slate-500">
-                              {t("rentals.no_matches")}
+                              {clientesFiltrados.length === 0 && (
+                                <div className="p-3 text-sm text-slate-500">{t("rentals.no_matches")}</div>
+                              )}
                             </div>
                           )}
                         </div>
-                      )}
+                      </div>
+
+                      <div>
+                        <label className="text-sm font-medium text-slate-700">
+                          {t("rentals.contact_method_required")}
+                        </label>
+                        <select
+                          name="id_medio_contacto"
+                          value={form.id_medio_contacto}
+                          onChange={handleChange}
+                          className="w-full border rounded-lg px-3 py-2 mt-1 bg-white"
+                          required
+                        >
+                          <option value="">{t("select")}</option>
+                          {mediosContacto.map((medio) => (
+                            <option key={medio.id_medio} value={medio.id_medio}>
+                              {medio.nombre}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
 
                     {clienteSeleccionado && (
-                      <div className="mt-3 bg-blue-50 border border-blue-100 rounded-lg p-3 text-sm">
-                        <strong>{clienteSeleccionado.nombres}</strong>
-                        <div>{clienteSeleccionado.celular}</div>
-                        <div>{clienteSeleccionado.correo || t("no_email")}</div>
+                      <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 bg-blue-50 border border-blue-100 rounded-xl p-4">
+                        <div>
+                          <div className="text-[11px] uppercase tracking-wide font-semibold text-blue-500">{t("client")}</div>
+                          <strong className="text-sm text-slate-800">{clienteSeleccionado.nombres}</strong>
+                        </div>
+                        <div>
+                          <div className="text-[11px] uppercase tracking-wide font-semibold text-blue-500">{t("phone")}</div>
+                          <div className="text-sm text-slate-700">{clienteSeleccionado.celular}</div>
+                        </div>
+                        <div>
+                          <div className="text-[11px] uppercase tracking-wide font-semibold text-blue-500">{t("email")}</div>
+                          <div className="text-sm text-slate-700 break-all">{clienteSeleccionado.correo || t("no_email")}</div>
+                        </div>
+                        <div>
+                          <div className="text-[11px] uppercase tracking-wide font-semibold text-blue-500">
+                            {t("rentals.contact_method")}
+                          </div>
+                          <div className="text-sm text-slate-700">{medioContactoSeleccionado?.nombre || "-"}</div>
+                        </div>
                       </div>
                     )}
                   </section>
@@ -2778,7 +2829,7 @@ const costoRetiroRegistrado =
                           <option value="">{t("select")}</option>
                           {dumpstersFiltrados.map((d) => (
                             <option key={d.id_dumpster} value={d.id_dumpster}>
-                              {d.codigo} · {d.tamano_yardas} {t("yard")}
+                              {d.codigo}
                             </option>
                           ))}
                         </select>
@@ -3959,6 +4010,9 @@ const costoRetiroRegistrado =
                   <p className="text-xs text-slate-500">{t("client")}</p>
                   <strong>{clienteSeleccionado?.nombres}</strong>
                   <p>{clienteSeleccionado?.celular}</p>
+                  <p className="text-xs text-slate-500 mt-1">
+                    {t("rentals.contact_method")}: {medioContactoSeleccionado?.nombre || "-"}
+                  </p>
                 </div>
 
                 <div className="bg-slate-50 border rounded-lg p-3">
