@@ -8,11 +8,6 @@
   "rentals.step_client": "1. Cliente",
   "rentals.search_client_placeholder": "Buscar cliente por nombre, teléfono o correo...",
   "rentals.no_matches": "No hay coincidencias.",
-  "rentals.client_required": "Cliente *",
-  "rentals.contact_method": "Medio de contacto",
-  "rentals.contact_method_required": "Medio de contacto *",
-  "rentals.client_source_help": "Selecciona el cliente e indica cómo nos contactó.",
-  "rentals.select_contact_method_error": "Selecciona un medio de contacto.",
   "rentals.step_dumpster": "2. Dumpster",
   "rentals.available_dumpster_required": "Dumpster disponible *",
   "rentals.step_rental_details": "3. Detalles de renta",
@@ -239,5 +234,11 @@
   "rentals.select_pickup_start_end": "Seleccione la hora de inicio y fin del retiro",
   "rentals.disposal_cost_non_negative": "El costo de disposición no puede ser negativo",
   "rentals.pickup_registered_success": "Retiro registrado. La renta fue finalizada correctamente.",
-  "rentals.pickup_register_error": "No se pudo registrar el retiro"
+  "rentals.pickup_register_error": "No se pudo registrar el retiro",
+  "rentals.deliveries": "Entregas",
+  "rentals.today": "Hoy",
+  "rentals.tomorrow": "Mañana",
+  "rentals.late": "Atrasados",
+  "rentals.status_pickup_today": "Retirar hoy",
+  "rentals.status_pickup_overdue": "Retiro atrasado"
 }

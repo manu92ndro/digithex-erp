@@ -239,5 +239,11 @@
   "rentals.select_pickup_start_end": "Select the pickup start and end time",
   "rentals.disposal_cost_non_negative": "The disposal cost cannot be negative",
   "rentals.pickup_registered_success": "Pickup registered. The rental was completed successfully.",
-  "rentals.pickup_register_error": "The pickup could not be registered"
+  "rentals.pickup_register_error": "The pickup could not be registered",
+  "rentals.deliveries": "Deliveries",
+  "rentals.today": "Today",
+  "rentals.tomorrow": "Tomorrow",
+  "rentals.late": "Late",
+  "rentals.status_pickup_today": "Pick up today",
+  "rentals.status_pickup_overdue": "Pickup overdue"
 }
