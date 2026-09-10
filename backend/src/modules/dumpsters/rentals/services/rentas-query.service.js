@@ -33,6 +33,7 @@ const obtenerFormData = async ({
     camiones,
     materiales,
     ubicaciones,
+    mediosContacto,
     impuesto,
   ] = await Promise.all([
     catalogosRepository.obtenerClientesActivos(
@@ -51,6 +52,10 @@ const obtenerFormData = async ({
 
     catalogosRepository.obtenerUbicaciones(),
 
+    catalogosRepository.obtenerMediosContacto(
+      idEmpresa
+    ),
+
     catalogosRepository.obtenerImpuestoActivo(
       idEmpresa
     ),
@@ -62,6 +67,7 @@ const obtenerFormData = async ({
     camiones,
     materiales,
     ubicaciones,
+    mediosContacto,
     impuesto,
   };
 };

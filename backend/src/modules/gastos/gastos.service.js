@@ -16,7 +16,9 @@ const fechaOk=(v)=>{
 };
 const iso=(y,m,d)=>`${String(y).padStart(4,"0")}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
 const diasMes=(y,m)=>new Date(y,m,0).getDate();
-const siguienteFecha=(actual,frecuencia,diaPago=null)=>{
+const INTERVALOS_MESES=[1,3,6,9,12];
+
+const siguienteFecha=(actual,frecuencia,diaPago=null,intervaloMeses=1)=>{
   if(!fechaOk(actual))throw err("Fecha inválida");
   const [y0,m0,d0]=actual.split("-").map(Number);
   if(frecuencia==="unico")return null;
@@ -25,7 +27,10 @@ const siguienteFecha=(actual,frecuencia,diaPago=null)=>{
     return iso(f.getFullYear(),f.getMonth()+1,f.getDate());
   }
   if(frecuencia==="mensual"){
-    let y=y0,m=m0+1;if(m>12){m=1;y++;}
+    const intervalo=INTERVALOS_MESES.includes(Number(intervaloMeses))?Number(intervaloMeses):1;
+    const baseMes=(m0-1)+intervalo;
+    const y=y0+Math.floor(baseMes/12);
+    const m=(baseMes%12)+1;
     return iso(y,m,Math.min(Number(diaPago)||d0,diasMes(y,m)));
   }
   if(frecuencia==="anual"){
@@ -51,6 +56,7 @@ const obtenerFormData=async(usuario)=>{
     categorias:await repository.listarCategorias({id_empresa,solo_activas:true}),
     metodos_pago:METODOS,
     frecuencias:FRECUENCIAS,
+    intervalos_meses:INTERVALOS_MESES,
     estados:["pendiente","pagado","anulado"]
   };
 };
@@ -204,14 +210,18 @@ const normalizarProgramado=(body)=>{
     monto_estimado:(body?.monto_estimado===null||body?.monto_estimado===""||body?.monto_estimado===undefined)
       ?null:num(body?.monto_estimado),
     frecuencia:txt(body?.frecuencia)||"mensual",
+    intervalo_meses:Number(body?.intervalo_meses||1),
     dia_pago:(body?.dia_pago===null||body?.dia_pago===""||body?.dia_pago===undefined)?null:Number(body?.dia_pago),
     fecha_inicio:txt(body?.fecha_inicio),fecha_proximo_pago:txt(body?.fecha_proximo_pago)
   };
   if(!d.id_categoria||!d.nombre||!FRECUENCIAS.includes(d.frecuencia)||!fechaOk(d.fecha_inicio)||!fechaOk(d.fecha_proximo_pago))
     throw err("Datos del pago programado no válidos");
+  if(d.frecuencia==="mensual"&&!INTERVALOS_MESES.includes(d.intervalo_meses))
+    throw err("El intervalo mensual debe ser 1, 3, 6, 9 o 12 meses");
   if(["mensual","anual"].includes(d.frecuencia)&&(!Number.isInteger(d.dia_pago)||d.dia_pago<1||d.dia_pago>31))
     throw err("El día de pago debe estar entre 1 y 31");
   if(!["mensual","anual"].includes(d.frecuencia))d.dia_pago=null;
+  if(d.frecuencia!=="mensual")d.intervalo_meses=1;
   return d;
 };
 
@@ -276,7 +286,7 @@ const pagarProgramado=async(usuario,id,body)=>{
       referencia:txt(body?.referencia,100),monto,fecha_vencimiento:venc,fecha_pago,estado:"pagado",
       metodo_pago,observaciones:txt(body?.observaciones),creado_por:id_usuario
     });
-    const sig=siguienteFecha(venc,p.frecuencia,p.dia_pago);
+    const sig=siguienteFecha(venc,p.frecuencia,p.dia_pago,p.intervalo_meses);
     await repository.actualizarProximoPago(c,{
       id_empresa,id_programado,fecha_proximo_pago:sig||venc,activo:sig?1:0
     });

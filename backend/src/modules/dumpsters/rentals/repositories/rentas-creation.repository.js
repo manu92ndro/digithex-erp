@@ -73,6 +73,30 @@ const obtenerImpuestoActivo = async (
 };
 
 // ======================================================
+// VALIDAR MEDIO DE CONTACTO
+// ======================================================
+
+const obtenerMedioContactoActivo = async (
+  conn,
+  {
+    idMedioContacto,
+    idEmpresa,
+  }
+) => {
+  const [rows] = await conn.query(
+    `SELECT id_medio, id_empresa, nombre, estado
+     FROM tb_agenda_medios_contacto
+     WHERE id_medio = ?
+       AND id_empresa = ?
+       AND estado = 1
+     LIMIT 1`,
+    [idMedioContacto, idEmpresa]
+  );
+
+  return rows[0] || null;
+};
+
+// ======================================================
 // INSERTAR RENTA
 // ======================================================
 
@@ -85,6 +109,7 @@ const insertarRenta = async (
     idCamion,
     idMaterial,
     idUbicacion,
+    idMedioContacto,
     fechaInicio,
     diasRenta,
     fechaEstimadaDevolucion,
@@ -105,6 +130,7 @@ const insertarRenta = async (
       id_camion,
       id_material,
       id_ubicacion,
+      id_medio_contacto,
       fecha_inicio,
       dias_renta,
       fecha_estimada_devolucion,
@@ -118,7 +144,7 @@ const insertarRenta = async (
     )
     VALUES
     (
-      ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+      ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
       'programada',
       ?, ?,
       NOW()
@@ -131,6 +157,7 @@ const insertarRenta = async (
       idCamion || null,
       idMaterial || null,
       idUbicacion || null,
+      idMedioContacto,
       fechaInicio,
       diasRenta,
       fechaEstimadaDevolucion,
@@ -354,6 +381,7 @@ const marcarDumpsterRentado = async (
 module.exports = {
   bloquearDumpsterDisponible,
   obtenerImpuestoActivo,
+  obtenerMedioContactoActivo,
   insertarRenta,
   insertarFinanzas,
   insertarPagoInicial,

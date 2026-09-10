@@ -1,7 +1,7 @@
 {
   "expenses": {
     "title": "Expenses",
-    "subtitle": "Track expenses, scheduled payments and upcoming due dates.",
+    "subtitle": "Track expenses, recurring payments, and upcoming due dates.",
     "tabs": {
       "expenses": "Expenses",
       "scheduled": "Scheduled",
@@ -19,18 +19,36 @@
       "new_expense": "New expense",
       "new_scheduled": "New scheduled payment",
       "new_category": "New category",
-      "pay": "Pay",
+      "pay": "Register payment",
       "void": "Void",
       "enable": "Enable",
       "disable": "Disable",
-      "edit": "Edit"
+      "edit": "Edit",
+      "close": "Close",
+      "view_day": "View day payments"
+    },
+    "filters": {
+      "search": "Search expenses...",
+      "all_status": "All statuses",
+      "all_categories": "All categories"
+    },
+    "table": {
+      "concept": "Concept",
+      "category": "Category",
+      "amount": "Amount",
+      "due_date": "Due date",
+      "status": "Status",
+      "actions": "Actions"
     },
     "fields": {
+      "record_type": "Record type",
+      "one_time": "One-time payment",
+      "recurring": "Recurring payment",
       "category": "Category",
       "amount": "Amount",
       "estimated_amount": "Estimated amount",
-      "concept": "Concept",
-      "name": "Name",
+      "concept": "Concept / expense",
+      "name": "Payment name",
       "description": "Description",
       "reference": "Reference / invoice",
       "due_date": "Due date",
@@ -38,11 +56,19 @@
       "payment_method": "Payment method",
       "status": "Status",
       "notes": "Notes",
+      "repeat_every": "Repeats every",
       "frequency": "Frequency",
       "payment_day": "Payment day",
       "start_date": "Start date",
       "next_payment": "Next payment",
       "category_name": "Category name"
+    },
+    "repeat": {
+      "1": "Every month",
+      "3": "Every 3 months",
+      "6": "Every 6 months",
+      "9": "Every 9 months",
+      "12": "Every 12 months"
     },
     "status": {
       "pendiente": "Pending",
@@ -65,6 +91,34 @@
       "check": "Check",
       "other": "Other"
     },
+    "calendar": {
+      "payments": "payments",
+      "payment": "payment",
+      "total": "Day total",
+      "no_payments": "No payments for this date.",
+      "day_title": "Payments for {{date}}",
+      "outside_month": "Outside month"
+    },
+    "messages": {
+      "saved": "Expense saved successfully",
+      "payment_saved": "Payment registered successfully",
+      "voided": "Expense voided successfully",
+      "scheduled_saved": "Scheduled payment saved successfully",
+      "category_saved": "Category saved successfully"
+    },
+    "confirm": {
+      "void_expense": "The expense will be voided and kept in history."
+    },
+    "errors": {
+      "load": "Expenses could not be loaded.",
+      "save": "Could not save the information.",
+      "payment": "Could not register the payment."
+    },
+    "empty": {
+      "expenses": "No expenses recorded in this period.",
+      "scheduled": "No scheduled payments.",
+      "categories": "No categories have been created."
+    },
     "common": {
       "select": "Select",
       "save": "Save",
@@ -75,23 +129,6 @@
       "active": "Active",
       "inactive": "Inactive",
       "no_description": "No description"
-    },
-    "messages": {
-      "saved": "Expense saved successfully",
-      "payment_saved": "Payment registered successfully",
-      "voided": "Expense voided successfully",
-      "scheduled_saved": "Scheduled payment saved successfully",
-      "category_saved": "Category saved successfully"
-    },
-    "errors": {
-      "load": "Expenses could not be loaded.",
-      "save": "Could not save the information.",
-      "payment": "Could not register payment."
-    },
-    "empty": {
-      "expenses": "No expenses recorded.",
-      "scheduled": "No scheduled payments.",
-      "categories": "No categories created."
     },
     "days": {
       "mon": "Mon",

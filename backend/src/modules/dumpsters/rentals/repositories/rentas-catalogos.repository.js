@@ -53,6 +53,26 @@ const obtenerUbicaciones = async () => {
   return rows;
 };
 
+const obtenerMediosContacto = async (idEmpresa) => {
+  const [rows] = await db.query(
+    `
+      SELECT
+        id_medio,
+        nombre
+      FROM tb_agenda_medios_contacto
+      WHERE estado = 1
+        AND (
+          id_empresa IS NULL
+          OR id_empresa = ?
+        )
+      ORDER BY nombre ASC
+    `,
+    [idEmpresa]
+  );
+
+  return rows;
+};
+
 const obtenerImpuestoActivo = async (idEmpresa) => {
   const [rows] = await db.query(
     `SELECT id_tax, nombre, tax_rate
@@ -71,5 +91,6 @@ module.exports = {
   obtenerCamionesActivos,
   obtenerMateriales,
   obtenerUbicaciones,
+  obtenerMediosContacto,
   obtenerImpuestoActivo,
 };

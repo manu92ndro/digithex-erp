@@ -279,7 +279,27 @@ const crearRenta = async ({
           );
 
         // ==================================================
-        // 6. CREAR RENTA
+        // 6. VALIDAR MEDIO DE CONTACTO
+        // ==================================================
+
+        const medioContacto = await repository.obtenerMedioContactoActivo(
+          conn,
+          {
+            idMedioContacto: validado.idMedioContacto,
+            idEmpresa,
+          }
+        );
+
+        if (!medioContacto) {
+          throw new RentaError(
+            "El medio de contacto no existe, está inactivo o no pertenece a la empresa",
+            400,
+            "MEDIO_CONTACTO_INVALIDO"
+          );
+        }
+
+        // ==================================================
+        // 7. CREAR RENTA
         // ==================================================
 
         const idRenta =
@@ -302,6 +322,9 @@ const crearRenta = async ({
 
               idUbicacion:
                 validado.idUbicacion,
+
+              idMedioContacto:
+                validado.idMedioContacto,
 
               fechaInicio:
                 datos.fecha_inicio,
