@@ -132,7 +132,42 @@ const getEstadoVisual = (renta, t) => {
         dateEnd: "bg-sky-500",
       };
 
-    case "en_uso":
+    case "en_uso": {
+      const hoy = getFechaBase(new Date());
+      const fechaRetiro = getFechaBase(renta.fecha_estimada_devolucion);
+
+      if (hoy && fechaRetiro) {
+        const dias = Math.round(
+          (fechaRetiro.getTime() - hoy.getTime()) / 86400000
+        );
+
+        if (dias < 0) {
+          return {
+            label: t("rentals.status_pickup_overdue"),
+            border: "border-red-400",
+            header: "bg-red-50",
+            badge: "bg-red-600 text-white",
+            progress: "bg-red-500",
+            button: "bg-red-600 hover:bg-red-700",
+            dateStart: "bg-green-600",
+            dateEnd: "bg-red-600",
+          };
+        }
+
+        if (dias === 0) {
+          return {
+            label: t("rentals.status_pickup_today"),
+            border: "border-amber-400",
+            header: "bg-amber-50",
+            badge: "bg-amber-100 text-amber-800",
+            progress: "bg-amber-500",
+            button: "bg-amber-600 hover:bg-amber-700",
+            dateStart: "bg-green-600",
+            dateEnd: "bg-amber-600",
+          };
+        }
+      }
+
       return {
         label: t("rentals.status_in_use"),
         border: "border-green-300",
@@ -143,6 +178,7 @@ const getEstadoVisual = (renta, t) => {
         dateStart: "bg-green-600",
         dateEnd: "bg-red-600",
       };
+    }
 
     case "finalizado":
       return {
@@ -1022,26 +1058,34 @@ function Rentas() {
           return estado === "en_uso";
         }
 
-        if (
-          filtroOperacion === "retirar"
-        ) {
-          if (estado !== "en_uso") {
-            return false;
-          }
+        if (filtroOperacion === "retirar") {
+          if (estado !== "en_uso") return false;
 
-          const alerta =
-            getAlertaOperacion(renta, t);
+          const fechaRetiro = getFechaBase(renta.fecha_estimada_devolucion);
+          const hoy = getFechaBase(new Date());
 
-          return (
-            alerta?.tipo === "hoy" ||
-            alerta?.tipo === "retraso"
+          if (!fechaRetiro || !hoy) return false;
+
+          const dias = Math.round(
+            (fechaRetiro.getTime() - hoy.getTime()) / 86400000
           );
+
+          return dias <= 1;
         }
 
-        if (
-          filtroOperacion === "entregar"
-        ) {
-          return estado === "programada";
+        if (filtroOperacion === "entregar") {
+          if (estado !== "programada") return false;
+
+          const fechaEntrega = getFechaBase(renta.fecha_inicio);
+          const hoy = getFechaBase(new Date());
+
+          if (!fechaEntrega || !hoy) return false;
+
+          const dias = Math.round(
+            (fechaEntrega.getTime() - hoy.getTime()) / 86400000
+          );
+
+          return dias <= 1;
         }
 
         if (
@@ -1057,10 +1101,7 @@ function Rentas() {
         return true;
       }
     );
-  }, [
-    rentasOperacion,
-    filtroOperacion,
-  ]);
+  }, [rentasOperacion, filtroOperacion, t]);
 
   const rentasPagosPendientes = useMemo(
     () =>
@@ -1118,34 +1159,68 @@ function Rentas() {
     }, {});
   }, [rentasOperacionFiltradas]);
 
-  const totalEnUso =
-    rentasOperacion.filter(
-      (renta) =>
-        String(
-          renta.estado || ""
-        ).toLowerCase() === "en_uso"
-    ).length;
+  const totalEnUso = rentasOperacion.filter(
+    (renta) => String(renta.estado || "").trim().toLowerCase() === "en_uso"
+  ).length;
 
-  const totalRetiroHoy =
-    rentasOperacion.filter(
-      (renta) => {
-        if (
-          String(
-            renta.estado || ""
-          ).toLowerCase() !== "en_uso"
-        ) {
-          return false;
+  const resumenOperativo = useMemo(() => {
+    const hoy = getFechaBase(new Date());
+
+    const resumen = {
+      entregasHoy: 0,
+      entregasManana: 0,
+      entregasAtrasadas: 0,
+      retirosHoy: 0,
+      retirosManana: 0,
+      retirosAtrasados: 0,
+    };
+
+    if (!hoy) return resumen;
+
+    rentasOperacion.forEach((renta) => {
+      const estado = String(renta.estado || "").trim().toLowerCase();
+
+      if (estado === "programada") {
+        const fechaEntrega = getFechaBase(renta.fecha_inicio);
+
+        if (fechaEntrega) {
+          const dias = Math.round(
+            (fechaEntrega.getTime() - hoy.getTime()) / 86400000
+          );
+
+          if (dias < 0) resumen.entregasAtrasadas += 1;
+          if (dias === 0) resumen.entregasHoy += 1;
+          if (dias === 1) resumen.entregasManana += 1;
         }
-
-        const alerta =
-          getAlertaOperacion(renta, t);
-
-        return (
-          alerta?.tipo === "hoy" ||
-          alerta?.tipo === "retraso"
-        );
       }
-    ).length;  
+
+      if (estado === "en_uso") {
+        const fechaRetiro = getFechaBase(renta.fecha_estimada_devolucion);
+
+        if (fechaRetiro) {
+          const dias = Math.round(
+            (fechaRetiro.getTime() - hoy.getTime()) / 86400000
+          );
+
+          if (dias < 0) resumen.retirosAtrasados += 1;
+          if (dias === 0) resumen.retirosHoy += 1;
+          if (dias === 1) resumen.retirosManana += 1;
+        }
+      }
+    });
+
+    return resumen;
+  }, [rentasOperacion]);
+
+  const totalEntregasOperacion =
+    resumenOperativo.entregasAtrasadas +
+    resumenOperativo.entregasHoy +
+    resumenOperativo.entregasManana;
+
+  const totalRetirosOperacion =
+    resumenOperativo.retirosAtrasados +
+    resumenOperativo.retirosHoy +
+    resumenOperativo.retirosManana;
  
   const fechaOriginalInicio =
     rentaDetalle?.fecha_inicio?.split("T")[0] || "";
@@ -3207,51 +3282,129 @@ const costoRetiroRegistrado =
 
             {tabActiva === "operacion" && (
               <section className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3">
                   <button
                     type="button"
                     onClick={() => setFiltroOperacion("todos")}
-                    className={`bg-white rounded-xl shadow p-4 text-left border ${
-                      filtroOperacion === "todos" ? "border-blue-500 ring-2 ring-blue-100" : ""
+                    className={`bg-white rounded-xl shadow p-4 text-left border transition ${
+                      filtroOperacion === "todos"
+                        ? "border-blue-500 ring-2 ring-blue-100"
+                        : "border-slate-200 hover:border-blue-200"
                     }`}
                   >
-                    <p className="text-sm text-slate-500">{t("dumpsters")}</p>
-                    <strong className="text-2xl">{dumpsters.length}</strong>
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm text-slate-500">{t("dumpsters")}</p>
+                        <strong className="text-2xl text-slate-900">{dumpsters.length}</strong>
+                      </div>
+                      <Package size={20} className="text-blue-500" />
+                    </div>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setFiltroOperacion("uso")}
-                    className={`bg-white rounded-xl shadow p-4 text-left border ${
-                      filtroOperacion === "uso" ? "border-blue-500 ring-2 ring-blue-100" : ""
+                    className={`bg-white rounded-xl shadow p-4 text-left border transition ${
+                      filtroOperacion === "uso"
+                        ? "border-blue-500 ring-2 ring-blue-100"
+                        : "border-slate-200 hover:border-green-200"
                     }`}
                   >
-                    <p className="text-sm text-slate-500">{t("rentals.in_use_rental")}</p>
-                    <strong className="text-2xl text-green-600">{totalEnUso}</strong>
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm text-slate-500">{t("rentals.in_use_rental")}</p>
+                        <strong className="text-2xl text-green-600">{totalEnUso}</strong>
+                      </div>
+                      <Truck size={20} className="text-green-600" />
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setFiltroOperacion("entregar")}
+                    className={`bg-white rounded-xl shadow p-4 text-left border transition ${
+                      filtroOperacion === "entregar"
+                        ? "border-blue-500 ring-2 ring-blue-100"
+                        : "border-slate-200 hover:border-sky-200"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm text-slate-500">{t("rentals.deliveries")}</p>
+                        <strong className="text-2xl text-sky-600">{totalEntregasOperacion}</strong>
+                      </div>
+                      <CalendarDays size={20} className="text-sky-600" />
+                    </div>
+
+                    <div className="mt-2 flex flex-wrap gap-1.5 text-[11px] font-medium">
+                      <span className="rounded-full bg-sky-50 px-2 py-1 text-sky-700">
+                        {t("rentals.today")}: {resumenOperativo.entregasHoy}
+                      </span>
+
+                      <span className="rounded-full bg-violet-50 px-2 py-1 text-violet-700">
+                        {t("rentals.tomorrow")}: {resumenOperativo.entregasManana}
+                      </span>
+
+                      {resumenOperativo.entregasAtrasadas > 0 && (
+                        <span className="rounded-full bg-red-50 px-2 py-1 text-red-700">
+                          {t("rentals.late")}: {resumenOperativo.entregasAtrasadas}
+                        </span>
+                      )}
+                    </div>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setFiltroOperacion("retirar")}
-                    className={`bg-white rounded-xl shadow p-4 text-left border ${
-                      filtroOperacion === "retirar" ? "border-blue-500 ring-2 ring-blue-100" : ""
+                    className={`bg-white rounded-xl shadow p-4 text-left border transition ${
+                      filtroOperacion === "retirar"
+                        ? "border-blue-500 ring-2 ring-blue-100"
+                        : "border-slate-200 hover:border-red-200"
                     }`}
                   >
-                    <p className="text-sm text-slate-500">{t("rentals.to_pick_up")}</p>
-                    <strong className="text-2xl text-red-600">{totalRetiroHoy}</strong>
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm text-slate-500">{t("rentals.to_pick_up")}</p>
+                        <strong className="text-2xl text-red-600">{totalRetirosOperacion}</strong>
+                      </div>
+                      <RotateCcw size={20} className="text-red-600" />
+                    </div>
+
+                    <div className="mt-2 flex flex-wrap gap-1.5 text-[11px] font-medium">
+                      <span className="rounded-full bg-amber-50 px-2 py-1 text-amber-700">
+                        {t("rentals.today")}: {resumenOperativo.retirosHoy}
+                      </span>
+
+                      <span className="rounded-full bg-violet-50 px-2 py-1 text-violet-700">
+                        {t("rentals.tomorrow")}: {resumenOperativo.retirosManana}
+                      </span>
+
+                      {resumenOperativo.retirosAtrasados > 0 && (
+                        <span className="rounded-full bg-red-50 px-2 py-1 text-red-700">
+                          {t("rentals.late")}: {resumenOperativo.retirosAtrasados}
+                        </span>
+                      )}
+                    </div>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setFiltroOperacion("pagos")}
-                    className={`bg-white rounded-xl shadow p-4 text-left border ${
-                      filtroOperacion === "pagos" ? "border-blue-500 ring-2 ring-blue-100" : ""
+                    className={`bg-white rounded-xl shadow p-4 text-left border transition ${
+                      filtroOperacion === "pagos"
+                        ? "border-blue-500 ring-2 ring-blue-100"
+                        : "border-slate-200 hover:border-orange-200"
                     }`}
                   >
-                    <p className="text-sm text-slate-500">{t("rentals.pending_payments")}</p>
-                    <strong className="text-2xl text-orange-600">
-                      {rentasPagosPendientes.length}
-                    </strong>
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm text-slate-500">{t("rentals.pending_payments")}</p>
+                        <strong className="text-2xl text-orange-600">
+                          {rentasPagosPendientes.length}
+                        </strong>
+                      </div>
+                      <DollarSign size={20} className="text-orange-600" />
+                    </div>
                   </button>
                 </div>
 
@@ -4237,9 +4390,6 @@ const costoRetiroRegistrado =
                           )}
                           
                           
-
-
-
                         </div>
 
                         {rentaDetalle.observaciones && (
