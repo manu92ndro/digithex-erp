@@ -1181,9 +1181,7 @@ const cambiarEstadoCita =
   async (
     connection,
     {
-      id_empresa,
-      id_cita,
-      estado,
+      id_empresa, id_cita, estado,
     }
   ) => {
 
