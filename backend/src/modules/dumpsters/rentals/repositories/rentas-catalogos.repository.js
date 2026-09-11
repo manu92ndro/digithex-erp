@@ -59,15 +59,20 @@ const obtenerMediosContacto = async (idEmpresa) => {
       SELECT
         id_medio,
         nombre
+
       FROM tb_agenda_medios_contacto
+
       WHERE estado = 1
         AND (
           id_empresa IS NULL
           OR id_empresa = ?
         )
+
       ORDER BY nombre ASC
     `,
-    [idEmpresa]
+    [
+      idEmpresa,
+    ]
   );
 
   return rows;
