@@ -1559,10 +1559,7 @@ function Rentas() {
 
       setModalDetalle(true);
 
-      /*
-      * Los costos se cargan después.
-      * Si fallan, no impiden abrir la renta.
-      */
+     
       try {
         await cargarCostosRenta(id);
       } catch (error) {
@@ -1699,9 +1696,7 @@ function Rentas() {
         );
 
         /*
-        * No mostramos “Error al guardar”.
-        * El registro ya existe.
-        */
+        * No mostramos “Error al guardar”.       * El registro ya existe.  */
         showError(t("rentals.extra_refresh_error"));
       }
     } catch (error) {
@@ -1846,8 +1841,6 @@ function Rentas() {
       showError(error.response?.data?.msg || t("rentals.error_update_dates"));
     }
   };
-
-  
 
   const abrirModalCancelarRenta = () => {
     if (!canCancelRenta) {

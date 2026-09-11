@@ -9,6 +9,10 @@ const {
   registrarLog,
 } = require("../shared/logging/logs");
 
+const {
+  getDefaultRoute,
+} = require("../utils/getDefaultRoute");
+
 
 // ======================================================
 // OBTENER USUARIO BASE
@@ -65,6 +69,15 @@ const obtenerEmpresasUsuario = async (
 
         ue.id_rol,
         r.rol,
+
+        ue.id_modulo_inicio
+          AS id_modulo_inicio_usuario,
+
+        r.id_modulo_inicio
+          AS id_modulo_inicio_rol,
+
+        e.id_modulo_inicio
+          AS id_modulo_inicio_empresa,
 
         CAST(
           ue.es_principal AS UNSIGNED
@@ -134,6 +147,15 @@ const obtenerUsuarioSesion = async (
         ue.id_usuario_empresa,
         ue.id_empresa,
         ue.id_rol,
+
+        ue.id_modulo_inicio
+          AS id_modulo_inicio_usuario,
+
+        r.id_modulo_inicio
+          AS id_modulo_inicio_rol,
+
+        e.id_modulo_inicio
+          AS id_modulo_inicio_empresa,
 
         CAST(
           ue.es_principal AS UNSIGNED
@@ -415,6 +437,12 @@ const construirUsuarioResponse =
         usuario.id_usuario
       );
 
+    const ruta_inicio =
+      getDefaultRoute({
+        ...usuario,
+        modulos,
+      });
+
 
     return {
       id_usuario:
@@ -462,6 +490,22 @@ const construirUsuarioResponse =
 
       rol:
         usuario.rol,
+
+
+      // ==============================
+      // PÁGINA INICIAL
+      // ==============================
+
+      ruta_inicio,
+
+      id_modulo_inicio_usuario:
+        usuario.id_modulo_inicio_usuario || null,
+
+      id_modulo_inicio_rol:
+        usuario.id_modulo_inicio_rol || null,
+
+      id_modulo_inicio_empresa:
+        usuario.id_modulo_inicio_empresa || null,
 
 
       // ==============================
@@ -516,6 +560,15 @@ const construirUsuarioResponse =
 
           rol:
             empresa.rol,
+
+          id_modulo_inicio_usuario:
+            empresa.id_modulo_inicio_usuario || null,
+
+          id_modulo_inicio_rol:
+            empresa.id_modulo_inicio_rol || null,
+
+          id_modulo_inicio_empresa:
+            empresa.id_modulo_inicio_empresa || null,
 
           es_principal:
             empresa.es_principal,
