@@ -238,12 +238,7 @@ const handleCambiarEmpresa = async (idEmpresa) => {
   const nuevoUsuario =
     resultado.usuario;
 
-  // La ruta se resuelve con la misma regla usada en Login:
-  // usuario.ruta_inicio -> primer módulo permitido -> /perfil.
-  //
-  // NO dependemos de /dashboard. Por lo tanto, aunque el
-  // nuevo rol no tenga dashboard.ver, el cambio de empresa
-  // sigue funcionando correctamente.
+ 
   const rutaDestino =
     getDefaultRoute(
       nuevoUsuario
