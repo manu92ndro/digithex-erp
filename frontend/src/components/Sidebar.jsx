@@ -1,6 +1,7 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { getImageUrl } from "../utils/imageUrl";
+import { getDefaultRoute } from "../utils/getDefaultRoute";
 
 import {
   ClipboardList,
@@ -194,7 +195,14 @@ const handleCambiarEmpresa = async (idEmpresa) => {
   const id_empresa = Number(idEmpresa);
 
   if (
-    !id_empresa ||
+    !Number.isInteger(id_empresa) ||
+    id_empresa <= 0
+  ) {
+    setSelectorEmpresasAbierto(false);
+    return;
+  }
+
+  if (
     id_empresa === Number(
       empresaActiva?.id_empresa
     )
@@ -203,22 +211,20 @@ const handleCambiarEmpresa = async (idEmpresa) => {
     return;
   }
 
-  // ====================================================
-  // 1. IR A UNA RUTA SEGURA
-  // ====================================================
+  // Cerramos el selector inmediatamente.
+  setSelectorEmpresasAbierto(false);
 
+  // Mientras se cambia de empresa vamos a una ruta neutra
+  // que no depende de permisos de módulos.
   navigate("/perfil", {
     replace: true,
   });
 
-  // ====================================================
-  // 2. CAMBIAR EMPRESA
-  // ====================================================
+    const resultado = await cambiarEmpresa(id_empresa);
 
-  const resultado =
-    await cambiarEmpresa(
-      id_empresa
-    );
+  if (!resultado?.ok) {
+    return;
+  }
 
   if (!resultado?.ok) {
     console.error(
@@ -229,48 +235,22 @@ const handleCambiarEmpresa = async (idEmpresa) => {
     return;
   }
 
-  // ====================================================
-  // 3. MÓDULOS NUEVOS
-  // ====================================================
+  const nuevoUsuario =
+    resultado.usuario;
 
-  const modulosNuevos =
-    Array.isArray(
-      resultado.usuario?.modulos
-    )
-      ? resultado.usuario.modulos
-      : [];
-
-  // ====================================================
-  // 4. BUSCAR DASHBOARD
-  // ====================================================
-
-  const moduloDashboard =
-    modulosNuevos.find(
-      (modulo) =>
-        modulo.ruta === "/dashboard"
+  // La ruta se resuelve con la misma regla usada en Login:
+  // usuario.ruta_inicio -> primer módulo permitido -> /perfil.
+  //
+  // NO dependemos de /dashboard. Por lo tanto, aunque el
+  // nuevo rol no tenga dashboard.ver, el cambio de empresa
+  // sigue funcionando correctamente.
+  const rutaDestino =
+    getDefaultRoute(
+      nuevoUsuario
     );
 
-  // ====================================================
-  // 5. RUTA DESTINO
-  // ====================================================
-
-  const primeraRutaPermitida =
-    moduloDashboard?.ruta ||
-    modulosNuevos[0]?.ruta ||
-    "/perfil";
-
-  // ====================================================
-  // 6. CERRAR SELECTOR
-  // ====================================================
-
-  setSelectorEmpresasAbierto(false);
-
-  // ====================================================
-  // 7. NAVEGAR A LA NUEVA EMPRESA
-  // ====================================================
-
   navigate(
-    primeraRutaPermitida,
+    rutaDestino,
     {
       replace: true,
     }
