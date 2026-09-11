@@ -868,10 +868,7 @@ function Rentas() {
       setClientes(formData.clientes || []);
       setMediosContacto(formData.mediosContacto || formData.medios_contacto || []);
 
-      if (import.meta.env.DEV) {
-        console.log("RENTAS FORM-DATA:", formData);
-        console.log("MEDIOS CONTACTO:", formData.mediosContacto || formData.medios_contacto || []);
-      }
+      
 
       if (import.meta.env.DEV) {
         console.log("RENTAS FORM-DATA:", formData);
@@ -2093,13 +2090,9 @@ ${t("rentals.whatsapp_pickup")}: ${formatFecha(rentaDetalle.fecha_estimada_devol
       idRenta
     );
 
-    setRentaDetalle(
-      data.renta || null
-    );
+    setRentaDetalle(data.renta || null);
 
-    setExtrasDetalle(
-      data.extras || []
-    );
+    setExtrasDetalle(data.extras || []);
 
     setPagosDetalle(
       data.pagos || []
