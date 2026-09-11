@@ -1,6 +1,8 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import Swal from "sweetalert2";
 import { getImageUrl } from "../utils/imageUrl";
+import { getDefaultRoute } from "../utils/getDefaultRoute";
 
 import {
   ClipboardList,
@@ -194,7 +196,14 @@ const handleCambiarEmpresa = async (idEmpresa) => {
   const id_empresa = Number(idEmpresa);
 
   if (
-    !id_empresa ||
+    !Number.isInteger(id_empresa) ||
+    id_empresa <= 0
+  ) {
+    setSelectorEmpresasAbierto(false);
+    return;
+  }
+
+  if (
     id_empresa === Number(
       empresaActiva?.id_empresa
     )
@@ -203,17 +212,9 @@ const handleCambiarEmpresa = async (idEmpresa) => {
     return;
   }
 
-  // ====================================================
-  // 1. IR A UNA RUTA SEGURA
-  // ====================================================
-
-  navigate("/perfil", {
-    replace: true,
-  });
-
-  // ====================================================
-  // 2. CAMBIAR EMPRESA
-  // ====================================================
+  // Cerramos el selector inmediatamente.
+  // NO navegamos a /perfil: así evitamos el parpadeo.
+  setSelectorEmpresasAbierto(false);
 
   const resultado =
     await cambiarEmpresa(
@@ -221,56 +222,34 @@ const handleCambiarEmpresa = async (idEmpresa) => {
     );
 
   if (!resultado?.ok) {
-    console.error(
-      "ERROR CAMBIANDO EMPRESA:",
-      resultado?.message
-    );
+    await Swal.fire({
+      icon: "error",
+      title: t(
+        "company_change_error",
+        "Could not change company"
+      ),
+      text:
+        resultado?.message ||
+        t(
+          "company_change_error_message",
+          "The company could not be changed."
+        ),
+      confirmButtonText: "OK",
+    });
 
     return;
   }
 
-  // ====================================================
-  // 3. MÓDULOS NUEVOS
-  // ====================================================
+  const nuevoUsuario =
+    resultado.usuario;
 
-  const modulosNuevos =
-    Array.isArray(
-      resultado.usuario?.modulos
-    )
-      ? resultado.usuario.modulos
-      : [];
-
-  // ====================================================
-  // 4. BUSCAR DASHBOARD
-  // ====================================================
-
-  const moduloDashboard =
-    modulosNuevos.find(
-      (modulo) =>
-        modulo.ruta === "/dashboard"
+  const rutaDestino =
+    getDefaultRoute(
+      nuevoUsuario
     );
 
-  // ====================================================
-  // 5. RUTA DESTINO
-  // ====================================================
-
-  const primeraRutaPermitida =
-    moduloDashboard?.ruta ||
-    modulosNuevos[0]?.ruta ||
-    "/perfil";
-
-  // ====================================================
-  // 6. CERRAR SELECTOR
-  // ====================================================
-
-  setSelectorEmpresasAbierto(false);
-
-  // ====================================================
-  // 7. NAVEGAR A LA NUEVA EMPRESA
-  // ====================================================
-
   navigate(
-    primeraRutaPermitida,
+    rutaDestino,
     {
       replace: true,
     }
