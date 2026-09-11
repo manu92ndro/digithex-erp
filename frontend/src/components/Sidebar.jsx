@@ -1,6 +1,5 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import Swal from "sweetalert2";
 import { getImageUrl } from "../utils/imageUrl";
 import { getDefaultRoute } from "../utils/getDefaultRoute";
 
@@ -213,29 +212,25 @@ const handleCambiarEmpresa = async (idEmpresa) => {
   }
 
   // Cerramos el selector inmediatamente.
-  // NO navegamos a /perfil: así evitamos el parpadeo.
   setSelectorEmpresasAbierto(false);
 
-  const resultado =
-    await cambiarEmpresa(
-      id_empresa
-    );
+  // Mientras se cambia de empresa vamos a una ruta neutra
+  // que no depende de permisos de módulos.
+  navigate("/perfil", {
+    replace: true,
+  });
+
+    const resultado = await cambiarEmpresa(id_empresa);
 
   if (!resultado?.ok) {
-    await Swal.fire({
-      icon: "error",
-      title: t(
-        "company_change_error",
-        "Could not change company"
-      ),
-      text:
-        resultado?.message ||
-        t(
-          "company_change_error_message",
-          "The company could not be changed."
-        ),
-      confirmButtonText: "OK",
-    });
+    return;
+  }
+
+  if (!resultado?.ok) {
+    console.error(
+      "ERROR CAMBIANDO EMPRESA:",
+      resultado?.message
+    );
 
     return;
   }
@@ -243,6 +238,7 @@ const handleCambiarEmpresa = async (idEmpresa) => {
   const nuevoUsuario =
     resultado.usuario;
 
+ 
   const rutaDestino =
     getDefaultRoute(
       nuevoUsuario
