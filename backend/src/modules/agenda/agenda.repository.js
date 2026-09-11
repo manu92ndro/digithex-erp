@@ -26,8 +26,11 @@ const obtenerMediosContacto =
             tb_agenda_medios_contacto
 
           WHERE
-            id_empresa = ?
-            AND estado = 1
+            estado = 1
+            AND (
+              id_empresa IS NULL
+              OR id_empresa = ?
+            )
 
           ORDER BY
             nombre ASC
@@ -244,8 +247,11 @@ const obtenerContactoPorId =
 
           LEFT JOIN
             tb_agenda_medios_contacto m
-              ON m.id_medio =
-                 c.id_medio_contacto
+              ON m.id_medio = c.id_medio_contacto
+              AND (
+                m.id_empresa IS NULL
+                OR m.id_empresa = c.id_empresa
+              )
 
           WHERE
             c.id_contacto = ?
@@ -772,6 +778,10 @@ const listarCitas =
 
             contacto.celular,
             contacto.correo,
+            contacto.id_medio_contacto,
+
+            medio.nombre
+              AS medio_contacto,
 
             c.id_tipo_cita,
             tc.nombre
@@ -781,6 +791,12 @@ const listarCitas =
 
             usuario.nombres
               AS asignado_nombre,
+
+            usuario.email
+              AS asignado_email,
+
+            usuario.celular
+              AS asignado_celular,
 
             c.titulo,
             c.descripcion,
@@ -808,8 +824,16 @@ const listarCitas =
 
           INNER JOIN
             tb_agenda_contactos contacto
-              ON contacto.id_contacto =
-                 c.id_contacto
+              ON contacto.id_contacto = c.id_contacto
+              AND contacto.id_empresa = c.id_empresa
+
+          LEFT JOIN
+            tb_agenda_medios_contacto medio
+              ON medio.id_medio = contacto.id_medio_contacto
+              AND (
+                medio.id_empresa IS NULL
+                OR medio.id_empresa = c.id_empresa
+              )
 
           INNER JOIN
             tb_agenda_tipos_cita tc
@@ -884,6 +908,12 @@ const obtenerCitaPorId =
             usuario.nombres
               AS asignado_nombre,
 
+            usuario.email
+              AS asignado_email,
+
+            usuario.celular
+              AS asignado_celular,
+
             c.titulo,
             c.descripcion,
 
@@ -915,13 +945,16 @@ const obtenerCitaPorId =
 
           INNER JOIN
             tb_agenda_contactos contacto
-              ON contacto.id_contacto =
-                 c.id_contacto
+              ON contacto.id_contacto = c.id_contacto
+              AND contacto.id_empresa = c.id_empresa
 
           LEFT JOIN
             tb_agenda_medios_contacto medio
-              ON medio.id_medio =
-                 contacto.id_medio_contacto
+              ON medio.id_medio = contacto.id_medio_contacto
+              AND (
+                medio.id_empresa IS NULL
+                OR medio.id_empresa = c.id_empresa
+              )
 
           INNER JOIN
             tb_agenda_tipos_cita tc
@@ -1080,6 +1113,67 @@ const actualizarCita =
 
 
 // ======================================================
+// CONFIGURACION EMAIL DE LA EMPRESA
+// ======================================================
+
+const obtenerConfiguracionEmailEmpresa = async (connectionOrEmpresa, idEmpresaArgumento = null) => {
+  let db = pool;
+  let idEmpresa = idEmpresaArgumento;
+
+  if (connectionOrEmpresa && typeof connectionOrEmpresa.query === "function") {
+    db = connectionOrEmpresa;
+  } else if (connectionOrEmpresa && typeof connectionOrEmpresa === "object") {
+    idEmpresa = connectionOrEmpresa.id_empresa ?? connectionOrEmpresa.idEmpresa ?? idEmpresaArgumento;
+  } else if (connectionOrEmpresa !== undefined && connectionOrEmpresa !== null) {
+    idEmpresa = connectionOrEmpresa;
+  }
+
+  const empresa = Number(idEmpresa);
+  if (!Number.isInteger(empresa) || empresa <= 0) return null;
+
+  const [rows] = await db.query(
+    `
+      SELECT
+        e.id_empresa,
+        e.nombre_empresa,
+        e.email AS email_empresa,
+        e.telefono,
+        e.telefono_secundario,
+        e.website,
+        e.direccion,
+        e.logo,
+        e.logo_public_id,
+
+        ec.color_primario,
+        ec.color_secundario,
+        ec.idioma_default,
+        ec.email_notificaciones,
+        ec.smtp_host,
+        ec.smtp_port,
+        ec.smtp_secure,
+        ec.smtp_user,
+        ec.smtp_password,
+        ec.smtp_from_name,
+        ec.smtp_reply_to
+
+      FROM tb_empresas e
+
+      LEFT JOIN tb_empresa_configuracion ec
+        ON ec.id_empresa = e.id_empresa
+
+      WHERE e.id_empresa = ?
+        AND e.estado = 1
+
+      LIMIT 1
+    `,
+    [empresa]
+  );
+
+  return rows[0] || null;
+};
+
+
+// ======================================================
 // CAMBIAR ESTADO
 // ======================================================
 
@@ -1154,6 +1248,8 @@ module.exports = {
   actualizarHorarioCita,
 
   actualizarCita,
+
+  obtenerConfiguracionEmailEmpresa,
 
   cambiarEstadoCita,
 };
