@@ -84,18 +84,32 @@ const obtenerMedioContactoActivo = async (
   }
 ) => {
   const [rows] = await conn.query(
-    `SELECT id_medio, id_empresa, nombre, estado
-     FROM tb_agenda_medios_contacto
-     WHERE id_medio = ?
-       AND id_empresa = ?
-       AND estado = 1
-     LIMIT 1`,
-    [idMedioContacto, idEmpresa]
+    `
+      SELECT
+        id_medio,
+        id_empresa,
+        nombre,
+        estado
+
+      FROM tb_agenda_medios_contacto
+
+      WHERE id_medio = ?
+        AND estado = 1
+        AND (
+          id_empresa IS NULL
+          OR id_empresa = ?
+        )
+
+      LIMIT 1
+    `,
+    [
+      idMedioContacto,
+      idEmpresa,
+    ]
   );
 
   return rows[0] || null;
 };
-
 // ======================================================
 // INSERTAR RENTA
 // ======================================================
