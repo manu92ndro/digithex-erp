@@ -1,7 +1,4 @@
-const pool = require("../../config/db");
-
 const service = require("./agenda.service");
-
 const emailService = require("./agenda-email.service");
 
 const {
@@ -20,11 +17,9 @@ const responderError = (res, error) => {
     .status(error.status || 500)
     .json({
       ok: false,
-
       code:
         error.code ||
         "AGENDA_ERROR",
-
       message:
         error.message ||
         "Error procesando agenda",
@@ -35,11 +30,21 @@ const responderError = (res, error) => {
 // ======================================================
 // FORM DATA
 // ======================================================
+//
+// IMPORTANTE:
+// No consultamos MySQL directamente desde el controller.
+// El flujo correcto es:
+//
+// Controller -> Service -> Repository -> MySQL
+//
+// Así obtenerMediosContacto() puede aplicar la regla:
+// id_empresa IS NULL OR id_empresa = empresa actual.
+// ======================================================
 
 const getFormData = async (req, res) => {
   try {
     const id_empresa = Number(
-      req.usuario.id_empresa
+      req.usuario?.id_empresa
     );
 
     if (!id_empresa) {
@@ -51,121 +56,30 @@ const getFormData = async (req, res) => {
       });
     }
 
-    // ==========================================
-    // MEDIOS DE CONTACTO
-    // ==========================================
-
-    const [mediosContacto] =
-      await pool.query(
-        `
-        SELECT
-          id_medio,
-          id_empresa,
-          nombre,
-          estado
-        FROM tb_agenda_medios_contacto
-        WHERE id_empresa = ?
-          AND estado = 1
-        ORDER BY nombre ASC
-        `,
-        [id_empresa]
+    const datos =
+      await service.obtenerFormData(
+        req.usuario
       );
 
-
-    // ==========================================
-    // TIPOS DE CITA
-    // ==========================================
-
-    const [tiposCita] =
-      await pool.query(
-        `
-        SELECT
-          id_tipo_cita,
-          id_empresa,
-          nombre,
-          duracion_minutos,
-          estado
-        FROM tb_agenda_tipos_cita
-        WHERE id_empresa = ?
-          AND estado = 1
-        ORDER BY nombre ASC
-        `,
-        [id_empresa]
-      );
-
-
-    // ==========================================
-    // USUARIOS ACTIVOS DE LA EMPRESA
-    // ==========================================
-
-    const [usuarios] =
-      await pool.query(
-        `
-        SELECT DISTINCT
-          u.id_usuario,
-          u.nombres,
-
-          ue.id_usuario_empresa,
-          ue.id_empresa,
-          ue.id_rol,
-          ue.es_principal,
-
-          r.rol
-
-        FROM tb_usuario_empresas ue
-
-        INNER JOIN tb_usuarios u
-          ON u.id_usuario = ue.id_usuario
-
-        INNER JOIN tb_roles r
-          ON r.id_rol = ue.id_rol
-
-        WHERE ue.id_empresa = ?
-          AND ue.estado = 1
-          AND u.estado = 1
-          AND r.estado = 1
-
-        ORDER BY u.nombres ASC
-        `,
-        [id_empresa]
-      );
-
-
-    // ==========================================
-    // RESPUESTA
-    // ==========================================
+    // Evita respuestas antiguas 304/cacheadas
+    // durante cambios de empresa.
+    res.set({
+      "Cache-Control":
+        "no-store, no-cache, must-revalidate, proxy-revalidate",
+      Pragma: "no-cache",
+      Expires: "0",
+    });
 
     return res.json({
       ok: true,
-
-      medios_contacto:
-        mediosContacto,
-
-      tipos_cita:
-        tiposCita,
-
-      usuarios,
-
-      configuracion: {
-        hora_inicio: "08:00",
-        hora_fin: "17:00",
-        intervalo_minutos: 30,
-      },
+      ...datos,
     });
 
   } catch (error) {
-    console.error(
-      "ERROR GET FORM DATA AGENDA:",
+    return responderError(
+      res,
       error
     );
-
-    return res.status(500).json({
-      ok: false,
-      code:
-        "AGENDA_FORM_DATA_ERROR",
-      message:
-        "Error cargando datos de la agenda",
-    });
   }
 };
 
@@ -251,10 +165,8 @@ const postCita = async (req, res) => {
       .status(201)
       .json({
         ok: true,
-
         message:
           "Cita registrada correctamente",
-
         ...resultado,
       });
 
@@ -265,8 +177,6 @@ const postCita = async (req, res) => {
     );
   }
 };
-
-
 
 
 // ======================================================
@@ -300,10 +210,8 @@ const reagendarCita = async (
 
     return res.json({
       ok: true,
-
       message:
         "Cita reagendada correctamente",
-
       cita,
     });
 
@@ -346,7 +254,6 @@ const cancelarCita = async (
 
     return res.json({
       ok: true,
-
       message:
         "Cita cancelada correctamente",
     });
@@ -390,7 +297,6 @@ const completarCita = async (
 
     return res.json({
       ok: true,
-
       message:
         "Cita completada correctamente",
     });
@@ -404,8 +310,6 @@ const completarCita = async (
 };
 
 
-
-
 // ======================================================
 // SEND APPOINTMENT CONFIRMATION EMAIL TO CLIENT
 // ======================================================
@@ -415,12 +319,10 @@ const enviarEmailCita = async (
   res
 ) => {
   try {
-
     const id_cita =
       Number(
         req.params.id_cita
       );
-
 
     if (!id_cita) {
       return res
@@ -434,7 +336,6 @@ const enviarEmailCita = async (
         });
     }
 
-
     const resultado =
       await emailService
         .enviarConfirmacionCliente(
@@ -443,18 +344,14 @@ const enviarEmailCita = async (
           req.body
         );
 
-
     return res.json({
       ok: true,
-
       message:
         "Appointment confirmation sent successfully",
-
       ...resultado,
     });
 
   } catch (error) {
-
     return responderError(
       res,
       error
