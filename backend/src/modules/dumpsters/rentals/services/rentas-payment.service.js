@@ -121,7 +121,6 @@ const anularPago = async ({
 
         const estadosBloqueados = [
           "cancelado",
-          "finalizado",
         ];
 
         if (
@@ -630,14 +629,13 @@ const registrarPago = async ({
           .trim()
           .toLowerCase();
 
-        if (
-          estadoRenta === "finalizado" ||
-          estadoRenta === "cancelado"
-        ) {
+        // La renta puede estar finalizada operativamente y seguir
+        // teniendo una deuda pendiente. Solo cancelado bloquea pagos.
+        if (estadoRenta === "cancelado") {
           throw new RentaError(
-            "No se pueden registrar pagos en una renta cerrada",
+            "No se pueden registrar pagos en una renta cancelada",
             400,
-            "RENTA_CERRADA"
+            "RENTA_CANCELADA"
           );
         }
 

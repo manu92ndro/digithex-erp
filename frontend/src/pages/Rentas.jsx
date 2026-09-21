@@ -932,9 +932,19 @@ function Rentas() {
     (m) => String(m.id_medio) === String(form.id_medio_contacto)
   );
 
+  // Una renta finalizada está cerrada OPERATIVAMENTE,
+  // pero puede seguir abierta FINANCIERAMENTE si existe saldo pendiente.
+  const estadoRentaDetalle = String(rentaDetalle?.estado || "")
+    .trim()
+    .toLowerCase();
+
   const rentaBloqueada =
-    rentaDetalle?.estado === "finalizado" ||
-    rentaDetalle?.estado === "cancelado";
+    estadoRentaDetalle === "finalizado" ||
+    estadoRentaDetalle === "cancelado";
+
+  // Para pagos solo bloqueamos rentas canceladas.
+  const pagoBloqueado =
+    estadoRentaDetalle === "cancelado";
 
   const precioBase = Number(dumpsterSeleccionado?.precio_base || 0);
   const taxRate = normalizarTaxRate(impuesto?.tax_rate);
@@ -1100,14 +1110,19 @@ function Rentas() {
     );
   }, [rentasOperacion, filtroOperacion, t]);
 
+  // Solo servicios finalizados con deuda pendiente.
   const rentasPagosPendientes = useMemo(
     () =>
-      rentas.filter(
-        (r) =>
-          r.estado !== "cancelado" &&
-          r.estado !== "finalizado" &&
+      rentas.filter((r) => {
+        const estado = String(r.estado || "")
+          .trim()
+          .toLowerCase();
+
+        return (
+          estado === "finalizado" &&
           Number(r.saldo_pendiente || 0) > 0
-      ),
+        );
+      }),
     [rentas]
   );
 
@@ -1520,13 +1535,14 @@ function Rentas() {
     };
 
   const abrirDetalleRenta = async (
-    id
+    id,
+    tabInicial = "resumen"
   ) => {
     try {
       const data =
         await getRentaDetalle(id);
 
-      setTabDetalle("resumen");
+      setTabDetalle(tabInicial);
 
       setRentaDetalle(
         data.renta
@@ -1723,7 +1739,7 @@ function Rentas() {
       return;
     }
 
-    if (rentaBloqueada) {
+    if (pagoBloqueado) {
       showError(t("rentals.closed_no_payments"));
       return;
     }
@@ -1797,7 +1813,10 @@ function Rentas() {
 
       setConceptosSeleccionados([]);
 
-      await abrirDetalleRenta(rentaDetalle.id_renta);
+      await abrirDetalleRenta(
+        rentaDetalle.id_renta,
+        "finanzas"
+      );
       await cargarDatos();
     } catch (error) {
       showError(error.response?.data?.msg || t("rentals.error_register_payment"));
@@ -3842,57 +3861,126 @@ const costoRetiroRegistrado =
 
             {tabActiva === "pagos" && (
               <section className="bg-white rounded-xl shadow p-5">
-                <h2 className="font-semibold text-slate-800 mb-4">
-                  {t("rentals.pending_payments")}
-                </h2>
+                <div className="mb-4">
+                  <h2 className="font-semibold text-slate-800">
+                    {t("rentals.pending_payments")}
+                  </h2>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Completed rentals with outstanding balance.
+                  </p>
+                </div>
 
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b bg-slate-50">
-                        <th className="text-left p-3">{t("rental")}</th>
-                        <th className="text-left p-3">{t("client")}</th>
-                        <th className="text-left p-3">{t("dumpster")}</th>
-                        <th className="text-left p-3">{t("status")}</th>
-                        <th className="text-right p-3">{t("balance_due")}</th>
+                        <th className="text-left p-3">Id Rent </th>
+                        <th className="text-left p-3">Size (Yards)</th>
+                        <th className="text-left p-3">Client Name</th>
+                        <th className="text-left p-3">Phone</th>
+                        <th className="text-left p-3">Start Date</th>
+                        <th className="text-left p-3">Return Date</th>
+                        <th className="text-right p-3">Balance Due</th>
                         <th className="text-right p-3">{t("actions")}</th>
                       </tr>
                     </thead>
 
                     <tbody>
-                      {rentasPagosPendientes.map((renta) => (
-                        <tr key={renta.id_renta} className="border-b">
-                          <td className="p-3 font-semibold">
-                            #{renta.id_renta}
-                          </td>
-                          <td className="p-3">{renta.cliente}</td>
-                          <td className="p-3">{renta.dumpster_codigo}</td>
-                          <td className="p-3">{renta.estado}</td>
-                          <td className="p-3 text-right font-bold text-red-600">
-                            ${Number(renta.saldo_pendiente || 0).toFixed(2)}
-                          </td>
-                          <td className="p-3 text-right">
-                            {canEditRenta ? (
-                              <button
-                                type="button"
-                                onClick={() => abrirDetalleRenta(renta.id_renta)}
-                                className="inline-flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg"
-                              >
-                                <CreditCard size={16} />
-                                {t("register_payment")}
-                              </button>
-                            ) : (
-                              <span className="text-xs text-slate-400">{t("read_only")}</span>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
+                      {rentasPagosPendientes.map((renta) => {
+                        const fechaRetiro = getFechaBase(
+                          renta.fecha_estimada_devolucion
+                        );
+                        const hoy = getFechaBase(new Date());
+
+                        let diasAtraso = 0;
+
+                        if (fechaRetiro && hoy) {
+                          diasAtraso = Math.floor(
+                            (hoy.getTime() - fechaRetiro.getTime()) / 86400000
+                          );
+                        }
+
+                        return (
+                          <tr
+                            key={renta.id_renta}
+                            className="border-b hover:bg-slate-50"
+                          >
+                            <td className="p-3">
+                              {renta.id_renta || "-"}
+                            </td>
+
+                            <td className="p-3">
+                              {renta.tamano_yardas || "-"} yards
+                            </td>
+
+                            <td className="p-3 font-medium text-slate-800">
+                              {renta.cliente || "-"}
+                            </td>
+
+                            <td className="p-3">
+                              {renta.celular || "-"}
+                            </td>
+
+                            <td className="p-3">
+                              {formatFecha(renta.fecha_inicio)}
+                            </td>
+
+                            <td className="p-3">
+                              <div className="flex flex-col">
+                                <span
+                                  className={
+                                    diasAtraso > 0
+                                      ? "font-semibold text-red-600"
+                                      : "text-slate-700"
+                                  }
+                                >
+                                  {formatFecha(renta.fecha_estimada_devolucion)}
+                                </span>
+
+                                {diasAtraso > 0 && (
+                                  <span className="text-xs text-red-500">
+                                    ({diasAtraso} days late)
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+
+                            <td className="p-3 text-right">
+                              <span className="inline-flex rounded-md bg-red-100 px-3 py-1 font-bold text-red-600">
+                                ${Number(renta.saldo_pendiente || 0).toFixed(2)}
+                              </span>
+                            </td>
+
+                            <td className="p-3 text-right">
+                              {canEditRenta ? (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    abrirDetalleRenta(
+                                      renta.id_renta,
+                                      "finanzas"
+                                    )
+                                  }
+                                  className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-white transition hover:bg-blue-700"
+                                >
+                                  <CreditCard size={16} />
+                                  {t("register_payment")}
+                                </button>
+                              ) : (
+                                <span className="text-xs text-slate-400">
+                                  {t("read_only")}
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
 
                       {rentasPagosPendientes.length === 0 && (
                         <tr>
                           <td
-                            colSpan="6"
-                            className="p-4 text-center text-slate-500"
+                            colSpan="8"
+                            className="p-6 text-center text-slate-500"
                           >
                             {t("no_pending_payments")}
                           </td>
@@ -4454,6 +4542,70 @@ const costoRetiroRegistrado =
                             {t("finances")}
                           </div>
 
+                          <div className="border-b bg-slate-50 p-3">
+                            <div className="grid grid-cols-2 gap-2 text-sm md:grid-cols-4">
+                              <div className="rounded-lg border bg-white p-2">
+                                <div className="text-xs text-slate-500">Rental base</div>
+                                <div className="font-bold text-slate-800">
+                                  ${Number(rentaDetalle?.subtotal_base || 0).toFixed(2)}
+                                </div>
+                              </div>
+
+                              <div className="rounded-lg border bg-white p-2">
+                                <div className="text-xs text-slate-500">Extras</div>
+                                <div className="font-bold text-orange-700">
+                                  ${Number(rentaDetalle?.total_extras || 0).toFixed(2)}
+                                </div>
+                              </div>
+
+                              <div className="rounded-lg border bg-white p-2">
+                                <div className="text-xs text-slate-500">Tax / IVA accumulated</div>
+                                <div className="font-bold text-blue-700">
+                                  ${Number(rentaDetalle?.tax_amount || 0).toFixed(2)}
+                                </div>
+                              </div>
+
+                              <div className="rounded-lg border bg-white p-2">
+                                <div className="text-xs text-slate-500">Balance due</div>
+                                <div className="font-bold text-red-600">
+                                  ${Number(saldoActualDetalle || 0).toFixed(2)}
+                                </div>
+                              </div>
+                            </div>
+
+                            {extrasPendientes.length > 0 && (
+                              <div className="mt-3 rounded-lg border border-orange-200 bg-orange-50 p-3">
+                                <div className="mb-2 flex items-center justify-between">
+                                  <span className="text-sm font-semibold text-orange-800">
+                                    Pending extra charges
+                                  </span>
+                                  <strong className="text-orange-800">
+                                    ${Number(totalExtrasPendientes || 0).toFixed(2)}
+                                  </strong>
+                                </div>
+
+                                <div className="space-y-1">
+                                  {extrasPendientes.map((extra, index) => (
+                                    <div
+                                      key={`pending-extra-summary-${extra.id_extra}`}
+                                      className="flex items-center justify-between gap-3 text-xs text-orange-900"
+                                    >
+                                      <span className="min-w-0 truncate">
+                                        Extra #{index + 1}:{" "}
+                                        {extra.descripcion ||
+                                          extra.tipo_extra ||
+                                          "Extra charge"}
+                                      </span>
+                                      <strong>
+                                        ${Number(extra.monto || 0).toFixed(2)}
+                                      </strong>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
                           <div className="divide-y max-h-[320px] overflow-y-auto">
                             {conceptosPago.length === 0 ? (
                               <div className="p-4 text-sm text-green-700 bg-green-50 font-semibold">
@@ -4514,7 +4666,7 @@ const costoRetiroRegistrado =
                                         }
                                         disabled={
                                           !canEditRenta ||
-                                          rentaBloqueada ||
+                                          pagoBloqueado ||
                                           saldoActualDetalle <= 0
                                         }
                                         className="
@@ -4671,7 +4823,7 @@ const costoRetiroRegistrado =
                           {t("register_payment")}
                         </div>
 
-                        {canEditRenta && !rentaBloqueada && saldoActualDetalle > 0 ? (
+                        {canEditRenta && !pagoBloqueado && saldoActualDetalle > 0 ? (
                           <form onSubmit={registrarPago} className="p-3 space-y-3">
 
                             <div className="rounded-lg border bg-slate-50 p-3">
@@ -4733,13 +4885,13 @@ const costoRetiroRegistrado =
                                 />
 
                                 <span className="font-semibold">
-                                  {t("apply_tax")}
+                                  {t("apply_tax")} ({(taxRateDetalle * 100).toFixed(3)}%)
                                 </span>
 
                               </div>
 
-                              <strong>
-                                {(taxRateDetalle * 100).toFixed(3)}%
+                              <strong className="text-blue-700">
+                                + ${taxPagoSeleccionado.toFixed(2)}
                               </strong>
 
                             </label>
@@ -4794,6 +4946,25 @@ const costoRetiroRegistrado =
                               className="w-full border rounded-lg px-3 py-2"
                             />
 
+                            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
+                              <div className="flex justify-between">
+                                <span>Selected concepts</span>
+                                <strong>${totalSeleccionadoPago.toFixed(2)}</strong>
+                              </div>
+
+                              <div className="mt-1 flex justify-between">
+                                <span>Tax / IVA</span>
+                                <strong>${taxPagoSeleccionado.toFixed(2)}</strong>
+                              </div>
+
+                              <div className="mt-2 flex justify-between border-t pt-2 text-sm text-slate-900">
+                                <span className="font-semibold">Total to receive</span>
+                                <strong className="text-green-700">
+                                  ${totalCobroSeleccionado.toFixed(2)}
+                                </strong>
+                              </div>
+                            </div>
+
                             <button
                               type="submit"
                               disabled={
@@ -4814,7 +4985,7 @@ const costoRetiroRegistrado =
                           </form>
                         ) : (
                           <div className="p-3 bg-slate-50 text-slate-700 font-semibold">
-                            {rentaBloqueada
+                            {pagoBloqueado
                               ? t("rentals.closed_no_payments")
                               : t("no_balance_to_pay")}
                           </div>
