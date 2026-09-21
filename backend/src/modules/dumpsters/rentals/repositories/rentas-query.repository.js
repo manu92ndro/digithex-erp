@@ -79,6 +79,63 @@ const listar = async (idEmpresa) => {
   return rows;
 };
 
+
+// ======================================================
+// LISTAR PAGOS PENDIENTES
+// Solo rentas operativamente finalizadas con deuda
+// ======================================================
+
+const listarPendientesPago = async (idEmpresa) => {
+  const [rows] = await db.query(
+    `
+    SELECT
+      r.id_renta,
+      r.fecha_inicio,
+      r.fecha_real_devolucion,
+      r.estado,
+
+      c.nombres AS cliente,
+      c.celular,
+      c.correo,
+
+      d.id_dumpster,
+      d.codigo AS dumpster_codigo,
+      d.tamano_yardas,
+
+      f.subtotal_base,
+      f.total_extras,
+      f.tax_amount,
+      f.total_final,
+      f.saldo_pendiente
+
+    FROM tb_rentas r
+
+    INNER JOIN tb_clientes c
+      ON c.id_cliente = r.id_cliente
+     AND c.id_empresa = r.id_empresa
+
+    INNER JOIN dumpsters d
+      ON d.id_dumpster = r.id_dumpster
+     AND d.id_empresa = r.id_empresa
+
+    INNER JOIN tb_renta_finanzas f
+      ON f.id_renta = r.id_renta
+     AND f.id_empresa = r.id_empresa
+
+    WHERE r.id_empresa = ?
+      AND r.estado = 'finalizado'
+      AND f.saldo_pendiente > 0
+
+    ORDER BY
+      r.fecha_real_devolucion DESC,
+      r.id_renta DESC
+    `,
+    [idEmpresa]
+  );
+
+  return rows;
+};
+
 // ======================================================
 // OBTENER DETALLE PRINCIPAL
 // ======================================================
@@ -313,6 +370,7 @@ const obtenerDetallesPago = async ({
 
 module.exports = {
   listar,
+  listarPendientesPago,
   obtenerDetalle,
   obtenerPagos,
   obtenerExtras,

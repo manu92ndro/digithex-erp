@@ -5,6 +5,7 @@ const {
   getRentasFormData,
   crearRenta,
   listarRentas,
+  listarPagosPendientes,
   obtenerRentaDetalle,
   agregarExtraRenta,
   finalizarRenta,
@@ -79,6 +80,21 @@ router.get(
   validarEstadoCuenta,
   validarPermiso("rentas.ver"),
   listarRentas
+);
+
+
+// ======================================================
+// LISTAR PAGOS PENDIENTES
+// Debe ir ANTES de /:id para que Express no interprete
+// "pending-payments" como un id de renta.
+// ======================================================
+
+router.get(
+  "/pending-payments",
+  validarJWT,
+  validarEstadoCuenta,
+  validarPermiso("rentas.ver"),
+  listarPagosPendientes
 );
 
 // ======================================================

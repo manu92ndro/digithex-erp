@@ -90,6 +90,25 @@ const listarRentas = async ({
   );
 };
 
+
+// ======================================================
+// LISTAR PAGOS PENDIENTES
+// ======================================================
+
+const listarPendientesPago = async ({
+  usuario,
+  query = {},
+}) => {
+  const idEmpresa = obtenerIdEmpresa({
+    usuario,
+    query,
+  });
+
+  return queryRepository.listarPendientesPago(
+    idEmpresa
+  );
+};
+
 // ======================================================
 // OBTENER DETALLE
 // ======================================================
@@ -157,5 +176,6 @@ const obtenerDetalle = async ({
 module.exports = {
   obtenerFormData,
   listarRentas,
+  listarPendientesPago,
   obtenerDetalle,
 };

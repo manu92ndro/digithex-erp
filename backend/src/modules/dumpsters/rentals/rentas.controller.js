@@ -130,6 +130,39 @@ const listarRentas = async (
   }
 };
 
+
+// ======================================================
+// LISTAR PAGOS PENDIENTES
+// Solo rentas finalizadas con saldo pendiente
+// ======================================================
+
+const listarPagosPendientes = async (
+  req,
+  res
+) => {
+  try {
+    const rentas =
+      await queryService.listarPendientesPago({
+        usuario:
+          req.usuario,
+
+        query:
+          req.query,
+      });
+
+    return res.json({
+      ok: true,
+      rentas,
+    });
+  } catch (error) {
+    return responderError(
+      res,
+      error,
+      "Error al listar pagos pendientes"
+    );
+  }
+};
+
 // ======================================================
 // OBTENER DETALLE
 // ======================================================
@@ -542,6 +575,7 @@ const guardarCostoRenta = async (
 module.exports = {
   getRentasFormData,
   listarRentas,
+  listarPagosPendientes,
   crearRenta,
   obtenerRentaDetalle,
   agregarExtraRenta,
