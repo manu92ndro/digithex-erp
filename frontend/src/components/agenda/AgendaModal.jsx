@@ -5,9 +5,7 @@ import {
 } from "react";
 
 import {
-  BriefcaseBusiness,
   CalendarDays,
-  ChevronDown,
   Clock3,
   Mail,
   MapPin,
@@ -15,6 +13,8 @@ import {
   UserRound,
   Users,
   X,
+  BriefcaseBusiness,
+  MessageCircle,
 } from "lucide-react";
 
 import {
@@ -38,15 +38,17 @@ const formatearFechaVisual = (
     year,
     month,
     day,
-  ] = fechaISO
-    .split("-")
-    .map(Number);
+  ] =
+    fechaISO
+      .split("-")
+      .map(Number);
 
-  const fecha = new Date(
-    year,
-    month - 1,
-    day
-  );
+  const fecha =
+    new Date(
+      year,
+      month - 1,
+      day
+    );
 
   return new Intl.DateTimeFormat(
     locale,
@@ -73,9 +75,10 @@ const formatoHora12 = (
   const [
     hora,
     minuto,
-  ] = hora24
-    .split(":")
-    .map(Number);
+  ] =
+    hora24
+      .split(":")
+      .map(Number);
 
   const periodo =
     hora >= 12
@@ -95,265 +98,154 @@ const formatoHora12 = (
 
 
 // ======================================================
-// HORARIOS
-// 08:00 AM - 05:00 PM
-// intervalos de 30 minutos
+// GENERAR HORAS DISPONIBLES
 // ======================================================
 
-const generarHorarios = () => {
-  const horarios = [];
+const generarHoras = (
+  horaInicio = "08:00",
+  horaFin = "17:00",
+  intervalo = 30
+) => {
+  const resultado = [];
 
-  const inicioMinutos =
-    8 * 60;
+  const [inicioH, inicioM] =
+    String(horaInicio)
+      .split(":")
+      .map(Number);
 
-  const finMinutos =
-    17 * 60;
+  const [finH, finM] =
+    String(horaFin)
+      .split(":")
+      .map(Number);
 
-  for (
-    let minutos = inicioMinutos;
-    minutos <= finMinutos;
-    minutos += 30
+  let actual =
+    inicioH * 60 +
+    inicioM;
+
+  const fin =
+    finH * 60 +
+    finM;
+
+  // Si el negocio cierra 17:00 y el bloque es 30 min,
+  // el último inicio disponible será 16:30.
+  while (
+    actual + intervalo <= fin
   ) {
-    const hora =
-      Math.floor(
-        minutos / 60
-      );
+    const h =
+      Math.floor(actual / 60);
 
-    const minuto =
-      minutos % 60;
+    const m =
+      actual % 60;
 
-    horarios.push(
-      `${String(hora).padStart(
-        2,
-        "0"
-      )}:${String(minuto).padStart(
-        2,
-        "0"
-      )}`
+    resultado.push(
+      `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`
     );
+
+    actual += intervalo;
   }
 
-  return horarios;
+  return resultado;
 };
 
 
-// ======================================================
-// NORMALIZAR TEXTO
-// ======================================================
-
-const normalizarTexto = (
-  texto = ""
-) =>
-  String(texto)
-    .normalize("NFD")
-    .replace(
-      /[\u0300-\u036f]/g,
-      ""
-    )
-    .trim()
-    .toLowerCase();
-
-
-// ======================================================
-// CLAVE TRADUCCIÓN TIPO DE TRABAJO
-// ======================================================
-
-const obtenerClaveTrabajo = (
-  nombre
+const construirFechaHora = (
+  fechaISO,
+  hora
 ) => {
-  const valor =
-    normalizarTexto(
-      nombre
-    );
+  if (
+    !fechaISO ||
+    !hora
+  ) {
+    return null;
+  }
 
-  const mapa = {
-    asphalt:
-      "asphalt",
+  const [year, month, day] =
+    String(fechaISO)
+      .split("T")[0]
+      .split("-")
+      .map(Number);
 
-    "block work":
-      "block_work",
+  const [hour, minute] =
+    String(hora)
+      .split(":")
+      .map(Number);
 
-    "bluestone patios":
-      "bluestone_patios",
+  if (
+    !Number.isFinite(year) ||
+    !Number.isFinite(month) ||
+    !Number.isFinite(day) ||
+    !Number.isFinite(hour) ||
+    !Number.isFinite(minute)
+  ) {
+    return null;
+  }
 
-    "brick pavers":
-      "brick_pavers",
-
-    concrete:
-      "concrete",
-
-    driveways:
-      "driveways",
-
-    landscaping:
-      "landscaping",
-
-    landscape:
-      "landscaping",
-
-    other:
-      "other",
-
-    others:
-      "other",
-
-    patios:
-      "patios",
-
-    paving:
-      "paving",
-
-    sidewalk:
-      "sidewalk",
-
-    sidewalks:
-      "sidewalk",
-
-    steps:
-      "steps",
-
-    walkway:
-      "walkways",
-
-    walkways:
-      "walkways",
-  };
-
-  return (
-    mapa[valor] ||
-    null
+  return new Date(
+    year,
+    month - 1,
+    day,
+    hour,
+    minute,
+    0,
+    0
   );
 };
 
 
-// ======================================================
-// CLAVE TRADUCCIÓN MEDIO CONTACTO
-// ======================================================
-
-const obtenerClaveMedio = (
-  nombre
+const esHoraPasada = (
+  fechaISO,
+  hora
 ) => {
-  const valor =
-    normalizarTexto(
-      nombre
+  const fechaHora =
+    construirFechaHora(
+      fechaISO,
+      hora
     );
 
-  const mapa = {
-    "llamada telefonica":
-      "phone_call",
-
-    "phone call":
-      "phone_call",
-
-    whatsapp:
-      "whatsapp",
-
-    google:
-      "google",
-
-    facebook:
-      "facebook",
-
-    instagram:
-      "instagram",
-
-    "pagina web":
-      "website",
-
-    website:
-      "website",
-
-    "correo electronico":
-      "email",
-
-    email:
-      "email",
-
-    referido:
-      "referral",
-
-    referral:
-      "referral",
-
-    "cliente anterior":
-      "previous_customer",
-
-    "previous customer":
-      "previous_customer",
-
-    otro:
-      "other",
-
-    other:
-      "other",
-  };
+  if (!fechaHora) {
+    return false;
+  }
 
   return (
-    mapa[valor] ||
-    null
+    fechaHora.getTime() <=
+    Date.now()
   );
 };
 
 
-// ======================================================
-// CLAVE TRADUCCIÓN ROLES
-// ======================================================
-
-const obtenerClaveRol = (
-  nombre
+const obtenerHorasDisponibles = (
+  fechaISO,
+  formData
 ) => {
-  const valor =
-    normalizarTexto(
-      nombre
-    );
+  const horaInicio =
+    formData
+      ?.configuracion
+      ?.hora_inicio ||
+    "08:00";
 
-  const mapa = {
-    "super admin":
-      "super_admin",
+  const horaFin =
+    formData
+      ?.configuracion
+      ?.hora_fin ||
+    "17:00";
 
-    administrador:
-      "administrator",
+  const intervalo =
+    Number(
+      formData
+        ?.configuracion
+        ?.intervalo_minutos
+    ) || 30;
 
-    administrator:
-      "administrator",
-
-    secretary:
-      "secretary",
-
-    secretaria:
-      "secretary",
-
-    contractor:
-      "contractor",
-
-    contratista:
-      "contractor",
-
-    manager:
-      "manager",
-
-    gerente:
-      "manager",
-
-    driver:
-      "driver",
-
-    chofer:
-      "driver",
-
-    contador:
-      "accountant",
-
-    contadora:
-      "accountant",
-
-    accountant:
-      "accountant",
-  };
-
-  return (
-    mapa[valor] ||
-    null
+  return generarHoras(
+    horaInicio,
+    horaFin,
+    intervalo
+  ).filter(
+    (hora) =>
+      !esHoraPasada(
+        fechaISO,
+        hora
+      )
   );
 };
 
@@ -411,18 +303,6 @@ export default function AgendaModal({
 
 
   // ====================================================
-  // HORARIOS DISPONIBLES
-  // ====================================================
-
-  const horariosDisponibles =
-    useMemo(
-      () =>
-        generarHorarios(),
-      []
-    );
-
-
-  // ====================================================
   // CARGAR DATOS INICIALES
   // ====================================================
 
@@ -430,6 +310,24 @@ export default function AgendaModal({
     if (!abierto) {
       return;
     }
+
+    const fecha =
+      fechaSeleccionada ||
+      "";
+
+    const horasDisponibles =
+      obtenerHorasDisponibles(
+        fecha,
+        formData
+      );
+
+    const horaInicial =
+      horaSeleccionada &&
+      horasDisponibles.includes(
+        horaSeleccionada
+      )
+        ? horaSeleccionada
+        : horasDisponibles[0] || "";
 
     setForm({
       contacto: "",
@@ -445,19 +343,17 @@ export default function AgendaModal({
 
       descripcion: "",
 
-      fecha:
-        fechaSeleccionada ||
-        "",
+      fecha,
 
       hora:
-        horaSeleccionada ||
-        "08:00",
+        horaInicial,
     });
 
   }, [
     abierto,
     fechaSeleccionada,
     horaSeleccionada,
+    formData,
   ]);
 
 
@@ -485,21 +381,22 @@ export default function AgendaModal({
               return;
             }
 
-            const idRol =
-              Number(
-                usuario.id_rol
-              );
-
             if (
               !mapa.has(
-                idRol
+                Number(
+                  usuario.id_rol
+                )
               )
             ) {
               mapa.set(
-                idRol,
+                Number(
+                  usuario.id_rol
+                ),
                 {
                   id_rol:
-                    idRol,
+                    Number(
+                      usuario.id_rol
+                    ),
 
                   rol:
                     usuario.rol ||
@@ -611,6 +508,24 @@ export default function AgendaModal({
 
 
   // ====================================================
+  // HORAS DISPONIBLES
+  // ====================================================
+
+  const horasDisponibles =
+    useMemo(
+      () =>
+        obtenerHorasDisponibles(
+          form.fecha,
+          formData
+        ),
+      [
+        form.fecha,
+        formData,
+      ]
+    );
+
+
+  // ====================================================
   // HANDLE CHANGE
   // ====================================================
 
@@ -629,35 +544,7 @@ export default function AgendaModal({
           anterior
         ) => ({
           ...anterior,
-          [name]:
-            value,
-        })
-      );
-    };
-
-
-  // ====================================================
-  // CAMBIO ROL
-  // ====================================================
-
-  const handleCambioRol =
-    (
-      event
-    ) => {
-      const value =
-        event.target.value;
-
-      setForm(
-        (
-          anterior
-        ) => ({
-          ...anterior,
-
-          id_rol_responsable:
-            value,
-
-          id_usuario_asignado:
-            "",
+          [name]: value,
         })
       );
     };
@@ -679,6 +566,18 @@ export default function AgendaModal({
         !form.id_tipo_cita ||
         !form.fecha ||
         !form.hora
+      ) {
+        return;
+      }
+
+      if (
+        esHoraPasada(
+          form.fecha,
+          form.hora
+        ) ||
+        !horasDisponibles.includes(
+          form.hora
+        )
       ) {
         return;
       }
@@ -761,6 +660,7 @@ export default function AgendaModal({
         backdrop-blur-[2px]
       "
     >
+
       <div
         className="
           max-h-[94vh]
@@ -818,11 +718,14 @@ export default function AgendaModal({
             </p>
           </div>
 
+
           <button
             type="button"
+
             onClick={
               onCerrar
             }
+
             className="
               rounded-lg
               p-2
@@ -847,6 +750,7 @@ export default function AgendaModal({
           onSubmit={
             handleSubmit
           }
+
           className="
             space-y-4
             p-5
@@ -891,7 +795,6 @@ export default function AgendaModal({
                 <UserRound
                   size={17}
                   className="
-                    pointer-events-none
                     absolute
                     left-3
                     top-1/2
@@ -902,17 +805,21 @@ export default function AgendaModal({
 
                 <input
                   name="contacto"
+
                   value={
                     form.contacto
                   }
+
                   onChange={
                     handleChange
                   }
+
                   placeholder={
                     t(
                       "agenda.new.full_name"
                     )
                   }
+
                   className="
                     h-11
                     w-full
@@ -958,7 +865,6 @@ export default function AgendaModal({
                 <Phone
                   size={17}
                   className="
-                    pointer-events-none
                     absolute
                     left-3
                     top-1/2
@@ -969,17 +875,21 @@ export default function AgendaModal({
 
                 <input
                   name="celular"
+
                   value={
                     form.celular
                   }
+
                   onChange={
                     handleChange
                   }
+
                   placeholder={
                     t(
                       "agenda.new.phone_placeholder"
                     )
                   }
+
                   className="
                     h-11
                     w-full
@@ -1025,7 +935,6 @@ export default function AgendaModal({
                 <Mail
                   size={17}
                   className="
-                    pointer-events-none
                     absolute
                     left-3
                     top-1/2
@@ -1036,18 +945,19 @@ export default function AgendaModal({
 
                 <input
                   type="email"
+
                   name="correo"
+
                   value={
                     form.correo
                   }
+
                   onChange={
                     handleChange
                   }
-                  placeholder={
-                    t(
-                      "agenda.new.email_placeholder"
-                    )
-                  }
+
+                  placeholder="correo@ejemplo.com"
+
                   className="
                     h-11
                     w-full
@@ -1083,8 +993,6 @@ export default function AgendaModal({
             "
           >
 
-            {/* DIRECCIÓN */}
-
             <div>
               <label
                 className="
@@ -1108,7 +1016,6 @@ export default function AgendaModal({
                 <MapPin
                   size={17}
                   className="
-                    pointer-events-none
                     absolute
                     left-3
                     top-1/2
@@ -1119,17 +1026,21 @@ export default function AgendaModal({
 
                 <input
                   name="direccion"
+
                   value={
                     form.direccion
                   }
+
                   onChange={
                     handleChange
                   }
+
                   placeholder={
                     t(
                       "agenda.new.address_placeholder"
                     )
                   }
+
                   className="
                     h-11
                     w-full
@@ -1150,8 +1061,6 @@ export default function AgendaModal({
             </div>
 
 
-            {/* MEDIO CONTACTO */}
-
             <div>
               <label
                 className="
@@ -1167,92 +1076,62 @@ export default function AgendaModal({
                 )}
               </label>
 
-              <div
+              <select
+                name="id_medio"
+
+                value={
+                  form.id_medio
+                }
+
+                onChange={
+                  handleChange
+                }
+
                 className="
-                  relative
+                  h-11
+                  w-full
+                  rounded-xl
+                  border
+                  border-slate-200
+                  bg-white
+                  px-3
+                  text-sm
+                  outline-none
+                  focus:border-blue-500
+                  focus:ring-4
+                  focus:ring-blue-100
                 "
               >
-                <select
-                  name="id_medio"
-                  value={
-                    form.id_medio
-                  }
-                  onChange={
-                    handleChange
-                  }
-                  className="
-                    h-11
-                    w-full
-                    appearance-none
-                    rounded-xl
-                    border
-                    border-slate-200
-                    bg-white
-                    px-3
-                    pr-10
-                    text-sm
-                    outline-none
-                    transition
-                    focus:border-blue-500
-                    focus:ring-4
-                    focus:ring-blue-100
-                  "
-                >
-                  <option value="">
-                    {t(
-                      "agenda.new.select"
-                    )}
-                  </option>
-
-                  {(
-                    formData
-                      ?.medios_contacto ||
-                    []
-                  ).map(
-                    (
-                      medio
-                    ) => {
-                      const clave =
-                        obtenerClaveMedio(
-                          medio.nombre
-                        );
-
-                      return (
-                        <option
-                          key={
-                            medio.id_medio
-                          }
-                          value={
-                            medio.id_medio
-                          }
-                        >
-                          {clave
-                            ? t(
-                                `agenda.contact_methods.${clave}`,
-                                {
-                                  defaultValue:
-                                    medio.nombre,
-                                }
-                              )
-                            : medio.nombre}
-                        </option>
-                      );
-                    }
+                <option value="">
+                  {t(
+                    "agenda.new.select"
                   )}
-                </select>
+                </option>
 
-                <ChevronDown
-                  size={17}
-                  className="
-                    pointer-events-none
-                    absolute
-                    right-3
-                    top-1/2
-                    -translate-y-1/2
-                    text-slate-400
-                  "
-                />
-              </div>
+                {(
+                  formData
+                    ?.medios_contacto ||
+                  []
+                ).map(
+                  (
+                    medio
+                  ) => (
+                    <option
+                      key={
+                        medio.id_medio
+                      }
+
+                      value={
+                        medio.id_medio
+                      }
+                    >
+                      {
+                        medio.nombre
+                      }
+                    </option>
+                  )
+                )}
+              </select>
             </div>
 
           </div>
@@ -1307,12 +1186,15 @@ export default function AgendaModal({
 
                 <select
                   name="id_tipo_cita"
+
                   value={
                     form.id_tipo_cita
                   }
+
                   onChange={
                     handleChange
                   }
+
                   className="
                     h-11
                     w-full
@@ -1322,10 +1204,9 @@ export default function AgendaModal({
                     border-slate-200
                     bg-white
                     pl-10
-                    pr-10
+                    pr-3
                     text-sm
                     outline-none
-                    transition
                     focus:border-blue-500
                     focus:ring-4
                     focus:ring-blue-100
@@ -1344,47 +1225,23 @@ export default function AgendaModal({
                   ).map(
                     (
                       tipo
-                    ) => {
-                      const clave =
-                        obtenerClaveTrabajo(
-                          tipo.nombre
-                        );
+                    ) => (
+                      <option
+                        key={
+                          tipo.id_tipo_cita
+                        }
 
-                      return (
-                        <option
-                          key={
-                            tipo.id_tipo_cita
-                          }
-                          value={
-                            tipo.id_tipo_cita
-                          }
-                        >
-                          {clave
-                            ? t(
-                                `agenda.job_types.${clave}`,
-                                {
-                                  defaultValue:
-                                    tipo.nombre,
-                                }
-                              )
-                            : tipo.nombre}
-                        </option>
-                      );
-                    }
+                        value={
+                          tipo.id_tipo_cita
+                        }
+                      >
+                        {
+                          tipo.nombre
+                        }
+                      </option>
+                    )
                   )}
                 </select>
-
-                <ChevronDown
-                  size={17}
-                  className="
-                    pointer-events-none
-                    absolute
-                    right-3
-                    top-1/2
-                    -translate-y-1/2
-                    text-slate-400
-                  "
-                />
               </div>
             </div>
 
@@ -1425,12 +1282,15 @@ export default function AgendaModal({
 
                 <select
                   name="id_rol_responsable"
+
                   value={
                     form.id_rol_responsable
                   }
+
                   onChange={
-                    handleCambioRol
+                    handleChange
                   }
+
                   className="
                     h-11
                     w-full
@@ -1440,10 +1300,9 @@ export default function AgendaModal({
                     border-slate-200
                     bg-white
                     pl-10
-                    pr-10
+                    pr-3
                     text-sm
                     outline-none
-                    transition
                     focus:border-blue-500
                     focus:ring-4
                     focus:ring-blue-100
@@ -1458,47 +1317,23 @@ export default function AgendaModal({
                   {rolesDisponibles.map(
                     (
                       rol
-                    ) => {
-                      const clave =
-                        obtenerClaveRol(
-                          rol.rol
-                        );
+                    ) => (
+                      <option
+                        key={
+                          rol.id_rol
+                        }
 
-                      return (
-                        <option
-                          key={
-                            rol.id_rol
-                          }
-                          value={
-                            rol.id_rol
-                          }
-                        >
-                          {clave
-                            ? t(
-                                `agenda.roles.${clave}`,
-                                {
-                                  defaultValue:
-                                    rol.rol,
-                                }
-                              )
-                            : rol.rol}
-                        </option>
-                      );
-                    }
+                        value={
+                          rol.id_rol
+                        }
+                      >
+                        {
+                          rol.rol
+                        }
+                      </option>
+                    )
                   )}
                 </select>
-
-                <ChevronDown
-                  size={17}
-                  className="
-                    pointer-events-none
-                    absolute
-                    right-3
-                    top-1/2
-                    -translate-y-1/2
-                    text-slate-400
-                  "
-                />
               </div>
             </div>
 
@@ -1520,82 +1355,66 @@ export default function AgendaModal({
                 )}
               </label>
 
-              <div
+              <select
+                name="id_usuario_asignado"
+
+                value={
+                  form.id_usuario_asignado
+                }
+
+                onChange={
+                  handleChange
+                }
+
+                disabled={
+                  !form.id_rol_responsable ||
+                  usuariosFiltrados.length === 0
+                }
+
                 className="
-                  relative
+                  h-11
+                  w-full
+                  rounded-xl
+                  border
+                  border-slate-200
+                  bg-white
+                  px-3
+                  text-sm
+                  outline-none
+                  disabled:cursor-not-allowed
+                  disabled:bg-slate-50
+                  disabled:text-slate-400
+                  focus:border-blue-500
+                  focus:ring-4
+                  focus:ring-blue-100
                 "
               >
-                <select
-                  name="id_usuario_asignado"
-                  value={
-                    form.id_usuario_asignado
-                  }
-                  onChange={
-                    handleChange
-                  }
-                  disabled={
-                    !form.id_rol_responsable ||
-                    usuariosFiltrados.length === 0
-                  }
-                  className="
-                    h-11
-                    w-full
-                    appearance-none
-                    rounded-xl
-                    border
-                    border-slate-200
-                    bg-white
-                    px-3
-                    pr-10
-                    text-sm
-                    outline-none
-                    transition
-                    disabled:cursor-not-allowed
-                    disabled:bg-slate-50
-                    disabled:text-slate-400
-                    focus:border-blue-500
-                    focus:ring-4
-                    focus:ring-blue-100
-                  "
-                >
-                  <option value="">
-                    {t(
-                      "agenda.select_responsible"
-                    )}
-                  </option>
-
-                  {usuariosFiltrados.map(
-                    (
-                      usuario
-                    ) => (
-                      <option
-                        key={
-                          usuario.id_usuario
-                        }
-                        value={
-                          usuario.id_usuario
-                        }
-                      >
-                        {
-                          usuario.nombres
-                        }
-                      </option>
-                    )
+                <option value="">
+                  {t(
+                    "agenda.select_responsible"
                   )}
-                </select>
+                </option>
 
-                <ChevronDown
-                  size={17}
-                  className="
-                    pointer-events-none
-                    absolute
-                    right-3
-                    top-1/2
-                    -translate-y-1/2
-                    text-slate-400
-                  "
-                />
-              </div>
+                {usuariosFiltrados.map(
+                  (
+                    usuario
+                  ) => (
+                    <option
+                      key={
+                        usuario.id_usuario
+                      }
+
+                      value={
+                        usuario.id_usuario
+                      }
+                    >
+                      {
+                        usuario.nombres
+                      }
+                    </option>
+                  )
+                )}
+              </select>
             </div>
 
           </div>
@@ -1622,18 +1441,23 @@ export default function AgendaModal({
 
             <textarea
               name="descripcion"
+
               value={
                 form.descripcion
               }
+
               onChange={
                 handleChange
               }
+
               rows={3}
+
               placeholder={
                 t(
                   "agenda.new.description_placeholder"
                 )
               }
+
               className="
                 w-full
                 resize-none
@@ -1691,6 +1515,7 @@ export default function AgendaModal({
                 )}
               </span>
             </div>
+
 
             <div
               className="
@@ -1776,7 +1601,6 @@ export default function AgendaModal({
                       absolute
                       left-3
                       top-1/2
-                      z-10
                       -translate-y-1/2
                       text-slate-400
                     "
@@ -1784,12 +1608,19 @@ export default function AgendaModal({
 
                   <select
                     name="hora"
+
                     value={
                       form.hora
                     }
+
                     onChange={
                       handleChange
                     }
+
+                    disabled={
+                      horasDisponibles.length === 0
+                    }
+
                     className="
                       h-11
                       w-full
@@ -1799,50 +1630,49 @@ export default function AgendaModal({
                       border-slate-200
                       bg-white
                       pl-10
-                      pr-10
+                      pr-3
                       text-sm
                       font-semibold
                       text-slate-800
                       outline-none
                       transition
+                      disabled:cursor-not-allowed
+                      disabled:bg-slate-100
+                      disabled:text-slate-400
                       focus:border-blue-500
                       focus:ring-4
                       focus:ring-blue-100
                     "
                   >
-                    {horariosDisponibles.map(
-                      (
-                        hora
-                      ) => (
-                        <option
-                          key={
-                            hora
-                          }
-                          value={
-                            hora
-                          }
-                        >
-                          {
-                            formatoHora12(
+                    {horasDisponibles.length === 0 ? (
+                      <option value="">
+                        {t(
+                          "agenda.no_hours",
+                          "No available times"
+                        )}
+                      </option>
+                    ) : (
+                      horasDisponibles.map(
+                        (hora) => (
+                          <option
+                            key={
                               hora
-                            )
-                          }
-                        </option>
+                            }
+
+                            value={
+                              hora
+                            }
+                          >
+                            {
+                              formatoHora12(
+                                hora
+                              )
+                            }
+                          </option>
+                        )
                       )
                     )}
                   </select>
-
-                  <ChevronDown
-                    size={17}
-                    className="
-                      pointer-events-none
-                      absolute
-                      right-3
-                      top-1/2
-                      -translate-y-1/2
-                      text-slate-400
-                    "
-                  />
                 </div>
               </div>
 
@@ -1866,9 +1696,11 @@ export default function AgendaModal({
           >
             <button
               type="button"
+
               onClick={
                 onCerrar
               }
+
               className="
                 rounded-xl
                 border
@@ -1887,11 +1719,14 @@ export default function AgendaModal({
               )}
             </button>
 
+
             <button
               type="submit"
+
               disabled={
                 guardando
               }
+
               className="
                 rounded-xl
                 bg-blue-600
@@ -1910,6 +1745,7 @@ export default function AgendaModal({
                 ? t(
                     "agenda.new.saving"
                   )
+
                 : t(
                     "agenda.new.save"
                   )}
@@ -1917,7 +1753,9 @@ export default function AgendaModal({
           </div>
 
         </form>
+
       </div>
+
     </div>
   );
 }

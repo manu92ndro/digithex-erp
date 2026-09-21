@@ -6,42 +6,81 @@ const pool =
 // MEDIOS DE CONTACTO
 // ======================================================
 
-const obtenerMediosContacto =
-  async (
-    connection,
-    id_empresa
-  ) => {
+const obtenerMediosContacto = async (
+  connection,
+  id_empresa
+) => {
+  const db = connection || pool;
 
-    const db =
-      connection || pool;
+  const [rows] = await db.query(
+    `
+      SELECT
+        id_medio,
+        id_empresa,
+        nombre
+      FROM tb_agenda_medios_contacto
+      WHERE estado = 1
+        AND (
+          id_empresa IS NULL
+          OR id_empresa = ?
+        )
+      ORDER BY
+        CASE
+          WHEN id_empresa IS NULL THEN 0
+          ELSE 1
+        END,
+        nombre ASC
+    `,
+    [id_empresa]
+  );
 
-    const [rows] =
-      await db.query(
-        `
-          SELECT
-            id_medio,
-            nombre
+  return rows;
+};
 
-          FROM
-            tb_agenda_medios_contacto
 
-          WHERE
-            estado = 1
-            AND (
-              id_empresa IS NULL
-              OR id_empresa = ?
-            )
+// ======================================================
+// VALIDAR MEDIO DE CONTACTO
+// ======================================================
+//
+// Regla multiempresa:
+// - id_empresa IS NULL  -> disponible para todas las empresas.
+// - id_empresa = actual -> disponible solo para esa empresa.
+// - otra empresa        -> no permitido.
+// ======================================================
 
-          ORDER BY
-            nombre ASC
-        `,
-        [
-          id_empresa,
-        ]
-      );
+const obtenerMedioContactoActivo = async (
+  connection,
+  {
+    id_empresa,
+    id_medio,
+  }
+) => {
+  const db = connection || pool;
 
-    return rows;
-  };
+  const [rows] = await db.query(
+    `
+      SELECT
+        id_medio,
+        id_empresa,
+        nombre,
+        estado
+      FROM tb_agenda_medios_contacto
+      WHERE id_medio = ?
+        AND estado = 1
+        AND (
+          id_empresa IS NULL
+          OR id_empresa = ?
+        )
+      LIMIT 1
+    `,
+    [
+      id_medio,
+      id_empresa,
+    ]
+  );
+
+  return rows[0] || null;
+};
 
 
 // ======================================================
@@ -1218,6 +1257,8 @@ const cambiarEstadoCita =
 module.exports = {
 
   obtenerMediosContacto,
+
+  obtenerMedioContactoActivo,
 
   obtenerTiposCita,
 

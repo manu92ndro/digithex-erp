@@ -51,11 +51,6 @@ export const cambiarEmpresaUser = async (
   return data;
 };
 
-
-// ======================================================
-// LOGOUT
-// ======================================================
-
 export const logoutUser = async () => {
   const { data } =
     await api.post(

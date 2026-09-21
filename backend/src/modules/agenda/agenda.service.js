@@ -708,6 +708,102 @@ const crearCita =
 
 
       // ==================================================
+      // NO PERMITIR CITAS EN EL PASADO
+      // ==================================================
+
+      const inicioCrear =
+        convertirADate(
+          fecha_inicio
+        );
+
+      const finCrear =
+        convertirADate(
+          fecha_fin
+        );
+
+      if (
+        !inicioCrear ||
+        !finCrear
+      ) {
+        const error =
+          new Error(
+            "La fecha u hora de la cita no es válida"
+          );
+
+        error.status = 400;
+        error.code =
+          "AGENDA_FECHA_INVALIDA";
+
+        throw error;
+      }
+
+      if (
+        inicioCrear.getTime() <=
+        Date.now()
+      ) {
+        const error =
+          new Error(
+            "No se puede crear una cita en una fecha u hora pasada"
+          );
+
+        error.status = 400;
+        error.code =
+          "AGENDA_FECHA_PASADA";
+
+        throw error;
+      }
+
+
+      // ==================================================
+      // VALIDAR HORARIO DE OPERACIÓN
+      // ==================================================
+
+      const minutosInicioCrear =
+        inicioCrear.getHours() * 60 +
+        inicioCrear.getMinutes();
+
+      const minutosFinCrear =
+        finCrear.getHours() * 60 +
+        finCrear.getMinutes();
+
+      const [horaInicioAgendaCrear, minutoInicioAgendaCrear] =
+        HORA_INICIO
+          .split(":")
+          .map(Number);
+
+      const [horaFinAgendaCrear, minutoFinAgendaCrear] =
+        HORA_FIN
+          .split(":")
+          .map(Number);
+
+      const limiteInicioCrear =
+        horaInicioAgendaCrear * 60 +
+        minutoInicioAgendaCrear;
+
+      const limiteFinCrear =
+        horaFinAgendaCrear * 60 +
+        minutoFinAgendaCrear;
+
+      if (
+        minutosInicioCrear <
+          limiteInicioCrear ||
+        minutosFinCrear >
+          limiteFinCrear
+      ) {
+        const error =
+          new Error(
+            `La cita debe estar dentro del horario ${HORA_INICIO} - ${HORA_FIN}`
+          );
+
+        error.status = 400;
+        error.code =
+          "AGENDA_FUERA_HORARIO";
+
+        throw error;
+      }
+
+
+      // ==================================================
       // VALIDAR TIPO DE TRABAJO
       // ==================================================
 

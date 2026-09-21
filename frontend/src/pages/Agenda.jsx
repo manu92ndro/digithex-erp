@@ -488,6 +488,141 @@ export default function Agenda() {
         fechaISO,
       ]
     );
+  const normalizarFechaAgenda = (fecha) => {
+  if (!fecha) {
+    return null;
+  }
+
+  if (fecha instanceof Date) {
+    return new Date(
+      fecha.getFullYear(),
+      fecha.getMonth(),
+      fecha.getDate()
+    );
+  }
+
+  const partes = String(fecha)
+    .split("T")[0]
+    .split("-")
+    .map(Number);
+
+  if (
+    partes.length !== 3 ||
+    partes.some((valor) => !Number.isFinite(valor))
+  ) {
+    return null;
+  }
+
+  return new Date(
+    partes[0],
+    partes[1] - 1,
+    partes[2]
+  );
+};
+
+
+const construirFechaHoraAgenda = (fecha, hora) => {
+  const fechaBase = normalizarFechaAgenda(fecha);
+
+  if (!fechaBase || !hora) {
+    return null;
+  }
+
+  const [horas, minutos] =
+    String(hora)
+      .split(":")
+      .map(Number);
+
+  if (
+    !Number.isFinite(horas) ||
+    !Number.isFinite(minutos)
+  ) {
+    return null;
+  }
+
+  return new Date(
+    fechaBase.getFullYear(),
+    fechaBase.getMonth(),
+    fechaBase.getDate(),
+    horas,
+    minutos,
+    0,
+    0
+  );
+};
+
+
+const esHoraPasada = (fecha, hora) => {
+  const fechaHora =
+    construirFechaHoraAgenda(
+      fecha,
+      hora
+    );
+
+  if (!fechaHora) {
+    return false;
+  }
+
+  return (
+    fechaHora.getTime() <=
+    Date.now()
+  );
+};
+
+
+const obtenerPrimeraHoraDisponible = ({
+  fecha,
+  horaInicio = "08:00",
+  horaFin = "17:00",
+  intervalo = 30,
+}) => {
+  const [inicioH, inicioM] =
+    String(horaInicio)
+      .split(":")
+      .map(Number);
+
+  const [finH, finM] =
+    String(horaFin)
+      .split(":")
+      .map(Number);
+
+  let actual =
+    inicioH * 60 +
+    inicioM;
+
+  const fin =
+    finH * 60 +
+    finM;
+
+  // La cita ocupa al menos un bloque.
+  // Por eso el último inicio válido debe terminar
+  // antes o exactamente a la hora de cierre.
+  while (
+    actual + intervalo <= fin
+  ) {
+    const h =
+      Math.floor(actual / 60);
+
+    const m =
+      actual % 60;
+
+    const hora =
+      `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+
+    if (
+      !esHoraPasada(
+        fecha,
+        hora
+      )
+    ) {
+      return hora;
+    }
+
+    actual += intervalo;
+  }
+
+  return null;
+};
 
 
   // ====================================================
@@ -775,11 +910,7 @@ export default function Agenda() {
 
   const abrirNuevaCita =
     (
-      hora =
-        formData
-          ?.configuracion
-          ?.hora_inicio ||
-        "08:00"
+      hora = null
     ) => {
       if (
         esFechaPasada(
@@ -789,8 +920,78 @@ export default function Agenda() {
         return;
       }
 
+      const horaInicio =
+        formData
+          ?.configuracion
+          ?.hora_inicio ||
+        "08:00";
+
+      const horaFin =
+        formData
+          ?.configuracion
+          ?.hora_fin ||
+        "17:00";
+
+      const intervalo =
+        Number(
+          formData
+            ?.configuracion
+            ?.intervalo_minutos
+        ) || 30;
+
+      let horaFinal =
+        hora;
+
+      if (
+        !horaFinal
+      ) {
+        horaFinal =
+          obtenerPrimeraHoraDisponible({
+            fecha:
+              fechaSeleccionada,
+
+            horaInicio,
+
+            horaFin,
+
+            intervalo,
+          });
+      }
+
+      if (
+        !horaFinal ||
+        esHoraPasada(
+          fechaSeleccionada,
+          horaFinal
+        )
+      ) {
+        Swal.fire({
+          icon: "info",
+
+          title:
+            t(
+              "agenda.time_unavailable_title",
+              "Hora no disponible"
+            ),
+
+          text:
+            t(
+              "agenda.time_unavailable_message",
+              "La hora seleccionada ya pasó. Seleccione una hora futura."
+            ),
+
+          confirmButtonText:
+            t(
+              "agenda.ok",
+              "OK"
+            ),
+        });
+
+        return;
+      }
+
       setHoraSeleccionada(
-        hora
+        horaFinal
       );
 
       setModalAbierto(
@@ -815,15 +1016,68 @@ export default function Agenda() {
         return;
       }
 
+      const horaInicio =
+        formData
+          ?.configuracion
+          ?.hora_inicio ||
+        "08:00";
+
+      const horaFin =
+        formData
+          ?.configuracion
+          ?.hora_fin ||
+        "17:00";
+
+      const intervalo =
+        Number(
+          formData
+            ?.configuracion
+            ?.intervalo_minutos
+        ) || 30;
+
+      const primeraHora =
+        obtenerPrimeraHoraDisponible({
+          fecha,
+
+          horaInicio,
+
+          horaFin,
+
+          intervalo,
+        });
+
+      if (!primeraHora) {
+        Swal.fire({
+          icon: "info",
+
+          title:
+            t(
+              "agenda.no_hours_title",
+              "No hay horarios disponibles"
+            ),
+
+          text:
+            t(
+              "agenda.no_hours_message",
+              "Ya no quedan horarios disponibles para este día."
+            ),
+
+          confirmButtonText:
+            t(
+              "agenda.ok",
+              "OK"
+            ),
+        });
+
+        return;
+      }
+
       seleccionarDia(
         fecha
       );
 
       setHoraSeleccionada(
-        formData
-          ?.configuracion
-          ?.hora_inicio ||
-        "08:00"
+        primeraHora
       );
 
       setModalAbierto(
@@ -841,6 +1095,37 @@ export default function Agenda() {
       payload
     ) => {
       try {
+        if (
+          esHoraPasada(
+            payload?.fecha,
+            payload?.hora
+          )
+        ) {
+          await Swal.fire({
+            icon: "warning",
+
+            title:
+              t(
+                "agenda.time_unavailable_title",
+                "Hora no disponible"
+              ),
+
+            text:
+              t(
+                "agenda.time_unavailable_message",
+                "La hora seleccionada ya pasó. Seleccione una hora futura."
+              ),
+
+            confirmButtonText:
+              t(
+                "agenda.ok",
+                "OK"
+              ),
+          });
+
+          return;
+        }
+
         setGuardando(
           true
         );
